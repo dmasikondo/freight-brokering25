@@ -2,7 +2,7 @@
 
 ## Overview
 
-Welcome to the Freight Brokering24 web application! This platform is designed to streamline freight forwarding and transport consultancy services across Southern Africa, focusing on Zimbabwe and the SADC region. The mission is to facilitate the transportation of goods and assist transport operators in managing their businesses effectively.
+Welcome to the Freight Brokering25 web application! This platform is designed to streamline freight forwarding and transport consultancy services across Southern Africa, focusing on Zimbabwe and the SADC region. The mission is to facilitate the transportation of goods and assist transport operators in managing their businesses effectively.
 
 ## Features
 
