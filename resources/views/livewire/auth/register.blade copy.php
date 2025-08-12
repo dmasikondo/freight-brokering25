@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 
 new #[Layout('components.layouts.auth')] class extends Component {
     public $currentStep=1;
-    public string $company_name = '';
+    public string $company_name = 'taraz investments';
     public string $first_name = '';
     public string $surname = '';
     public string $contact_phone = '';
@@ -21,120 +21,70 @@ new #[Layout('components.layouts.auth')] class extends Component {
     public string $email = '';
     public string $password = '';
     public string $password_confirmation = '';
-    public string $customer_type;
+    public string $carrier_shipper;
     public string $ownership_type;
-    public string $country = '';
-    public string $city = '';
-    public string $address = '';
-    public $zimbabweCities = []; // Holds the list of cities    
-
-    public function mount()
-    {
-        // Populate the cities list on component mount
-       $this->zimbabweCities = \App\Models\ZimbabweCity::orderBy('name')->pluck('name','name')->toArray();
-    }    
-
-    protected function rules(): array
-    {
-        return [
-            'company_name' => ['required', 'string', 'max:255'],
-            'first_name' => ['required', 'string', 'max:255'],
-            'surname' => ['required', 'string', 'max:255'],
-            'contact_phone' => ['required', 'string', 'regex:/^(\+\d{1,3}[- ]?)?\d{7,15}$/'],        
-            'phone_type' => ['required', 'string','in:mobile,landline,other', 'max:20'],
-          //  'whatsapp' => ['nullable','regex:/^\+?[1-9]\d{6,14}$/'],
-            'whatsapp' => ['nullable','regex:/^(\+\d{1,3}[- ]?)?\d{7,15}$/'],
-            'ownership_type'=>['required'],
-            'customer_type'=>['required'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
-            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()], 
-            'country' => ['required', 'string', 'in:Zimbabwe,South Africa'],
-            'address' => ['required', 'string', 'max:255'],
-            'city' => ['required', 'string'],                                 
-        ];
-    }    
 
     /**
      * Handle an incoming registration request.
      */
     public function register(): void
     {
-   
-        $validated = $this->validate();
+        // $validated = $this->validate([
+        //     'company_name' => ['required', 'string', 'max:255'],
+        //     'first_name' => ['required', 'string', 'max:255'],
+        //     'surname' => ['required', 'string', 'max:255'],
+        //     'contact_phone' => ['required', 'string', 'max:30'],
+        //     'phone_type' => ['required', 'string','in:mobile,landline,other', 'max:20'],
+        //     'whatsapp' => ['nullable', 'string', 'max:30'],
+        //     'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
+        //     'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+        // ]);
+
+        // if (empty($this->company)) {
+        //     $validated['company'] = $validated['first_name'] . ' ' . $validated['last_name'];
+        // }
         
-        $validated['organisation'] = $validated['company_name'];  
-        $validated['contact_person'] = $validated['first_name'] . ' ' . $validated['surname'];
-        $validated['slug'] = Str::slug($validated['first_name'] . ' ' . $validated['surname']) . '-' . uniqid();
-        $validated['password'] = Hash::make($validated['password']);
+        // $validated['contact_person'] = $validated['first_name'] . ' ' . $validated['last_name'];
+        // $validated['slug'] = Str::slug($validated['first_name'] . ' ' . $validated['last_name']) . '-' . uniqid();
+        // $validated['password'] = Hash::make($validated['password']);
        
 
-        ($user = User::create($validated));
-        // Assign the role and ownership type using the new function
-        $user->assignRole($validated['customer_type'], $validated['ownership_type']);
-
-        // Create and associate the business location
-        $user->buslocation()->create([
-            'country' => $validated['country'],
-            'city' => $validated['city'],
-            'address' => $validated['address'],
-        ]);
-
-        // Dispatch the event
-        event(new Registered($user));
+        event(new Registered(($user = User::create($validated))));
         Auth::login($user);
         $this->redirectIntended(route('dashboard', absolute: false), navigate: true);
     }
 
     public function nextStep()
     {
-       $this->validateStep();
-        if ($this->currentStep <5) {
-           $this->currentStep = $this->currentStep + 1;           
-        }
+       //$this->validateStep();
+       return  $this->currentStep = $this->currentStep+1;
+        // if ($this->currentStep < 3) {
+        //    return  $this->currentStep = $this->currentStep + 1;
+        //     //dd($this->currentStep);
+        // }
         
     }  
 
     public function previousStep()
     {
-       
-        if ($this->currentStep >1) {
-           $this->currentStep = $this->currentStep - 1;           
-        }        
+        $this->currentStep = $this->currentStep-1;
     }
     
-    public function validateStep()
-    {
-        if ($this->currentStep === 1) {
-            $this->validateOnly('first_name');
-            $this->validateOnly('surname');
-        }
-
-        if ($this->currentStep === 2) {
-            $this->validateOnly('phone_type');
-            $this->validateOnly('contact_phone');            
-            $this->validateOnly('whatsapp');
-        }
-
-        if ($this->currentStep === 3) {
-            $this->validateOnly('company_name');
-            $this->validateOnly('ownership_type');
-            $this->validateOnly('customer_type');
-        }
-
-        if ($this->currentStep === 4) {
-            $this->validateOnly('country');
-            $this->validateOnly('city');
-            $this->validateOnly('address');
-        }        
-
-
-    }  
-    
-    
+    // public function validateStep()
+    // {
+    //     if ($this->currentStep === 1) {
+    //         $this->validateOnly('name');
+    //     } elseif ($this->currentStep === 2) {
+    //         $this->validateOnly('email');
+    //     } elseif ($this->currentStep === 3) {
+    //         $this->validateOnly('password');
+    //     }
+    // }     
 }; ?>
 
 <div id="contact"
      x-data="{
+         {{-- ...registrationForm(), --}}
          currentStep: @entangle('currentStep'),
          first_name: @entangle('first_name'),
          surname: @entangle('surname'),
@@ -143,13 +93,10 @@ new #[Layout('components.layouts.auth')] class extends Component {
          whatsapp: @entangle('whatsapp'),
          company_name: @entangle('company_name'),
          ownership_type: @entangle('ownership_type'),
-         customer_type: @entangle('customer_type'),
+         carrier_shipper: @entangle('carrier_shipper'),
          email: @entangle('email'),
          password: @entangle('password'),
-         password_confirmation: @entangle('password_confirmation'),
-         country: @entangle('country'),
-         city: @entangle('city'),
-         address: @entangle('address'),
+         password_confirmation: @entangle('password_confirmation')
      }"
      x-cloak
      class="min-h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white p-4 flex flex-col items-center pb-8">
@@ -193,18 +140,8 @@ new #[Layout('components.layouts.auth')] class extends Component {
                     :items="['Verify business credentials', 'Match with relevant partners']"
                 />
 
-                <!-- Step 4: Business Info -->
-                <x-steps.registration-steps
-                    :step="4"
-                    icon="location-marker"
-                    title="Business Location"
-                    description="Tell us about your company location"
-                    usageTitle="Our reason for asking:"
-                    :items="['Verify business credentials', 'Logistics and Shipping Optimization']"
-                />                
-
-                <!-- Step 5: Login Details -->
-                <div x-show="currentStep === 5" class="space-y-3">
+                <!-- Step 4: Login Details -->
+                <div x-show="currentStep === 4" class="space-y-3">
                     <div class="flex items-center gap-2">
                         <x-graphic name="lock-closed" class="size-5 text-blue-400"/>
                         <h3 class="text-lg font-semibold">Login Details</h3>
@@ -261,22 +198,18 @@ new #[Layout('components.layouts.auth')] class extends Component {
                             </svg>
                             <span x-text="ownership_type === 'real_owner' ? 'Real Owner' : 'Broker/Agent'" class="text-gray-400"></span>
                         </div>
-                        <div class="flex items-center gap-2" x-show="customer_type">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" :class="{'text-teal-400': customer_type === 'carrier', 'text-orange-400': customer_type === 'shipper'}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path x-show="customer_type === 'carrier'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                                <path x-show="customer_type === 'carrier'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
-                                <path x-show="customer_type === 'shipper'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        <div class="flex items-center gap-2" x-show="carrier_shipper">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" :class="{'text-teal-400': carrier_shipper === 'carrier', 'text-orange-400': carrier_shipper === 'shipper'}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path x-show="carrier_shipper === 'carrier'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                                <path x-show="carrier_shipper === 'carrier'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                                <path x-show="carrier_shipper === 'shipper'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             </svg>
-                            <span x-text="customer_type === 'carrier' ? 'Carrier' : 'Shipper'" class="text-gray-400"></span>
+                            <span x-text="carrier_shipper === 'carrier' ? 'Carrier' : 'Shipper'" class="text-gray-400"></span>
                         </div>
                         <div class="flex items-center gap-2" x-show="email">
                             <x-graphic name="email-open" class="size-3.5 text-red-400"/>
                             <span x-text="email" class="text-gray-400"></span>
                         </div>
-                        <div class="flex items-center gap-2" x-show="country">
-                            <x-graphic name="location-marker" class="size-3.5 text-green-400"/>
-                            <span x-text="address + ', '+ city + ', '+ country" class="text-gray-400"></span>
-                        </div>                        
                     </div>
                 </div>
             </div>
@@ -291,56 +224,37 @@ new #[Layout('components.layouts.auth')] class extends Component {
                                 placeholder="First Name" 
                                 model="first_name"
                                 wire:model="first_name"
-                                @class(['border-red-500'=>$errors->has('first_name')])
                             />
-                           <x-form.input-error field="first_name"/> 
                             <x-form.input
                                 placeholder="Surname" 
                                 model="surname"
                                 wire:model='surname'
-                                @class(['border-red-500'=>$errors->has('surname')])
                             />
-                            <x-form.input-error field="surname"/>                    
                         </div>
                     </div>
 
                     <div x-show="currentStep===2">
                         <h2 class="text-2xl font-bold mb-6">What's your contact details?</h2>
                         <x-form.select
-                            @class(['border-red-500'=>$errors->has('phone_type'), 'mb-4']) 
                             placeholder="Phone Type"
-                            model="phone_type"  
-                            wire:model="phone_type"                      
+                            model="phone_type"                        
                             :options="[
                                 'mobile' => 'Mobile',
                                 'landline' => 'Landline', 
                                 'other' => 'Other'
                             ]"
-                                                       
-                        />
-                        <x-form.input-error field="phone_type"/>   
+                            class="mb-4"
 
+                        />
                         <x-form.input 
                             placeholder="Contact Phone Number" 
                             model="contact_phone"
-                            wire:model="contact_phone"
-                            @class(['border-red-500'=>$errors->has('contact_phone'),'mb-4'])
-                            pattern="^\+?[1-9]\d{6,14}$"
-                            required
-                            title="Enter a valid phone number (e.g., +2637720000)"                           
-                        /> 
-                        <x-form.input-error field="contact_phone"/> 
-
+                            class="mb-4"
+                        />  
                         <x-form.input 
                             placeholder="WhatsApp (optional)" 
                             model="whatsapp"
-                            wire:model="whatsapp"
-                            @class(['border-red-500'=>$errors->has('whatsapp')])
-                            pattern="^\+?[1-9]\d{6,14}$"
-                            required
-                            title="Enter a valid whatsApp number (e.g., +2637720000)"                             
                         />
-                        <x-form.input-error field="whatsapp"/>
                     </div>
 
                     <div x-show="currentStep === 3">
@@ -348,139 +262,84 @@ new #[Layout('components.layouts.auth')] class extends Component {
                         <x-form.input
                             placeholder="Company Name" 
                             model="company_name"
-                            wire:model="company_name"
-                            @class(['border-red-500'=>$errors->has('company_name')])
-                        />
-                        <x-form.input-error field="company_name"/>                       
+                        />                       
                         
-                        <div @class(['border-red-500 border'=>$errors->has('ownership_type'), 'mr-2',"flex flex-col border-b border-gray-600 mb-4 pb-4"])>
+                        <div class="flex flex-col border-b border-gray-600 mb-4 pb-4">
                             <h3 class="text-lg font-bold text-gray-400">Ownership Type</h3>
                             <div class="flex items-center mt-2">
-                                <input type="radio" x-model="ownership_type" value="real_owner" id="real_owner"  wire:model="ownership_type" />
+                                <input type="radio" x-model="ownership_type" value="real_owner" id="real_owner" class="mr-2" />
                                 <label for="real_owner" class="text-gray-300 flex items-center gap-2">
                                     <x-graphic name="shield-check" class="size-5 text-yellow-400"/>
                                     Real Owner
                                 </label>
                             </div>
                             <div class="flex items-center mt-2">
-                                <input type="radio" x-model="ownership_type" value="broker_agent" id="broker_agent" class="mr-2" wire:model="ownership_type" />
+                                <input type="radio" x-model="ownership_type" value="broker_agent" id="broker_agent" class="mr-2" />
                                 <label for="broker_agent" class="text-gray-300 flex items-center gap-2">
                                     <x-graphic name="exchange" class="size-5 text-blue-400"/>
                                     Broker / Agent
                                 </label>
-
                             </div>
-                            <x-form.input-error field="ownership_type"/> 
                         </div>
-                        <div @class(['border-red-500 border'=>$errors->has('customer_type'), 'mr-2',"flex flex-col border-b border-gray-600 mb-4 pb-4"])>
+                        <div class="flex flex-col border-b border-gray-600 mb-4 pb-4">
                             <h3 class="text-lg font-bold text-gray-400">Customer Type</h3>
                             <div class="flex flex-col mt-2">
                                 <div class="flex items-center">
-                                    <input type="radio" x-model="customer_type" value="carrier" id="carrier" class="mr-2" wire:model="customer_type" />
+                                    <input type="radio" x-model="carrier_shipper" value="carrier" id="carrier" class="mr-2" />
                                     <label for="carrier" class="text-gray-300 flex items-center gap-2">
                                         <x-graphic name="exchange" class="size-5 text-teal-400"/>
                                         Carrier
                                     </label>
                                 </div>
-                                <p x-show="customer_type === 'carrier'" class="text-xs italic text-gray-400 ml-7 mt-1">You provide trucks/trailers to move goods</p>
+                                <p x-show="carrier_shipper === 'carrier'" class="text-xs italic text-gray-400 ml-7 mt-1">You provide trucks/trailers to move goods</p>
                             </div>
                             <div class="flex flex-col mt-2">
                                 <div class="flex items-center">
-                                    <input type="radio" x-model="customer_type" value="shipper" id="shipper" class="mr-2" wire:model="customer_type"/>
+                                    <input type="radio" x-model="carrier_shipper" value="shipper" id="shipper" class="mr-2" />
                                     <label for="shipper" class="text-gray-300 flex items-center gap-2">
                                         <x-graphic name="cube" class="size-5 text-orange-400"/>
                                         Shipper
                                     </label>
                                 </div>
-                                <p x-show="customer_type === 'shipper'" class="text-xs italic text-gray-400 ml-7 mt-1">You have goods that need to be transported</p>
+                                <p x-show="carrier_shipper === 'shipper'" class="text-xs italic text-gray-400 ml-7 mt-1">You have goods that need to be transported</p>
                             </div>
-                            <x-form.input-error field="customer_type"/>
                         </div>
                     </div>
-                    <div x-show="currentStep===4" x-cloak>
-                        <h2 class="text-2xl font-bold mb-6">Where are you Located</h2>
 
-                        <x-form.select
-                            @class(['border-red-500' => $errors->has('country'), 'mb-4'])
-                            placeholder="Country"
-                            wire:model.live="country"
-                            :options="['Zimbabwe' => 'Zimbabwe', 'South Africa' => 'South Africa']"
-                        />
-                        <x-form.input-error field="country" />
-
-                        <div x-show="country==='Zimbabwe'">
-                            <x-form.select
-                                @class(['border-red-500' => $errors->has('city'), 'mb-4'])
-                                placeholder="City"
-                                wire:model="city"
-                                :options="$zimbabweCities"
-                            />
-                            <x-form.input-error field="city" />
-                        </div>
-
-                        <div x-show="country==='South Africa'">
-                            <x-form.input 
-                                placeholder="City"
-                                model="city"
-                                wire:model="city"
-                                @class(['border-red-500' => $errors->has('city'), 'mb-4'])
-                            />
-                            <x-form.input-error field="city" />
-                        </div>
-
-                        <x-form.input 
-                            placeholder="Street Address" 
-                            model="address"
-                            wire:model="address"
-                            @class(['border-red-500' => $errors->has('address')])
-                            required
-                        />
-                        <x-form.input-error field="address" />
-                    </div>  
-                    
-                    <div x-show="currentStep === 5">
+                    <div x-show="currentStep === 4">
                         <h2 class="text-2xl font-bold mb-6">Create your login</h2>
                         <x-form.input
                             type="email"
                             placeholder="Email" 
                             model="email"
-                            wire:model="email"
                             class="mb-4"
-                            @class(['border-red-500'=>$errors->has('email'), 'mb-4'])
-                            required
-                            />
-                           <x-form.input-error field="email"/> 
-
+                        />  
                         <x-form.input
                         type="password"
                             placeholder="Password" 
                             model="password"
-                            wire:model="password"
-                            @class(['border-red-500'=>$errors->has('password'), 'mb-4'])
-                            required
-                            />
-                           <x-form.input-error field="password"/>  
+                            class="mb-4"
+                        /> 
                         <x-form.input
                             type="password"
                             placeholder="Repeat Password" 
                             model="password_confirmation"
-                            wire:model="password_confirmation"
-                            @class(['border-red-500'=>$errors->has('password_confirmation')])
-                            required
-                            />
-                           <x-form.input-error field="password_confirmation"/>  
-                    </div>                  
+                        />
+                    </div>
 
-                    <div class="flex justify-between mt-8">                       
+                    <div class="flex justify-between mt-8">
+                        <button   class="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl transition duration-300">
+                            <span x-text="currentStep + 'Step'"></span>
+                        </button>                        
                         <button wire:click="previousStep" x-show="currentStep > 1" class="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl transition duration-300">
                             Back
                         </button>
                         
-                        <button  wire:click="nextStep" x-show="currentStep < 5" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl transition duration-300 ml-auto">
+                        <button  wire:click="nextStep" x-show="currentStep < 4" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl transition duration-300 ml-auto">
                             Next
                         </button>
                         
-                        <button wire:click="register" x-show="currentStep === 5" class="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-xl transition duration-300 flex items-center gap-2">
+                        <button wire:click="register" x-show="currentStep === 4" class="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-xl transition duration-300 flex items-center gap-2">
                             <x-graphic name="paper-airplane" class="size-5"/>
                             Submit
                         </button>
@@ -491,11 +350,55 @@ new #[Layout('components.layouts.auth')] class extends Component {
                         <div class="h-2 w-2 rounded-full" :class="{'w-2 bg-gray-600': currentStep !== 2, 'w-8 bg-blue-500': currentStep === 2}"></div>
                         <div class="h-2 w-2 rounded-full" :class="{'w-2 bg-gray-600': currentStep !== 3, 'w-8 bg-blue-500': currentStep === 3}"></div>
                         <div class="h-2 w-2 rounded-full" :class="{'w-2 bg-gray-600': currentStep !== 4, 'w-8 bg-blue-500': currentStep === 4}"></div>
-                        <div class="h-2 w-2 rounded-full" :class="{'w-2 bg-gray-600': currentStep !== 5, 'w-8 bg-blue-500': currentStep === 5}"></div>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
+    <script>
+        // function registrationForm() {
+        //     return {
+        //         currentStep: 1,
+        //         first_name: '',
+        //         surname: '',
+        //         phone_type: '',
+        //         contact_phone: '',
+        //         whatsapp: '',
+        //         company_name: '',
+        //         ownership_type: '',
+        //         carrier_shipper: '',
+        //         email: '',
+        //         password: '',
+        //         password_confirmation: '',
+        //         nextStep() {
+        //             if (this.currentStep < 4) {
+        //                 this.currentStep++;
+        //             }
+        //         },
+        //         previousStep() {
+        //             if (this.currentStep > 1) {
+        //                 this.currentStep--;
+        //             }
+        //         },
+        //         submitForm() {
+        //             console.log('Form submitted:', {
+        //                 first_name: this.first_name,
+        //                 surname: this.surname,
+        //                 phone_type: this.phone_type,
+        //                 contact_phone: this.contact_phone,
+        //                 whatsapp: this.whatsapp,
+        //                 company_name: this.company_name,
+        //                 ownership_type: this.ownership_type,
+        //                 carrier_shipper: this.carrier_shipper,
+        //                 email: this.email,
+        //                 password: this.password,
+        //                 password_confirmation: this.password_confirmation,
+        //             });
+        //             alert('Form submitted successfully!');
+        //         }
+        //     };
+        // }
+    </script>
 </div>
 

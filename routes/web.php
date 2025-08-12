@@ -10,7 +10,7 @@ Route::get('/', function () {
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
-
+Route::view('register2','livewire.auth.register2');
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
 
