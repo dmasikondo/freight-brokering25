@@ -84,7 +84,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
 
         <div class="bg-gray-800 p-8 rounded-3xl shadow-xl">
             <!-- Login Form -->
-            <form @submit.prevent="submitForm">
+            <form @submit.prevent="login">
                 <div class="space-y-6">
                     <!-- Email Field -->
                     <div>

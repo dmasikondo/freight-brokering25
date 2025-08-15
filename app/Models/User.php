@@ -77,20 +77,72 @@ class User extends Authenticatable
                     ->withTimestamps();
     }
 
-    public function assignRole(string $roleName, ?string $ownershipType = null): void
+    public function assignRole(string $rolesWithOwnership): void
     {
-        $role = Role::where('name', $roleName)->firstOrFail();
+        // Split the input string by commas to get individual roles
+        $rolesArray = explode(',', $rolesWithOwnership);
         $data = [];
-        if ($ownershipType) {
-            $data['classification'] = $ownershipType;
+
+        foreach ($rolesArray as $roleWithOwnership) {
+            // Split each role entry into role name and ownership type (if provided)
+            $parts = array_map('trim', explode(':', $roleWithOwnership));
+
+            // Ensure the role name is always present
+            if (count($parts) > 0) {
+                $roleName = $parts[0];
+                $ownershipType = count($parts) === 2 ? $parts[1] : null;
+
+                // Retrieve the role based on the provided name
+                $role = Role::where('name', $roleName)->firstOrFail();
+
+                // Prepare the data for the pivot table
+                $roleData = [];
+                if ($ownershipType) {
+                    $roleData['classification'] = $ownershipType;
+                }
+
+                // Store the role ID and its corresponding data
+                $data[$role->id] = $roleData;
+            } else {
+                // Handle the case where the format is incorrect
+                throw new \InvalidArgumentException("Invalid format for role: '{$roleWithOwnership}'. Expected format is 'roleName[:ownershipType]'.");
+            }
         }
-        $this->roles()->attach($role->id, $data);
-    }  
+
+        // Sync the roles with the user, detaching any previously assigned roles
+        $this->roles()->sync($data);    
+    }
+
+
+
+    /**
+      * Check if the user has role of
+    */
+    public function hasRole($role)
+    {
+        return  (bool) $this->roles()->where('name',$role)->count();
+    }    
 
     public function buslocation(): hasOne
     {
         return $this->hasOne(Buslocation::class);
     } 
+    
+    public function creationAudit()
+    {
+        return $this->hasOne(UserCreation::class, 'created_user_id');
+    }
+    public function createdBy()
+    {
+        return $this->hasOneThrough(
+            User::class, 
+            UserCreation::class,
+            'created_user_id', // Foreign key on the user_creations table
+            'id',              // Foreign key on the users table
+            'id',              // Local key on the users table
+            'creator_user_id'  // Local key on the user_creations table
+        );
+    }    
     
     // This accessor generates the identification number based on your new format
     protected function identificationNumber(): Attribute

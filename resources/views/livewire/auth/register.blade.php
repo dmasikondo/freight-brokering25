@@ -1,18 +1,21 @@
 <?php
 
+namespace App\Livewire;
+
+use App\Models\Role;
 use App\Models\User;
-use Illuminate\Auth\Events\Registered;
+use App\Services\UserRegistrationService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
-//use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
-use Illuminate\Support\Str;
 
 new #[Layout('components.layouts.auth')] class extends Component {
-    public $currentStep=1;
-    public string $company_name = '';
+    // Component state properties...
+    public bool $isStaffRegistration = false;
+    public $currentStep = 1;
+    public $allowedRoles = []; 
+    public string $role = '';
     public string $first_name = '';
     public string $surname = '';
     public string $contact_phone = '';
@@ -21,144 +24,175 @@ new #[Layout('components.layouts.auth')] class extends Component {
     public string $email = '';
     public string $password = '';
     public string $password_confirmation = '';
-    public string $customer_type;
-    public string $ownership_type;
+    public string $company_name = '';
+    public string $customer_type = '';
+    public string $ownership_type = '';
     public string $country = '';
     public string $city = '';
     public string $address = '';
-    public $zimbabweCities = []; // Holds the list of cities    
+    public $zimbabweCities = [];
 
-    public function mount()
+    // The service class is injected here
+    protected UserRegistrationService $userRegistrationService;
+
+    public function boot(userRegistrationService $userRegistrationService)
     {
-        // Populate the cities list on component mount
-       $this->zimbabweCities = \App\Models\ZimbabweCity::orderBy('name')->pluck('name','name')->toArray();
-    }    
+        $this->userRegistrationService = $userRegistrationService;
+    }
+
+    public function mount(?string $role = null): void
+    {
+        $this->zimbabweCities = \App\Models\ZimbabweCity::orderBy('name')->pluck('name', 'name')->toArray();
+        
+        // This is where the service class simplifies the logic
+        if (Auth::check()) {
+            $this->isStaffRegistration = true;
+            $this->allowedRoles = $this->userRegistrationService->getAllowedRolesForUser(Auth::user());
+        } else {
+            // Self-registration is for shippers and carriers
+            $this->allowedRoles = Role::whereIn('name', ['shipper', 'carrier'])->pluck('name', 'name');
+        }
+
+        if ($role) {
+            $this->role = $role;
+            $this->currentStep = 1;
+        }
+    }
 
     protected function rules(): array
     {
         return [
-            'company_name' => ['required', 'string', 'max:255'],
+           // 'role' => ['required', 'string', 'in:' . implode(',', $this->allowedRoles->toArray())],
             'first_name' => ['required', 'string', 'max:255'],
             'surname' => ['required', 'string', 'max:255'],
-            'contact_phone' => ['required', 'string', 'regex:/^(\+\d{1,3}[- ]?)?\d{7,15}$/'],        
-            'phone_type' => ['required', 'string','in:mobile,landline,other', 'max:20'],
-          //  'whatsapp' => ['nullable','regex:/^\+?[1-9]\d{6,14}$/'],
-            'whatsapp' => ['nullable','regex:/^(\+\d{1,3}[- ]?)?\d{7,15}$/'],
-            'ownership_type'=>['required'],
-            'customer_type'=>['required'],
+            'contact_phone' => ['required', 'string', 'regex:/^(\+\d{1,3}[- ]?)?\d{7,15}$/'],
+            'phone_type' => ['required', 'string', 'in:mobile,landline,other', 'max:20'],
+            'whatsapp' => ['nullable', 'regex:/^(\+\d{1,3}[- ]?)?\d{7,15}$/'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
-            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()], 
-            'country' => ['required', 'string', 'in:Zimbabwe,South Africa'],
-            'address' => ['required', 'string', 'max:255'],
-            'city' => ['required', 'string'],                                 
+            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+            'customer_type' => ['required', 'string'],
+            'ownership_type' => ['required_if:customer_type,shipper,carrier'],
+            'company_name' => ['required_if:customer_type,shipper,carrier', 'nullable', 'string', 'max:255'],
+            'country' => ['required_if:customer_type,shipper,carrier', 'nullable', 'string', 'in:Zimbabwe,South Africa'],
+            'address' => ['required_if:customer_type,shipper,carrier', 'nullable', 'string', 'max:255'],
+            'city' => ['required_if:customer_type,shipper,carrier', 'nullable', 'string'],            
         ];
-    }    
+  
+    }
 
-    /**
-     * Handle an incoming registration request.
-     */
     public function register(): void
     {
-   
         $validated = $this->validate();
-        
-        $validated['organisation'] = $validated['company_name'];  
-        $validated['contact_person'] = $validated['first_name'] . ' ' . $validated['surname'];
-        $validated['slug'] = Str::slug($validated['first_name'] . ' ' . $validated['surname']) . '-' . uniqid();
-        $validated['password'] = Hash::make($validated['password']);
-       
 
-        ($user = User::create($validated));
-        // Assign the role and ownership type using the new function
-        $user->assignRole($validated['customer_type'], $validated['ownership_type']);
+        // Pass the validated data and the creator to the service class
+        $creator = $this->isStaffRegistration ? Auth::user() : null;
+        $user = $this->userRegistrationService->registerUser($validated, $creator);
 
-        // Create and associate the business location
-        $user->buslocation()->create([
-            'country' => $validated['country'],
-            'city' => $validated['city'],
-            'address' => $validated['address'],
-        ]);
+        if (!$user) {
+            // Handle error, e.g., show a message to the user
+            $this->addError('general', 'Failed to register user. Please check permissions or try again.');
+            return;
+        }
 
-        // Dispatch the event
-        event(new Registered($user));
-        Auth::login($user);
-        $this->redirectIntended(route('dashboard', absolute: false), navigate: true);
+        if ($this->isStaffRegistration) {
+            $this->redirect(route('users.index'), navigate: true);
+        } else {
+            // The service class already fired the event and created the user,
+            // we just need to log them in.
+            Auth::login($user);
+            $this->redirectIntended(route('dashboard', absolute: false), navigate: true);
+        }
     }
+    
+    // Multi-step form navigation methods
+    public function nextStep(): void
+    {
+        $this->validateStep();
+        // Check if the current step is less than the maximum step
+        if ($this->currentStep < 5) {
+            // Handle specific logic for step 3
+            if ($this->currentStep === 3) {
+                if (($this->customer_type !== 'shipper') && ($this->customer_type !== 'carrier')) {
+                    // If customer type is  neither carrier nor shipper, prepare to skip next step
+                    $this->currentStep = $this->currentStep + 1;
+                }
+            }
 
-    public function nextStep()
+            // Increment the current step
+            $this->currentStep = $this->currentStep + 1;
+        }
+    } 
+    
+    public function previousStep(): void
     {
        $this->validateStep();
-        if ($this->currentStep <5) {
-           $this->currentStep = $this->currentStep + 1;           
-        }
-        
-    }  
 
-    public function previousStep()
-    {
-       
-        if ($this->currentStep >1) {
-           $this->currentStep = $this->currentStep - 1;           
+       if ($this->currentStep > 1) {
+          if($this->currentStep ===5){
+            if($this->customer_type !=='carrier' && $this->customer_type !=='shipper'){
+                $this->currentStep =4;
+            }
         }        
+          $this->currentStep = $this->currentStep - 1;            
+       }         
     }
     
-    public function validateStep()
+    public function validateStep(): void
     {
-        if ($this->currentStep === 1) {
-            $this->validateOnly('first_name');
-            $this->validateOnly('surname');
-        }
+       if ($this->currentStep === 1) {
+           $this->validateOnly('first_name');
+           $this->validateOnly('surname');
+       }
+       if ($this->currentStep === 2) {
+           $this->validateOnly('phone_type');
+           $this->validateOnly('contact_phone');           
+           $this->validateOnly('whatsapp');
+       }
+       if ($this->currentStep === 3) {           
+            if($this->customer_type ==='carrier' || $this->customer_type ==='shipper'){
+                $this->validateOnly('company_name');
+                $this->validateOnly('ownership_type');
+            } 
+           $this->validateOnly('customer_type');
+       }
+       if ($this->currentStep === 4) {
+                $this->validateOnly('country');
+                $this->validateOnly('city');
+                $this->validateOnly('address');           
+       }
+    }
+};?>
 
-        if ($this->currentStep === 2) {
-            $this->validateOnly('phone_type');
-            $this->validateOnly('contact_phone');            
-            $this->validateOnly('whatsapp');
-        }
+<div id="contact" x-data="
+        { currentStep: @entangle('currentStep'), 
+            isStaffRegistration: @entangle('isStaffRegistration'), 
+            role: @entangle('role'),
+            currentStep: @entangle('currentStep'),
+            first_name: @entangle('first_name'),
+            surname: @entangle('surname'),
+            phone_type: @entangle('phone_type'),
+            contact_phone: @entangle('contact_phone'),
+            whatsapp: @entangle('whatsapp'),
+            company_name: @entangle('company_name'),
+            ownership_type: @entangle('ownership_type'),
+            customer_type: @entangle('customer_type'),
+            email: @entangle('email'),
+            password: @entangle('password'),
+            password_confirmation: @entangle('password_confirmation'),
+            country: @entangle('country'),
+            city: @entangle('city'),
+            address: @entangle('address'),            
+         }" 
+         x-cloak
+    class="min-h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white p-4 flex flex-col items-center pb-8">
 
-        if ($this->currentStep === 3) {
-            $this->validateOnly('company_name');
-            $this->validateOnly('ownership_type');
-            $this->validateOnly('customer_type');
-        }
-
-        if ($this->currentStep === 4) {
-            $this->validateOnly('country');
-            $this->validateOnly('city');
-            $this->validateOnly('address');
-        }        
-
-
-    }  
-    
-    
-}; ?>
-
-<div id="contact"
-     x-data="{
-         currentStep: @entangle('currentStep'),
-         first_name: @entangle('first_name'),
-         surname: @entangle('surname'),
-         phone_type: @entangle('phone_type'),
-         contact_phone: @entangle('contact_phone'),
-         whatsapp: @entangle('whatsapp'),
-         company_name: @entangle('company_name'),
-         ownership_type: @entangle('ownership_type'),
-         customer_type: @entangle('customer_type'),
-         email: @entangle('email'),
-         password: @entangle('password'),
-         password_confirmation: @entangle('password_confirmation'),
-         country: @entangle('country'),
-         city: @entangle('city'),
-         address: @entangle('address'),
-     }"
-     x-cloak
-     class="min-h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white p-4 flex flex-col items-center pb-8">
     <div class="w-full max-w-6xl mt-8">
         <h1 class="text-5xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text mb-4">
             Ship Smarter!!
         </h1>
         <p class="text-center text-gray-400 text-xl mb-12">
-            Register as a Shipper or a Carrier to get started.
+            <span x-show="!isStaffRegistration">Register as a Shipper or a Carrier to get started.</span>
+            <span x-show="isStaffRegistration">Add a new user.</span>
         </p>
 
         <div class="flex flex-col md:flex-row gap-8 w-full">
@@ -209,7 +243,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
                         <x-graphic name="lock-closed" class="size-5 text-blue-400"/>
                         <h3 class="text-lg font-semibold">Login Details</h3>
                     </div>
-                    <p class="text-sm text-gray-300">Create secure credentials for your account.</p>
+                    <p class="text-sm text-gray-300">Create secure credentials for the account.</p>
                     <div class="bg-gray-700/50 p-3 rounded-lg text-xs space-y-1">
                         <p class="text-gray-400">A secure password must have at least:</p>                        
                         <div class="flex items-center gap-1.5" :class="{'text-green-400': password.length >= 8, 'text-gray-300': password.length < 8}">
@@ -285,7 +319,10 @@ new #[Layout('components.layouts.auth')] class extends Component {
             <div class="bg-gray-800 p-8 rounded-3xl shadow-xl w-full md:w-1/2 order-1 md:order-2">
                 <form wire:submit.prevent>
                     <div x-show="currentStep===1">
-                        <h2 class="text-2xl font-bold mb-6">What's your name?</h2>
+                        <h2 class="text-2xl font-bold mb-6">
+                            What's <span>{{$isStaffRegistration? "the user's": 'your'}}</span> name?
+
+                        </h2>
                         <div class="flex flex-col md:flex-row gap-4">
                             <x-form.input
                                 placeholder="First Name" 
@@ -305,7 +342,9 @@ new #[Layout('components.layouts.auth')] class extends Component {
                     </div>
 
                     <div x-show="currentStep===2">
-                        <h2 class="text-2xl font-bold mb-6">What's your contact details?</h2>
+                        <h2 class="text-2xl font-bold mb-6">
+                             What's <span>{{$isStaffRegistration? "the user's": 'your'}}</span> contact details?
+                        </h2>
                         <x-form.select
                             @class(['border-red-500'=>$errors->has('phone_type'), 'mb-4']) 
                             placeholder="Phone Type"
@@ -343,35 +382,15 @@ new #[Layout('components.layouts.auth')] class extends Component {
                         <x-form.input-error field="whatsapp"/>
                     </div>
 
-                    <div x-show="currentStep === 3">
+                    <div x-show="(currentStep === 3 && !isStaffRegistration)">
                         <h2 class="text-2xl font-bold mb-6">Company Overview</h2>
-                        <x-form.input
-                            placeholder="Company Name" 
-                            model="company_name"
-                            wire:model="company_name"
-                            @class(['border-red-500'=>$errors->has('company_name')])
-                        />
-                        <x-form.input-error field="company_name"/>                       
-                        
-                        <div @class(['border-red-500 border'=>$errors->has('ownership_type'), 'mr-2',"flex flex-col border-b border-gray-600 mb-4 pb-4"])>
-                            <h3 class="text-lg font-bold text-gray-400">Ownership Type</h3>
-                            <div class="flex items-center mt-2">
-                                <input type="radio" x-model="ownership_type" value="real_owner" id="real_owner"  wire:model="ownership_type" />
-                                <label for="real_owner" class="text-gray-300 flex items-center gap-2">
-                                    <x-graphic name="shield-check" class="size-5 text-yellow-400"/>
-                                    Real Owner
-                                </label>
-                            </div>
-                            <div class="flex items-center mt-2">
-                                <input type="radio" x-model="ownership_type" value="broker_agent" id="broker_agent" class="mr-2" wire:model="ownership_type" />
-                                <label for="broker_agent" class="text-gray-300 flex items-center gap-2">
-                                    <x-graphic name="exchange" class="size-5 text-blue-400"/>
-                                    Broker / Agent
-                                </label>
-
-                            </div>
-                            <x-form.input-error field="ownership_type"/> 
-                        </div>
+                            <x-form.input
+                                placeholder="Company Name" 
+                                model="company_name"
+                                wire:model="company_name"
+                                @class(['border-red-500'=>$errors->has('company_name')])
+                            />
+                            <x-form.input-error field="company_name"/>   
                         <div @class(['border-red-500 border'=>$errors->has('customer_type'), 'mr-2',"flex flex-col border-b border-gray-600 mb-4 pb-4"])>
                             <h3 class="text-lg font-bold text-gray-400">Customer Type</h3>
                             <div class="flex flex-col mt-2">
@@ -395,10 +414,82 @@ new #[Layout('components.layouts.auth')] class extends Component {
                                 <p x-show="customer_type === 'shipper'" class="text-xs italic text-gray-400 ml-7 mt-1">You have goods that need to be transported</p>
                             </div>
                             <x-form.input-error field="customer_type"/>
-                        </div>
+                        </div> 
+                        <div  @class(['border-red-500 border'=>$errors->has('ownership_type'), 'mr-2',"flex flex-col border-b border-gray-600 mb-4 pb-4"])>
+                            <h3 class="text-lg font-bold text-gray-400">
+                                 Select User Ownership Type
+                            </h3>
+                            <div class="flex items-center mt-2">
+                                <input type="radio" x-model="ownership_type" value="real_owner" id="real_owner"  wire:model="ownership_type" />
+                                <label for="real_owner" class="text-gray-300 flex items-center gap-2">
+                                    <x-graphic name="shield-check" class="size-5 text-yellow-400"/>
+                                    Real Owner
+                                </label>
+                            </div>
+                            <div class="flex items-center mt-2">
+                                <input type="radio" x-model="ownership_type" value="broker_agent" id="broker_agent" class="mr-2" wire:model="ownership_type" />
+                                <label for="broker_agent" class="text-gray-300 flex items-center gap-2">
+                                    <x-graphic name="exchange" class="size-5 text-blue-400"/>
+                                    Broker / Agent
+                                </label>
+
+                            </div>
+                            <x-form.input-error field="ownership_type"/> 
+                        </div>                                              
                     </div>
-                    <div x-show="currentStep===4" x-cloak>
-                        <h2 class="text-2xl font-bold mb-6">Where are you Located</h2>
+
+                    <div x-show="(currentStep === 3 && isStaffRegistration)">
+                        <h2 class="text-2xl font-bold mb-6">Assign the User Role</h2>
+                        <div @class(['border-red-500 border'=>$errors->has('customer_type'), 'mr-2',"flex flex-col border-b border-gray-600 mb-4 pb-4"])>
+                            <div class="">
+                                @foreach ($allowedRoles as $title )
+                                <div class="mb-4">
+                                    <x-form.radio-button
+                                        id="role-{{ $title }}"
+                                        label="{{ $title }}"
+                                        icon="shield-check"
+                                        value="{{ $title }}"
+                                        model="customer_type"
+                                        @class([
+                                            'border-red-500' => $errors->has('customer_type')
+                                        ]) {{-- Or use a conditional class --}}
+                                    />                                      
+                                    <p x-show="customer_type === 'carrier' && '{{ $title }}' === 'carrier'" class="text-xs italic text-gray-400 ml-7 mt-1">
+                                        provides trucks/trailers to move goods
+                                    </p>
+                                    <p x-show="customer_type === 'shipper' && '{{ $title }}' === 'shipper'" class="text-xs italic text-gray-400 ml-7 mt-1">
+                                        has goods that need to be transported
+                                    </p> 
+                                <!-- Ownership Type and Company Name Section Section -->
+                                    <div  x-show="customer_type === 'carrier' && '{{ $title }}' === 'carrier'" class="border border-gray-400 p-2 flex flex-wrap gap-2 mt-4 space-y-2">
+                                        <div class="w-full">
+                                            @include('partials.forms.ownership_type')  
+                                        </div>
+                                       <div class="w-full">
+                                            @include('partials.forms.company_name') 
+                                        </div>                                      
+                                        
+                                                                                                         
+                                    </div>  
+                                    <div  x-show="customer_type === 'shipper' && '{{ $title }}' === 'shipper'" class="border border-gray-400 p-2 flex flex-wrap gap-2 mt-4 space-y-2">  
+                                        <div class="w-full">
+                                            @include('partials.forms.ownership_type')  
+                                        </div>
+                                       <div class="w-full">
+                                            @include('partials.forms.company_name') 
+                                        </div>                                                                                                       
+                                    </div>                                                                                           
+                                </div>
+                                @endforeach    
+                            </div>
+                        </div>
+                      
+                        
+
+                    </div>                    
+                    
+                    <div x-show="currentStep===4   && (customer_type ==='carrier' || customer_type ==='shipper')" x-cloak>
+                        <h2 class="text-2xl font-bold mb-6">Where Located?</h2>
 
                         <x-form.select
                             @class(['border-red-500' => $errors->has('country'), 'mb-4'])
@@ -438,8 +529,10 @@ new #[Layout('components.layouts.auth')] class extends Component {
                         <x-form.input-error field="address" />
                     </div>  
                     
-                    <div x-show="currentStep === 5">
-                        <h2 class="text-2xl font-bold mb-6">Create your login</h2>
+                    <div x-show="currentStep === 5">                      
+                        <h2 class="text-2xl font-bold mb-6">
+                             Create <span>{{$isStaffRegistration? "default": 'your'}}</span> login
+                        </h2>
                         <x-form.input
                             type="email"
                             placeholder="Email" 
