@@ -9,7 +9,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('/login-as-latest', function() {
-    $user = App\Models\User::latest('id')->first();
+    $user = App\Models\User::where('email','market@log')->first();
     auth()->login($user);
     return redirect('/users/create');
 }); 

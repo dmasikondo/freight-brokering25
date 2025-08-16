@@ -90,7 +90,6 @@ class UserRegistrationService
     {
         $allRoles = Role::pluck('name', 'name');
         
-        // This is where the complex role-based logic is centralized
         if ($user->hasRole('superadmin')) {
             // Superadmin can register all users
             return $allRoles;
