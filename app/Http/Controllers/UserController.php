@@ -18,4 +18,10 @@ class UserController extends Controller
     {
         return view('users.create');
     }
+
+    public function edit(User $user)
+    {
+        
+        return view('users.create',compact('user'));
+    }
 }

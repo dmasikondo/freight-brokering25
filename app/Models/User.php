@@ -123,9 +123,9 @@ class User extends Authenticatable
         return  (bool) $this->roles()->where('name',$role)->count();
     }    
 
-    public function buslocation(): hasOne
+    public function buslocation(): hasMany
     {
-        return $this->hasOne(Buslocation::class);
+        return $this->hasMany(Buslocation::class);
     } 
     
     public function creationAudit()

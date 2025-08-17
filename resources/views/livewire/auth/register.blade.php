@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\UserRegistrationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -31,17 +32,19 @@ new #[Layout('components.layouts.auth')] class extends Component {
     public string $city = '';
     public string $address = '';
     public $zimbabweCities = [];
+    public ?string $slug = null; // Added to handle editing
 
     // The service class is injected here
     protected UserRegistrationService $userRegistrationService;
 
-    public function boot(userRegistrationService $userRegistrationService)
+    public function boot(UserRegistrationService $userRegistrationService)
     {
         $this->userRegistrationService = $userRegistrationService;
     }
 
-    public function mount(?string $role = null): void
+    public function mount(?string $role = null, ?string $slug = null): void
     {
+        //dd('the slug is '.$slug);
         $this->zimbabweCities = \App\Models\ZimbabweCity::orderBy('name')->pluck('name', 'name')->toArray();
         
         // This is where the service class simplifies the logic
@@ -57,50 +60,123 @@ new #[Layout('components.layouts.auth')] class extends Component {
             $this->role = $role;
             $this->currentStep = 1;
         }
+
+        // Editing logic
+        if ($slug) {            
+            $user = User::where('slug', $slug)->firstOrFail();
+            $fullName = $user->contact_person;
+
+            // Split the full name by spaces
+            $nameParts = explode(' ', $fullName);
+
+            // Get the last word as the surname
+            $this->surname = array_pop($nameParts);
+
+            // Join the remaining words as the first name
+            $this->first_name = implode(' ', $nameParts); 
+
+            $this->slug = $user->slug;
+            $this->contact_phone = $user->contact_phone;
+            $this->phone_type = $user->phone_type;
+            $this->whatsapp = $user->whatsapp ?? '';
+            $this->email = $user->email;
+            $this->company_name = $user->organisation ?? '';
+
+        // Populate customer_type and ownership_type from the roles relationship
+        if ($user->roles->isNotEmpty()) {
+            $role = $user->roles->first();
+            $this->customer_type = $role->name;
+            $this->ownership_type = $role->pivot->classification ?? '';
+        }
+
+        // Populate address, city, and country from the buslocation relationship
+        if ($user->buslocation->isNotEmpty()) {
+            $buslocation = $user->buslocation->first();
+            $this->country = $buslocation->country ?? '';
+            $this->city = $buslocation->city ?? '';
+            $this->address = $buslocation->address ?? '';
+        }            
+            $this->password = '';
+            $this->password_confirmation = '';
+        }
     }
 
     protected function rules(): array
     {
         return [
-           // 'role' => ['required', 'string', 'in:' . implode(',', $this->allowedRoles->toArray())],
+            // 'role' => ['required', 'string', 'in:' . implode(',', $this->allowedRoles->toArray())],
             'first_name' => ['required', 'string', 'max:255'],
             'surname' => ['required', 'string', 'max:255'],
             'contact_phone' => ['required', 'string', 'regex:/^(\+\d{1,3}[- ]?)?\d{7,15}$/'],
             'phone_type' => ['required', 'string', 'in:mobile,landline,other', 'max:20'],
             'whatsapp' => ['nullable', 'regex:/^(\+\d{1,3}[- ]?)?\d{7,15}$/'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
-            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class, 'email')->ignore($this->slug, 'slug')],
+            'password' => [$this->slug ? 'nullable' : 'required', 'string', 'confirmed', Rules\Password::defaults()],
             'customer_type' => ['required', 'string'],
             'ownership_type' => ['required_if:customer_type,shipper,carrier'],
             'company_name' => ['required_if:customer_type,shipper,carrier', 'nullable', 'string', 'max:255'],
             'country' => ['required_if:customer_type,shipper,carrier', 'nullable', 'string', 'in:Zimbabwe,South Africa'],
             'address' => ['required_if:customer_type,shipper,carrier', 'nullable', 'string', 'max:255'],
-            'city' => ['required_if:customer_type,shipper,carrier', 'nullable', 'string'],            
+            'city' => ['required_if:customer_type,shipper,carrier', 'nullable', 'string'],
         ];
-  
     }
 
     public function register(): void
     {
         $validated = $this->validate();
+    // Call the service class to save the user
+    // Pass the user model if it exists, otherwise pass null
+   // $userToSave = $this->slug ? User::where('slug', $this->slug)->first() : null;        
+   $userToregister = $this->slug ? User::where('slug', $this->slug)->first() : null;
 
-        // Pass the validated data and the creator to the service class
-        $creator = $this->isStaffRegistration ? Auth::user() : null;
-        $user = $this->userRegistrationService->registerUser($validated, $creator);
+    $this->userRegistrationService->registerUser($validated, auth()->user(), $userToregister);
 
-        if (!$user) {
-            // Handle error, e.g., show a message to the user
-            $this->addError('general', 'Failed to register user. Please check permissions or try again.');
-            return;
-        }
 
-        if ($this->isStaffRegistration) {
+        if ($this->slug) {
+            
+            // Find user and update
+         
+            // $user->update([
+
+            //     'first_name' => $this->first_name,
+            //     'surname' => $this->surname,
+            //     'contact_phone' => $this->contact_phone,
+            //     'phone_type' => $this->phone_type,
+            //     'whatsapp' => $this?->whatsapp,
+            //     'email' => $this->email,
+            //     'customer_type' => $this->customer_type,
+            //     'company_name' => $this?->organisation,
+            //     'ownership_type' => $this?->ownership_type,
+            //     'country' => $this?->country,
+            //     'city' => $this?->city,
+            //     'address' => $this?->address,
+            // ]);
+
+
+            // if (!empty($this->password)) {
+            //     $user->password = $this->password;
+            //     $user->save();
+            // }
+
+            // Redirect back after editing
             $this->redirect(route('users.index'), navigate: true);
+
         } else {
-            // The service class already fired the event and created the user,
-            // we just need to log them in.
-            Auth::login($user);
-            $this->redirectIntended(route('dashboard', absolute: false), navigate: true);
+            // Existing registration logic
+            $creator = $this->isStaffRegistration ? Auth::user() : null;
+            $user = $this->userRegistrationService->registerUser($validated, $creator);
+
+            if (!$user) {
+                $this->addError('general', 'Failed to register user. Please check permissions or try again.');
+                return;
+            }
+
+            if ($this->isStaffRegistration) {
+                $this->redirect(route('users.index'), navigate: true);
+            } else {
+                Auth::login($user);
+                $this->redirectIntended(route('dashboard', absolute: false), navigate: true);
+            }
         }
     }
     
@@ -108,58 +184,52 @@ new #[Layout('components.layouts.auth')] class extends Component {
     public function nextStep(): void
     {
         $this->validateStep();
-        // Check if the current step is less than the maximum step
         if ($this->currentStep < 5) {
-            // Handle specific logic for step 3
             if ($this->currentStep === 3) {
                 if (($this->customer_type !== 'shipper') && ($this->customer_type !== 'carrier')) {
-                    // If customer type is  neither carrier nor shipper, prepare to skip next step
                     $this->currentStep = $this->currentStep + 1;
                 }
             }
-
-            // Increment the current step
             $this->currentStep = $this->currentStep + 1;
         }
-    } 
+    }
     
     public function previousStep(): void
     {
-       $this->validateStep();
-
-       if ($this->currentStep > 1) {
-          if($this->currentStep ===5){
-            if($this->customer_type !=='carrier' && $this->customer_type !=='shipper'){
-                $this->currentStep =4;
+        $this->validateStep();
+        if ($this->currentStep > 1) {
+            if ($this->currentStep === 5) {
+                if ($this->customer_type !== 'carrier' && $this->customer_type !== 'shipper') {
+                    $this->currentStep = 4;
+                }
             }
-        }        
-          $this->currentStep = $this->currentStep - 1;            
-       }         
+            $this->currentStep = $this->currentStep - 1;
+        }
     }
     
     public function validateStep(): void
     {
-       if ($this->currentStep === 1) {
-           $this->validateOnly('first_name');
-           $this->validateOnly('surname');
-       }
-       if ($this->currentStep === 2) {
-           $this->validateOnly('phone_type');
-           $this->validateOnly('contact_phone');           
-           $this->validateOnly('whatsapp');
-       }
-       if ($this->currentStep === 3) {           
-            if($this->customer_type ==='carrier' || $this->customer_type ==='shipper'){
+        if ($this->currentStep === 1) {
+            $this->validateOnly('first_name');
+            $this->validateOnly('surname');
+        }
+        if ($this->currentStep === 2) {
+            $this->validateOnly('phone_type');
+            $this->validateOnly('contact_phone');
+            $this->validateOnly('whatsapp');
+        }
+        if ($this->currentStep === 3) {
+            if ($this->customer_type === 'carrier' || $this->customer_type === 'shipper') {
                 $this->validateOnly('company_name');
                 $this->validateOnly('ownership_type');
-            } 
-           $this->validateOnly('customer_type');
-       }
-       if ($this->currentStep === 4) {
-                $this->validateOnly('country');
-                $this->validateOnly('city');
-                $this->validateOnly('address');           
-       }
+            }
+            $this->validateOnly('customer_type');
+        }
+        if ($this->currentStep === 4) {
+            $this->validateOnly('country');
+            $this->validateOnly('city');
+            $this->validateOnly('address');
+        }
     }
 };?>
 

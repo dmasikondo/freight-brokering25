@@ -84,12 +84,12 @@
                         </button>
                     </x-slot>
 
-                    <x-dropdown-item wire:loading.class="animate-pulse" wire:click="userEdit('{{$user->uuid}}')">
+                    <x-dropdown-item wire:loading.class="animate-pulse" wire:click="userEdit('{{$user->slug}}')">
                         <x-graphic name="edit" class="size-4" />
                         <span>Edit</span>
                     </x-dropdown-item>
 
-                    <x-dropdown-item wire:loading.class="animate-pulse" wire:click="userActivation('{{$user->uuid}}')">
+                    <x-dropdown-item wire:loading.class="animate-pulse" wire:click="userActivation('{{$user->slug}}')">
                         <x-graphic name="arrow-path" class="size-4" />
                         <span>
                             {{ $user->must_reset ? 'Activate' : 'Deactivate' }}
@@ -115,7 +115,7 @@
                 </x-dropdown>
             </div>
             {{-- ./ Sticky action dots horizontal --}}
-            {{-- <button class="h-8 px-3 font-bold text-blue-400 border border-blue-400 rounded-full text-md hover:bg-blue-100" wire:click="userEdit('{{$user->uuid}}')">Edit</button> --}}
+            {{-- <button class="h-8 px-3 font-bold text-blue-400 border border-blue-400 rounded-full text-md hover:bg-blue-100" wire:click="userEdit('{{$user->slug}}')">Edit</button> --}}
          </div>
 
     </div>

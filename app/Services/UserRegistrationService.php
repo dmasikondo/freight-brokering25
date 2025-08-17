@@ -12,13 +12,14 @@ use Illuminate\Support\Str;
 class UserRegistrationService
 {
     /**
-     * Registers a new user based on the provided data and the user who is creating them.
+     * Registers or updates a user based on the provided data and the user who is creating them.
      *
      * @param array $data The validated user data.
-     * @param User|null $creator The authenticated user performing the creation (or null for self-registration).
-     * @return User|null The newly created user, or null if creation failed.
+     * @param User|null $creator The authenticated user performing the action (or null for self-registration).
+     * @param User|null $user The user model to update (or null for a new user).
+     * @return User|null The created/updated user, or null if the action failed.
      */
-    public function registerUser(array $data, ?User $creator = null): ?User
+    public function registerUser(array $data, ?User $creator = null, ?User $user = null): ?User
     {
         // 1. Authorization: Check if the creator can create the requested role 
         // PLANNING TO USE A USER POLICY FOR THIS
@@ -30,50 +31,70 @@ class UserRegistrationService
         //     }
         // }
 
-        // 2. Data Preparation
+        // 2. Data Preparation for both creation and update
         $userData = [
-            'contact_person' => $data['first_name']. ' '.$data['surname'],
+            'contact_person' => $data['first_name'] . ' ' . $data['surname'],
             'contact_phone' => $data['contact_phone'],
             'phone_type' => $data['phone_type'],
             'whatsapp' => $data['whatsapp'],
             'email' => $data['email'],
-            'slug' => Str::slug($data['first_name'] . ' ' . $data['surname']) . '-' . uniqid(),
-            'password' => Hash::make($data['password']),
         ];
 
-        // Add optional fields for shipper/carrier roles
-        $targetRole = $data['customer_type'];
-        if (in_array($targetRole, ['shipper', 'carrier'])) {
-            $userData['organisation'] = $data['company_name'];
+        // Handle creation vs. update
+        if (!$user) {
+            // New User Creation Logic
+            $userData['slug'] = Str::slug($data['first_name'] . ' ' . $data['surname']) . '-' . uniqid();
+            $userData['password'] = Hash::make($data['password']);
+            $user = User::create($userData);
+
+        } else {
+            
+            // Existing User Update Logic
+            $user->update($userData);
+
+            // Handle password update if provided
+            if (!empty($data['password'])) {                
+                $user->password = Hash::make($data['password']);
+                $user->save();
+            }
+
+            // Remove existing relationships to replace them
+            $user->roles()->detach();
+            $user->buslocation()->delete();
         }
 
-        // 3. Create the User
-        $user = User::create($userData);
         if (!$user) {
+            // Creation/update failed
             return null;
         }
 
-        // Assign Roles and Metadata        
+        // 3. Assign Roles and Metadata 
+        $targetRole = $data['customer_type'];
         if (in_array($targetRole, ['shipper', 'carrier'])) {
-            $user->save();
             $user->buslocation()->create([
                 'country' => $data['country'],
                 'city' => $data['city'],
                 'address' => $data['address'],
             ]);
-            $user->assignRole("{$data['customer_type']}:{$data['ownership_type']}");
-        }
-        else{
+            $rolesToAssign = "{$data['customer_type']}:{$data['ownership_type']}";
+            $user->assignRole($rolesToAssign);
+        } else {
             $user->assignRole($targetRole);
         }
 
-        //  Add Audit Trail for Staff-assisted Registration
+        // 4. Add Audit Trail for Staff-assisted Action
         if ($creator) {
-            $user->creationAudit()->create([
-                'creator_user_id' => $creator->id,
-            ]);
-        } else {
-            // Self-registration: fire event and log in the user and redirect
+            // Use updateOrCreate to prevent unique constraint violations
+            $user->creationAudit()->updateOrCreate(
+                ['created_user_id' => $user->id, 'creator_user_id' => $creator->id],
+                ['creator_user_id' => $creator->id]
+            );
+            
+        }
+
+        // 5. Fire Registered Event
+        // Only fire event for self-registration, not for staff-assisted creation/update
+        if (!$creator && $user->wasRecentlyCreated) {
             event(new Registered($user));
         }
 

@@ -15,9 +15,10 @@ class UserIndex extends Component
         return User::with('roles','createdby')->get();
     }
 
-    public function userEdit($uuid)
+    public function userEdit($slug)
     {
-        return redirect()->route('users.create',compact('slug'));
+        //$user = User::where('slug',$slug)->firstOrFail();
+        return redirect()->route('users.edit',compact('slug'));
     }    
 
     public function render()
