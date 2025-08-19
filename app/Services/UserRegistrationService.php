@@ -53,7 +53,7 @@ class UserRegistrationService
             $user->update($userData);
 
             // Handle password update if provided
-            if (!empty($data['password'])) {                
+            if (!empty($data['password'])) {              
                 $user->password = Hash::make($data['password']);
                 $user->save();
             }
@@ -71,6 +71,7 @@ class UserRegistrationService
         // 3. Assign Roles and Metadata 
         $targetRole = $data['customer_type'];
         if (in_array($targetRole, ['shipper', 'carrier'])) {
+            $user->update(['organisation'=>$data['company_name']]);
             $user->buslocation()->create([
                 'country' => $data['country'],
                 'city' => $data['city'],

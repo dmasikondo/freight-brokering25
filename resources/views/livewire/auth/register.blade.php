@@ -129,35 +129,13 @@ new #[Layout('components.layouts.auth')] class extends Component {
    // $userToSave = $this->slug ? User::where('slug', $this->slug)->first() : null;        
    $userToregister = $this->slug ? User::where('slug', $this->slug)->first() : null;
 
-    $this->userRegistrationService->registerUser($validated, auth()->user(), $userToregister);
+   // $this->userRegistrationService->registerUser($validated, auth()->user(), $userToregister);
 
 
         if ($this->slug) {
-            
-            // Find user and update
-         
-            // $user->update([
-
-            //     'first_name' => $this->first_name,
-            //     'surname' => $this->surname,
-            //     'contact_phone' => $this->contact_phone,
-            //     'phone_type' => $this->phone_type,
-            //     'whatsapp' => $this?->whatsapp,
-            //     'email' => $this->email,
-            //     'customer_type' => $this->customer_type,
-            //     'company_name' => $this?->organisation,
-            //     'ownership_type' => $this?->ownership_type,
-            //     'country' => $this?->country,
-            //     'city' => $this?->city,
-            //     'address' => $this?->address,
-            // ]);
-
-
-            // if (!empty($this->password)) {
-            //     $user->password = $this->password;
-            //     $user->save();
-            // }
-
+          
+        $userToUpdate = User::where('slug', $this->slug)->firstOrFail();        
+        $this->userRegistrationService->registerUser($validated, auth()->user(), $userToUpdate);
             // Redirect back after editing
             $this->redirect(route('users.index'), navigate: true);
 
