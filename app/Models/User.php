@@ -121,6 +121,19 @@ class User extends Authenticatable
     public function hasRole($role)
     {
         return  (bool) $this->roles()->where('name',$role)->count();
+    }
+    
+    /**
+     * Determine if the user has any of the given roles.
+     *
+     * @param  array|string  $roles
+     * @return bool
+     */
+    public function hasAnyRole($roles): bool
+    {
+        $roles = is_array($roles) ? $roles : func_get_args();
+
+        return $this->roles()->whereIn('name', $roles)->exists();
     }    
 
     public function buslocation(): hasMany

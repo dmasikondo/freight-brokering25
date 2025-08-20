@@ -43,12 +43,12 @@ new #[Layout('components.layouts.auth')] class extends Component {
     }
 
     public function mount(?string $role = null, ?string $slug = null): void
-    {
-        //dd('the slug is '.$slug);
+    {       
         $this->zimbabweCities = \App\Models\ZimbabweCity::orderBy('name')->pluck('name', 'name')->toArray();
         
-        // This is where the service class simplifies the logic
+       
         if (Auth::check()) {
+            
             $this->isStaffRegistration = true;
             $this->allowedRoles = $this->userRegistrationService->getAllowedRolesForUser(Auth::user());
         } else {
@@ -64,6 +64,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
         // Editing logic
         if ($slug) {            
             $user = User::where('slug', $slug)->firstOrFail();
+            $this->authorize('update', $user);
             $fullName = $user->contact_person;
 
             // Split the full name by spaces
@@ -124,17 +125,13 @@ new #[Layout('components.layouts.auth')] class extends Component {
     public function register(): void
     {
         $validated = $this->validate();
-    // Call the service class to save the user
-    // Pass the user model if it exists, otherwise pass null
-   // $userToSave = $this->slug ? User::where('slug', $this->slug)->first() : null;        
-   $userToregister = $this->slug ? User::where('slug', $this->slug)->first() : null;
+        // Pass the user model if it exists, otherwise pass null       
+        $userToregister = $this->slug ? User::where('slug', $this->slug)->first() : null;
 
-   // $this->userRegistrationService->registerUser($validated, auth()->user(), $userToregister);
-
-
-        if ($this->slug) {
+         if ($this->slug) {
           
-        $userToUpdate = User::where('slug', $this->slug)->firstOrFail();        
+        $userToUpdate = User::where('slug', $this->slug)->firstOrFail();     
+
         $this->userRegistrationService->registerUser($validated, auth()->user(), $userToUpdate);
             // Redirect back after editing
             $this->redirect(route('users.index'), navigate: true);

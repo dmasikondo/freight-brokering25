@@ -8,8 +8,8 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-Route::get('/login-as-latest', function() {
-    $user = App\Models\User::where('email','market@log')->first();
+Route::get('/login-as', function() {
+    $user = App\Models\User::where('email', 'jd@hh')->first();
     auth()->login($user);
     return redirect('/users/create');
 }); 
