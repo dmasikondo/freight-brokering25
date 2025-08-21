@@ -23,11 +23,17 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $contact_person = fake()->firstName().' '.fake()->lastName();
+        $slug = Str::slug($contact_person).uniqid();
         return [
-            'name' => fake()->name(),
+            'contact_person' => $contact_person,
+            'phone_type' => 'mobile',
+            'contact_phone' => fake()->phoneNumber(),
+            'organisation' => 'test company',
+            'whatsapp' => fake()->phoneNumber(),
             'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
+            'slug'=>$slug,
+            'password' => static::$password ??= Hash::make('password'), // Use bcrypt for passwords
             'remember_token' => Str::random(10),
         ];
     }
