@@ -8,6 +8,6 @@ class Province extends Model
 {
     public function cities()
     {
-        return $this->hasMany(ZimbabweCity::class);
+        return $this->hasMany(ZimbabweCity::class)
     }
 }
