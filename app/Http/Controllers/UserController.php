@@ -30,6 +30,7 @@ class UserController extends Controller
         //$authenticatedUser = auth()->user();
 
        // $users = (new UserPolicy())->viewAny($authenticatedUser)->get();
-        return view('users.create',compact('user'));
+       dd('maboss');
+        return view('users.edit',compact('user'));
     }
 }

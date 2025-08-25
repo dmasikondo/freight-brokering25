@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Models\UserCreation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Livewire\Volt\Volt;
 use Tests\TestCase;
 
 class StaffUserRegistrationTest extends TestCase
@@ -25,6 +27,7 @@ class StaffUserRegistrationTest extends TestCase
         Role::firstOrCreate(['name' => 'superadmin']);
         Role::firstOrCreate(['name' => 'shipper']);
         Role::firstOrCreate(['name' => 'marketing logistics associate']);
+        Role::firstOrCreate(['name' => 'procurement logistics associate']);
     }
 
     /**
@@ -103,7 +106,7 @@ class StaffUserRegistrationTest extends TestCase
         ])->toArray();
 
         //prepare first name and surname variables
-         $nameParts = explode(' ', trim($newUserData['contact_person']));
+        $nameParts = explode(' ', trim($newUserData['contact_person']));
         $surname = array_pop($nameParts);
 
         // The remaining words are the first name(s)
@@ -118,7 +121,7 @@ class StaffUserRegistrationTest extends TestCase
             ->set('phone_type', 'mobile')
             ->set('email', $newUserData['email'])
             ->set('customer_type', 'shipper')
-            ->set('ownership_type', 'real_owner') // Or 'company'
+            ->set('ownership_type', 'individual') // Or 'company'
             ->set('company_name', 'Acme Shipping Inc.')
             ->set('country', 'Zimbabwe')
             ->set('city', 'Harare')
@@ -172,6 +175,125 @@ class StaffUserRegistrationTest extends TestCase
         $this->assertDatabaseMissing('users', [
             'first_name' => 'New',
             'surname' => 'User',
+        ]);
+    }
+
+    // New tests for editing a user start here
+
+    /**
+     * Test that an authorized staff user can access the user editing screen.
+     * The staff user is a 'marketing logistics associate' who created the user.
+     *
+     * @return void
+     */
+    public function test_authorized_staff_can_access_user_edit_screen()
+    {
+        // Create an authorized staff user.
+        $staffUser = User::factory()->create();
+        $staffUser->roles()->attach(Role::where('name', 'marketing logistics associate')->first());
+
+        // Create a user that was created by the staff user.
+        $userToEdit = User::factory()->create();
+        UserCreation::create([
+            'creator_user_id' => $staffUser->id,
+            'created_user_id' => $userToEdit->id,
+        ]);
+        
+        // Act as the staff user and visit the edit page for the user they created.
+        $response = $this->actingAs($staffUser)->get(route('users.edit', $userToEdit->slug));
+
+        // Assert that the page is rendered successfully.
+        $response->assertStatus(200);
+    }
+
+    /**
+     * Test that an unauthorized staff user cannot access the user editing screen.
+     * The staff user is a 'procurement logistics associate' who did NOT create the user.
+     *
+     * @return void
+     */
+    public function test_unauthorized_staff_cannot_access_user_edit_screen()
+    {
+        // Create two different staff users.
+        $authorizedStaff = User::factory()->create();
+        $authorizedStaff->roles()->attach(Role::where('name', 'marketing logistics associate')->first());
+        
+        $unauthorizedStaff = User::factory()->create();
+        $unauthorizedStaff->roles()->attach(Role::where('name', 'procurement logistics associate')->first());
+
+        // Create a user that was created by the first staff user.
+        $userToEdit = User::factory()->create();
+        UserCreation::create([
+            'creator_user_id' => $authorizedStaff->id,
+            'created_user_id' => $userToEdit->id,
+        ]);
+
+        // Act as the unauthorized staff user and try to edit the user created by someone else.
+        $response = $this->actingAs($unauthorizedStaff)->get(route('users.edit', $userToEdit->slug));
+
+        // Assert that the page returns a 403 Forbidden error.
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Test that an authorized staff member can successfully edit an existing user.
+     * This test simulates the full editing and saving process.
+     *
+     * @return void
+     */
+    public function test_authorized_staff_can_successfully_edit_a_user()
+    {
+        // Create a staff user with a 'superadmin' role.
+        $staffUser = User::factory()->create();
+        $staffUser->roles()->attach(Role::where('name', 'superadmin')->first());
+
+        // Create the user to be edited.
+        $userToEdit = User::factory()->create([
+        'contact_phone' => '0772421868',
+        'phone_type' => 'mobile', 
+        'whatsapp' => '78522555555',
+        ]);
+        $userToEdit->assignRole('admin'); 
+       
+        $response = Livewire::actingAs($staffUser)
+            ->test('auth.register',['slug' => $userToEdit->slug])
+            ->set('first_name', 'UpdatedyName')
+            ->set('email', 'updatedy@example.com')
+            ->set('password','password')
+            ->set('password_confirmation','password')
+            ->call('register');// The component's method is named 'register' for both create and update
+        
+        $response->assertHasNoErrors();
+        $response->assertRedirect(route('users.index'));
+
+    }
+
+    /**
+     * Test that a staff member cannot edit a user's email to an existing one.
+     *
+     * @return void
+     */
+    public function test_cannot_edit_to_an_existing_email()
+    {
+        // Create an existing user and the user to be edited.
+        $existingUser = User::factory()->create(['email' => 'existing@example.com']);
+        $userToEdit = User::factory()->create(['email' => 'to_edit@example.com']);
+
+        // Create a staff user with a 'superadmin' role.
+        $staffUser = User::factory()->create();
+        $staffUser->roles()->attach(Role::where('name', 'superadmin')->first());
+
+        // Attempt to edit the user's email to one that already exists.
+        Livewire::actingAs($staffUser)
+            ->test('auth.register', ['slug' => $userToEdit->slug])
+            ->set('email', 'existing@example.com')
+            ->call('register')
+            ->assertHasErrors(['email' => 'unique']);
+
+        // Assert that the user's email was NOT updated.
+        $this->assertDatabaseHas('users', [
+            'id' => $userToEdit->id,
+            'email' => 'to_edit@example.com',
         ]);
     }
 }

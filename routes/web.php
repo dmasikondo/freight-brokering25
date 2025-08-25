@@ -28,7 +28,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('users/create',[UserController::class, 'create'])->name('users.create');
     Route::get('users',[UserController::class, 'index'])->name('users.index');
-    Volt::route('users/{slug}/edit', 'auth.register')->name('users.edit');
+   Volt::route('users/{slug}/edit', 'auth.register')->name('users.edit');
+  // Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
 
 
    
