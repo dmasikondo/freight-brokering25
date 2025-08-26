@@ -5,10 +5,10 @@
         </div>
         <div class="sm:flex">
             <div class="hidden sm:flex items-center sm:divide-x sm:divide-gray-100 mb-3 sm:mb-0">
-                <form class="lg:pr-3" action="#" method="GET">
+                <form class="lg:pr-3" wire:submit.prevent>
                 <label for="users-search" class="sr-only">Search</label>
                 <div class="mt-1 relative lg:w-64 xl:w-96">
-                    <input type="text" name="email" id="users-search" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-cyan-600 focus:border-cyan-600 block w-full p-2.5" placeholder="Search for users">
+                    <input type="text" wire:model.live="search" id="users-search" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-cyan-600 focus:border-cyan-600 block w-full p-2.5" placeholder="Search for users">
                 </div>
                 </form>
                 <div class="flex space-x-1 pl-0 sm:pl-2 mt-3 sm:mt-0">

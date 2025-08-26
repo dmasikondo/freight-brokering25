@@ -239,7 +239,7 @@ class StaffUserRegistrationTest extends TestCase
      * Test that an authorized staff member can successfully edit an existing user.
      * This test simulates the full editing and saving process.
      *
-     * @return void
+     * @return void 
      */
     public function test_authorized_staff_can_successfully_edit_a_user()
     {
