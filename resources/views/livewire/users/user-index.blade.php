@@ -1,6 +1,6 @@
 <div>
     <div class="mb-1 w-full">
-        <div class="mb-4">            
+        <div class="mb-4">                
             <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">All users</h1>
         </div>
         <div class="sm:flex">
@@ -47,15 +47,15 @@
                 <img class="w-10 h-10 rounded-full" src="{{url('storage/images/logo.jpeg')}}">
                 <div class="flex flex-col ml-2">
                     <div class="text-sm font-bold leading-snug text-gray-900">
-                        {{$user->contact_person}}
+                        {!! $this->highlight($user->contact_person, $this->search) !!}
                       @if (auth()->user()->id==$user->id)
                         <span class="w-full h-10 p-1 text-white bg-gray-500 rounded-md bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500">Me</span>
                       @endif
                     </div>
                     <div class="text-xs leading-snug text-gray-600">
-                        &#64{{$user->email}}
+                      &#64{!! $this->highlight($user->email, $this->search) !!}
                       @foreach($user->roles as $role)
-                        <p>{{$role->name}} - {{$role->pivot->classification}}</p>
+                        <p>{!! $this->highlight($role->name, $this->search) !!} - {!! $this->highlight($role->pivot->classification ?? '', $this->search) !!}</p>
                       @endforeach
                     </div>
                 </div>
@@ -63,7 +63,7 @@
             <div class="flex flex-col ml-2">
                     <div class="text-sm font-bold leading-snug text-gray-900">
                         Registered 
-                        {{ $user->createdBy?->contact_person ? 'by - ' . $user->createdBy->contact_person : '' }}
+                        {!! $this->highlight($user->createdBy?->contact_person ?? '', $this->search) !!}
                     </div>
                     <div class="text-xs leading-snug text-gray-600">
                         {{$user->created_at->diffForHumans()}}
@@ -74,7 +74,7 @@
                     </div>
 
             </div>
-           {{-- Sticky action dots horizontal --}}
+            {{-- Sticky action dots horizontal --}}
             <div class="sticky top-0 z-40  py-4 pr-6 text-right">
                 <x-dropdown>
                     <x-slot name="trigger">
@@ -116,8 +116,8 @@
             </div>
             {{-- ./ Sticky action dots horizontal --}}
             {{-- <button class="h-8 px-3 font-bold text-blue-400 border border-blue-400 rounded-full text-md hover:bg-blue-100" wire:click="userEdit('{{$user->slug}}')">Edit</button> --}}
-         </div>
+          </div>
 
     </div>
-    @endforeach        
+    @endforeach         
 </div>

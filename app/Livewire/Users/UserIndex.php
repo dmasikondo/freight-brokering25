@@ -12,14 +12,13 @@ use App\Policies\UserPolicy;
 class UserIndex extends Component
 {
     // The public property to hold the search term from the input field.
-    // #[Url] makes the search term appear in the URL, which is good for sharing and refreshing.
+    // #[Url] makes the search term appear in the URL.
     #[Url]
     public string $search = '';
 
     /**
      * This method is re-evaluated whenever a dependency changes,
      * such as the search property.
-     * The #[On('updated')] attribute ensures it's recomputed.
      * @return \Illuminate\Support\Collection
      */
     #[Computed]
@@ -27,7 +26,6 @@ class UserIndex extends Component
     public function users()
     {
         // Get the authorized query builder from the policy.
-        // We use the authenticated user to determine what they are allowed to see.
         $authenticatedUser = auth()->user();
         $query = (new UserPolicy())->viewAny($authenticatedUser);
 
@@ -36,10 +34,7 @@ class UserIndex extends Component
             $query->whereAny([
                 'contact_person',
                 'email',
-                'contact_phone',
-                'address',
-                'city',
-                'country',
+                'contact_phone'
             ], 'LIKE', '%' . $this->search . '%')
             // Add a search clause for the user who created the record.
             ->orWhereHas('createdBy', function ($query) {
@@ -75,5 +70,26 @@ class UserIndex extends Component
     public function render()
     {
         return view('livewire.users.user-index');
+    }
+
+    /**
+     * A helper method to highlight the search term in a given string.
+     * @param string $text The text to be highlighted.
+     * @param string $search The search term.
+     * @return \Illuminate\Support\Stringable
+     */
+    private function highlight(string $text, string $search)
+    {
+        // If the search term is empty, return the original text.
+        if (empty($search)) {
+            return $text;
+        }
+
+        // Use preg_replace for a case-insensitive search and replace.
+        // The '$1' in the replacement string refers to the captured search term.
+        $highlighted = preg_replace("/($search)/i", '<span class="bg-yellow-200 font-bold text-black">$1</span>', $text);
+        
+        // The result is an HTML string, so return it as a Stringable to be rendered.
+        return \Illuminate\Support\Str::of($highlighted);
     }
 }
