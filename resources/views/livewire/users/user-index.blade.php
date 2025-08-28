@@ -90,7 +90,7 @@
                         @foreach($user->roles as $role)
                             @if ($role->name)
                                 <div class="flex items-center gap-1 text-sm text-gray-600">
-                                    {{ ucwords(str_replace('_', ' ', $role->name)) }}
+                                    {!! $this->highlight( ucwords(str_replace('_', ' ', $role->name)), $this->search) !!}
                                     @if ($role->pivot?->classification)
                                         <span class="mx-1">•</span>
                                         <x-graphic :name="match($role->pivot->classification) { 'real_owner' => 'shield-check', 'broker_agent' => 'exchange', default => '' }"
@@ -103,7 +103,7 @@
                         @endforeach
                     </div>
                     <div class="text-xs leading-snug text-gray-600 mt-1">
-                        &#64{!! $this->highlight($user->email, $this->search) !!}
+                        {!! $this->highlight($user->email, $this->search) !!}
                     </div>
                     {{-- New: The following content will now be placed below the email on smaller screens --}}
                     <div class="flex flex-col ml-0 sm:hidden mt-2">
