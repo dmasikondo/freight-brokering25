@@ -9,7 +9,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('/login-as', function() {
-    $user = App\Models\User::where('email', 'welly@gmail.com')->first();
+    $user = App\Models\User::where('email', 'd@taraz')->first();
     auth()->login($user);
     return redirect('/users/create');
 }); 

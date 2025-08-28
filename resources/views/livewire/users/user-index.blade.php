@@ -1,15 +1,15 @@
 <div>
     <div class="mb-1 w-full">
-        <div class="mb-4">                
+        <div class="mb-4">
             <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">All users</h1>
         </div>
         <div class="sm:flex">
             <div class="hidden sm:flex items-center sm:divide-x sm:divide-gray-100 mb-3 sm:mb-0">
                 <form class="lg:pr-3" wire:submit.prevent>
-                <label for="users-search" class="sr-only">Search</label>
-                <div class="mt-1 relative lg:w-64 xl:w-96">
-                    <input type="text" wire:model.live="search" id="users-search" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-cyan-600 focus:border-cyan-600 block w-full p-2.5" placeholder="Search for users">
-                </div>
+                    <label for="users-search" class="sr-only">Search</label>
+                    <div class="mt-1 relative lg:w-64 xl:w-96">
+                        <input type="text" wire:model.live="search" id="users-search" class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-cyan-600 focus:border-cyan-600 block w-full p-2.5" placeholder="Search for users">
+                    </div>
                 </form>
                 <div class="flex space-x-1 pl-0 sm:pl-2 mt-3 sm:mt-0">
                     <a href="#" class="text-gray-500 hover:text-gray-900 cursor-pointer p-1 hover:bg-gray-100 rounded inline-flex justify-center">
@@ -39,42 +39,108 @@
                 </a>
             </div>
         </div>
-    </div> 
+    </div>
     @foreach($this->users as $user)
     <div class="mt-4">
-        <div class="flex items-center justify-between p-3 border-t hover:bg-gray-200">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border-t hover:bg-gray-200 w-full">
             <div class="flex items-center">
-                <img class="w-10 h-10 rounded-full" src="{{url('storage/images/logo.jpeg')}}">
+                {{-- Dynamically render icon based on user roles only --}}
+                <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
+                @foreach($user->roles as $role)
+                    @if($role->name == 'carrier')
+                        bg-orange-500
+                    @elseif($role->name == 'shipper')
+                        bg-blue-500
+                    @elseif($role->name == 'logistics_associate')
+                        bg-purple-500
+                    @else
+                        bg-yellow-400
+                    @endif
+                @endforeach
+                ">
+                    {{-- Use x-graphic for Flux icons based on role name --}}
+                    @foreach($user->roles as $role)
+                        @php
+                            $icon = match($role->name) {
+                                'marketing logistics associate' => 'megaphone',
+                                'procurement logistics associate' => 'clipboard-document-list',
+                                'operations logistics associate' => 'cursor-arrow-ripple',
+                                'admin' => 'cog-6-tooth',
+                                'superadmin' => 'lock-closed',
+                                'carrier' => 'truck',
+                                'shipper' => 'cube',
+                                default => 'user-circle' // Default icon
+                            };
+                        @endphp
+                        <flux:icon. :name="$icon" class="size-6 text-white" />
+                        @break
+                    @endforeach
+                </div>
                 <div class="flex flex-col ml-2">
-                    <div class="text-sm font-bold leading-snug text-gray-900">
-                        <a href="{{ route('users.show',['user'=>$user]) }}">
-                            {!! $this->highlight($user->contact_person, $this->search) !!}
-                        </a>
-                        
-                      @if (auth()->user()->slug==$user->slug)
-                        <span class="w-full h-10 p-1 text-white bg-gray-500 rounded-md bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500">Me</span>
-                      @endif
+                    <div class="flex items-center gap-2">
+                        <div class="text-sm font-bold leading-snug text-gray-900">
+                            <a href="{{ route('users.show',['user'=>$user]) }}">
+                                {!! $this->highlight($user->contact_person, $this->search) !!}
+                            </a>
+                        </div>
+                        @if (auth()->user()->slug==$user->slug)
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white">Me</span>
+                        @endif
+                        {{-- New: Combined role name and classification on a single line --}}
+                        @foreach($user->roles as $role)
+                            @if ($role->name)
+                                <div class="flex items-center gap-1 text-sm text-gray-600">
+                                    {{ ucwords(str_replace('_', ' ', $role->name)) }}
+                                    @if ($role->pivot?->classification)
+                                        <span class="mx-1">•</span>
+                                        <x-graphic :name="match($role->pivot->classification) { 'real_owner' => 'shield-check', 'broker_agent' => 'exchange', default => '' }"
+                                            class="size-4 {{ $role->pivot->classification === 'real_owner' ? 'text-yellow-400' : 'text-blue-400' }}" />
+                                        <span>{{ $role->pivot->classification === 'real_owner' ? 'Real Owner' : 'Broker / Agent' }}</span>
+                                    @endif
+                                </div>
+                                @break
+                            @endif
+                        @endforeach
                     </div>
-                    <div class="text-xs leading-snug text-gray-600">
-                      &#64{!! $this->highlight($user->email, $this->search) !!}
-                      @foreach($user->roles as $role)
-                        <p>{!! $this->highlight($role->name, $this->search) !!} - {!! $this->highlight($role->pivot->classification ?? '', $this->search) !!}</p>
-                      @endforeach
+                    <div class="text-xs leading-snug text-gray-600 mt-1">
+                        &#64{!! $this->highlight($user->email, $this->search) !!}
+                    </div>
+                    {{-- New: The following content will now be placed below the email on smaller screens --}}
+                    <div class="flex flex-col ml-0 sm:hidden mt-2">
+                        @if ($user->createdBy)
+                            <div class="flex items-center text-sm font-bold leading-snug text-gray-900">
+                                <flux:icon.user-plus class="size-4 mr-1 text-gray-500" />
+                                <span>Registered by {!! $this->highlight($user->createdBy?->contact_person, $this->search) !!}</span>
+                            </div>
+                        @else
+                            <div class="flex items-center text-sm font-bold leading-snug text-gray-900">
+                                <span>Registered</span>
+                            </div>
+                        @endif
+                        <div class="text-xs leading-snug text-gray-600">
+                            {{$user->created_at->diffForHumans()}}
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="flex flex-col ml-2">
-                    <div class="text-sm font-bold leading-snug text-gray-900">
-                        Registered 
-                        {!! $this->highlight($user->createdBy?->contact_person ?? '', $this->search) !!}
-                    </div>
-                    <div class="text-xs leading-snug text-gray-600">
-                        {{$user->created_at->diffForHumans()}}
-                    </div>
-
+            {{-- This content is hidden on smaller screens and only appears on sm: and above --}}
+            <div class="hidden sm:flex flex-col ml-0 sm:ml-2 mt-2 sm:mt-0">
+                @if ($user->createdBy)
+                <div class="flex items-center text-sm font-bold leading-snug text-gray-900">
+                    <x-graphic name="user-plus" class="size-4 mr-1 text-gray-500" />
+                    <span>Registered by {!! $this->highlight($user->createdBy?->contact_person, $this->search) !!}</span>
+                </div>
+                @else
+                <div class="flex items-center text-sm font-bold leading-snug text-gray-900">
+                    <span>Registered</span>
+                </div>
+                @endif
+                <div class="text-xs leading-snug text-gray-600">
+                    {{$user->created_at->diffForHumans()}}
+                </div>
             </div>
             {{-- Sticky action dots horizontal --}}
-            <div class="sticky top-0 z-40  py-4 pr-6 text-right">
+            <div class="sm:sticky sm:top-0 z-40 py-4 sm:pr-6 text-right w-full sm:w-auto">
                 <x-dropdown>
                     <x-slot name="trigger">
                         <button class="flex items-center justify-center p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full transition-colors duration-150 ease-in-out">
@@ -94,7 +160,7 @@
                             {{ $user->must_reset ? 'Activate' : 'Deactivate' }}
                         </span>
                     </x-dropdown-item>
-                    
+
                     <x-dropdown-item
                         wire:click="userDelete('{{$user->slug}}')"
                         wire:confirm.prompt="Are you sure you want to delete the user {{ strtoupper($user->contact_person) }}? You will not be able to retrieve the details back. \n\nType DELETE to confirm your deleting action|DELETE"
@@ -114,9 +180,7 @@
                 </x-dropdown>
             </div>
             {{-- ./ Sticky action dots horizontal --}}
-            {{-- <button class="h-8 px-3 font-bold text-blue-400 border border-blue-400 rounded-full text-md hover:bg-blue-100" wire:click="userEdit('{{$user->slug}}')">Edit</button> --}}
-          </div>
-
+        </div>
     </div>
-    @endforeach         
+    @endforeach
 </div>

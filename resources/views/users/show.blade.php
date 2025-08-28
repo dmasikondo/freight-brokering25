@@ -41,7 +41,7 @@
                                 };
                             @endphp
                             <p class="font-medium flex items-center justify-center gap-2">
-                                <x-graphic :name="$icon" class="size-5 text-indigo-800 dark:text-blue-900" />
+                                <flux:icon. :name="$icon" class="size-5 text-indigo-800 dark:text-blue-900" />
                                 {{ Str::title($role->name) }} 
                             </p>
                             @if ($role->pivot?->classification)
