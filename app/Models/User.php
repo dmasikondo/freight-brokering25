@@ -155,6 +155,15 @@ class User extends Authenticatable
             'id',              // Local key on the users table
             'creator_user_id'  // Local key on the user_creations table
         );
+    } 
+    
+    public function createdUsers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(
+            Usercreation::class, 
+            'creator_user_id', 
+            'id'
+        );
     }    
     
     // This accessor generates the identification number based on your new format
@@ -166,13 +175,16 @@ class User extends Authenticatable
                 if (!$this->buslocation || $this->roles->isEmpty()) {
                     return null;
                 }
+                if(!$this->hasAnyRole(['shipper', 'carrier'])){
+                    return null;
+                }
 
                 // 1. Get the country code (assuming 'ZW' for Zimbabwe)
-                $countryCode = ($this->buslocation->country === 'Zimbabwe') ? 'ZW' : 'SA';
+                $countryCode = ($this->buslocation->first()->country === 'Zimbabwe') ? 'ZW' : 'SA';
 
                 // 2. Get the city abbreviation
-                if ($this->buslocation->country === 'Zimbabwe') {
-                    $city = ZimbabweCity::where('name', $this->buslocation->city)->first();
+                if ($this->buslocation->first()?->country === 'Zimbabwe') {
+                    $city = ZimbabweCity::where('name', $this->buslocation->first()->city)->first();
                     $cityAbbreviation = $city->abbreviation;
                 } else {
                     $cityAbbreviation = 'ZA'; // Or a more specific code for South African cities
@@ -189,7 +201,7 @@ class User extends Authenticatable
                 $paddedId = str_pad($this->id, 3, '0', STR_PAD_LEFT);
 
                 // 6. Get the customer type suffix (C for Carrier, S for Shipper)
-                $customerSuffix = ($this->roles->first()->name === 'Carrier') ? 'C' : 'S';
+                $customerSuffix = ($this->roles->first()->name === 'carrier') ? 'C' : 'S';
 
                 // 7. Combine all parts into the final identification number
                 return "{$countryCode}{$cityAbbreviation}{$classCode}{$yearMonth}{$paddedId}{$customerSuffix}";

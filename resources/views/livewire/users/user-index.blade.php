@@ -47,8 +47,11 @@
                 <img class="w-10 h-10 rounded-full" src="{{url('storage/images/logo.jpeg')}}">
                 <div class="flex flex-col ml-2">
                     <div class="text-sm font-bold leading-snug text-gray-900">
-                        {!! $this->highlight($user->contact_person, $this->search) !!}
-                      @if (auth()->user()->id==$user->id)
+                        <a href="{{ route('users.show',['user'=>$user]) }}">
+                            {!! $this->highlight($user->contact_person, $this->search) !!}
+                        </a>
+                        
+                      @if (auth()->user()->slug==$user->slug)
                         <span class="w-full h-10 p-1 text-white bg-gray-500 rounded-md bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500">Me</span>
                       @endif
                     </div>
@@ -67,10 +70,6 @@
                     </div>
                     <div class="text-xs leading-snug text-gray-600">
                         {{$user->created_at->diffForHumans()}}
-                        {{-- <p @class(['text-transparent bg-gradient-to-r from-yellow-500 to-orange-600 bg-clip-text'=>$user->must_reset,
-                        'text-transparent bg-gradient-to-r from-blue-600 via-green-500 to-indigo-400 bg-clip-text'=>!$user->must_reset])>
-                            {{$user->must_reset? 'Account Inactive': 'Account Active'}}
-                        </p> --}}
                     </div>
 
             </div>

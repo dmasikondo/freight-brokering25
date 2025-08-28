@@ -9,7 +9,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('/login-as', function() {
-    $user = App\Models\User::where('email', 'd@taraz')->first();
+    $user = App\Models\User::where('email', 'welly@gmail.com')->first();
     auth()->login($user);
     return redirect('/users/create');
 }); 
@@ -28,11 +28,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('users/create',[UserController::class, 'create'])->name('users.create');
     Route::get('users',[UserController::class, 'index'])->name('users.index');
+    Route::get('users/{user:slug}', [UserController::class, 'show'])->name('users.show');
    Volt::route('users/{slug}/edit', 'auth.register')->name('users.edit');
   // Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
 
 
-   
     });
 
 require __DIR__.'/auth.php';

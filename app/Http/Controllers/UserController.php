@@ -23,14 +23,9 @@ class UserController extends Controller
         return view('users.create');
     }
 
-    public function edit(User $user)
+    public function show(User $user)
     {
-       // dd($user);
-        //Gate::authorize('update', $user);
-        //$authenticatedUser = auth()->user();
-
-       // $users = (new UserPolicy())->viewAny($authenticatedUser)->get();
-       dd('maboss');
-        return view('users.edit',compact('user'));
+        Gate::authorize('view',auth()->user(), $user);
+        return view('users.show', compact('user'));
     }
 }
