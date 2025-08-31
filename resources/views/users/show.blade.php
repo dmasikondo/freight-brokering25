@@ -208,7 +208,7 @@
                         <div x-show="activeTab ==='territory'" class="space-y-4">
                             @livewire('territory.user-territory', ['createdUser' => $user->slug])
 
-                            <livewire:users.assign_territory :createdUser="$user->slug"/>
+                            <livewire:territory.assign-territory :createdUser="$user->slug"/>
                         </div>                       
                     </div>
                 </div>
