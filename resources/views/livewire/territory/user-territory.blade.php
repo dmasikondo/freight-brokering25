@@ -4,6 +4,7 @@ use Livewire\Volt\Component;
 use App\Models\User;
 use App\Models\Territory;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Locked;
 
 new class extends Component {
@@ -13,6 +14,7 @@ new class extends Component {
     public $username;
 
     #[Computed]
+    #[On('territory-assigned')]
     public function getUserTerritories()
     {
         $user = User::whereSlug($this->slug)->firstOrFail();
@@ -107,11 +109,11 @@ new class extends Component {
                     </p>
                     <p class="flex items-center text-gray-700">
                         <flux:icon.map class="inline-block w-5 h-5 text-gray-500 mr-1" />
-                        Provinces: {{ implode(', ', $territory->provinces->pluck('name')->toArray()) }}
+                        Full Provinces: {{ implode(', ', $territory->provinces->pluck('name')->toArray()) }}
                     </p>
                     <p class="flex items-center text-gray-700">
                         <flux:icon.building-office-2 class="inline-block w-5 h-5 text-gray-500 mr-1" />
-                        Cities: {{ implode(', ', $territory->zimbabweCities->pluck('name')->toArray()) }}
+                        Towns: {{ implode(', ', $territory->zimbabweCities->pluck('name')->toArray()) }}
                     </p>
                 </div>
 

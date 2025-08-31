@@ -13,6 +13,7 @@ use Livewire\Volt\Component;
 new class extends Component
 {
     public $userId;
+    public $username;
     public $zimbabweTerritoryId;
     public $territory;
     public $zimbabweProvinces = [];
@@ -71,8 +72,8 @@ new class extends Component
         $territory->users()->attach($this->userId, ['assigned_by_user_id' => auth()->id()]);         
         // Reset the fields
         $this->reset(['territory', 'selectedCountry', 'selectedProvinces', 'selectedCities','showProvinces']);
-        // Flash success message
-        Session::flash('status', 'territory-assigned');        
+        
+        $this->dispatch('territory-assigned');       
     }
 
     public function updatedSelectedCountry()
@@ -87,43 +88,44 @@ new class extends Component
         }
     }
 
-public function updatedSelectedCities()
-{
-    // Clear the explicit arrays to rebuild them based on the new selections.
-    $this->fullySelectedProvinces = [];
-    $this->partiallySelectedCities = [];
+    public function updatedSelectedCities()
+    {
+        // Clear the explicit arrays to rebuild them based on the new selections.
+        $this->fullySelectedProvinces = [];
+        $this->partiallySelectedCities = [];
 
-    // This is a dynamic check. We loop through all provinces.
-    foreach ($this->zimbabweProvinces as $province) {
-        $allCityIdsInProvince = $province->zimbabweCities->pluck('id')->toArray();
-        $selectedCityIdsInProvince = array_intersect($this->selectedCities, $allCityIdsInProvince);
+        // This is a dynamic check. We loop through all provinces.
+        foreach ($this->zimbabweProvinces as $province) {
+            $allCityIdsInProvince = $province->zimbabweCities->pluck('id')->toArray();
+            $selectedCityIdsInProvince = array_intersect($this->selectedCities, $allCityIdsInProvince);
 
-        // Handle provinces where all cities are selected
-        if (count($allCityIdsInProvince) > 0 && count($allCityIdsInProvince) === count($selectedCityIdsInProvince)) {
-            $this->fullySelectedProvinces[] = $province->id;
-        } else {
-            // Handle cities where the whole province is NOT selected
-            $this->partiallySelectedCities = array_merge($this->partiallySelectedCities, $selectedCityIdsInProvince);
+            // Handle provinces where all cities are selected
+            if (count($allCityIdsInProvince) > 0 && count($allCityIdsInProvince) === count($selectedCityIdsInProvince)) {
+                $this->fullySelectedProvinces[] = $province->id;
+            } else {
+                // Handle cities where the whole province is NOT selected
+                $this->partiallySelectedCities = array_merge($this->partiallySelectedCities, $selectedCityIdsInProvince);
+            }
+        }
+        
+        // This keeps the province checkbox in sync with the state of its cities
+        $this->selectedProvinces = collect($this->selectedProvinces)
+            ->reject(fn($id) => !in_array($id, $this->fullySelectedProvinces))
+            ->merge($this->fullySelectedProvinces)
+            ->unique()
+            ->values()
+            ->toArray();
+
+        // dd('the fullySelectedProvinces are '.implode(', ',$this->fullySelectedProvinces).' and the partial cities are '.implode(', ',$this->partiallySelectedCities));
+    }  
+
+    public function mount(?string $createdUser): void
+    {
+        if($createdUser){
+            $this->userId = User::whereSlug($createdUser)->pluck('id');
+            $this->username = User::whereSlug($createdUser)->value('contact_person');
         }
     }
-    
-    // This keeps the province checkbox in sync with the state of its cities
-    $this->selectedProvinces = collect($this->selectedProvinces)
-        ->reject(fn($id) => !in_array($id, $this->fullySelectedProvinces))
-        ->merge($this->fullySelectedProvinces)
-        ->unique()
-        ->values()
-        ->toArray();
-
-    // dd('the fullySelectedProvinces are '.implode(', ',$this->fullySelectedProvinces).' and the partial cities are '.implode(', ',$this->partiallySelectedCities));
-}  
-
- public function mount(?string $createdUser): void
- {
-    if($createdUser){
-        $this->userId = User::whereSlug($createdUser)->pluck('id');
-    }
- }
 
 
  
@@ -135,14 +137,13 @@ public function updatedSelectedCities()
 ?>
 
 <div class="bg-white rounded-lg shadow p-6 sm:p-8 space-y-6">
-    @if (session('status') == 'territory-assigned')
-        <flux:text class="text-center font-medium !dark:text-green-400 !text-green-600">
-            {{ __('The territory was succefully assigned.') }}
-        </flux:text>
-    @endif    
+   
+    <x-action-message class="me-3 font-medium !dark:text-green-400 !text-green-600" on="territory-assigned">
+        {{ __('Territory Successfully Assigned') }}
+    </x-action-message> 
     <div>
         <h2 class="text-xl font-semibold text-gray-900">Assign Territory</h2>
-        <p class="mt-2 text-gray-600">Select a territory to assign to ....blabla...</p>
+        <p class="mt-2 text-gray-600">Select / Create a territory to assign to: {{ $username }}</p>
     </div>
 
     @if ($showSuccess)
@@ -153,7 +154,7 @@ public function updatedSelectedCities()
 
     <form wire:submit.prevent="assignTerritory" class="space-y-6">
         <div>
-<flux:input label="Territory Name" description="e.g Zimbabwe East" wire:model="territory" @class(['border-red-500'=>$errors->has('selectedCountry')])/>           
+            <flux:input label="Territory Name" description="e.g Eastern Region" wire:model="territory" @class(['border-red-500'=>$errors->has('selectedCountry')])/>           
             <label class="block text-sm font-medium text-gray-700 mb-2">Select Country</label>        
             <div @class(['border-red-500'=>$errors->has('selectedCountry'), 'space-y-2'])>
             @foreach ($this->countries as $country)
@@ -172,14 +173,13 @@ public function updatedSelectedCities()
                 <div class="space-y-2">
                     @foreach ($zimbabweProvinces as $province)
                         <div class="flex items-center border-b border-amber-200 my-4">
-<flux:checkbox.group class="my-4">
-    <flux:checkbox.all label="{{ $province->name }}" value="{{ $province->name }}"/>
-        <p><span class="my-1">==========================</span></p>
-  @foreach ($province->zimbabweCities as $city)
-      <flux:checkbox label="{{ $city->name }}" value="{{ $city->id }}" class="text-sm text-red-400" wire:model="selectedCities"/>
-  @endforeach    
-</flux:checkbox.group>                           
-
+                            <flux:checkbox.group class="my-4">
+                                <flux:checkbox.all label="{{ $province->name }}" value="{{ $province->name }}"/>
+                                    <p><span class="my-1">==========================</span></p>
+                            @foreach ($province->zimbabweCities as $city)
+                                <flux:checkbox label="{{ $city->name }}" value="{{ $city->id }}" class="text-sm text-red-400" wire:model="selectedCities"/>
+                            @endforeach    
+                            </flux:checkbox.group> 
                         </div>
                     @endforeach
                 </div>
@@ -190,5 +190,8 @@ public function updatedSelectedCities()
         <div class="space-y-2 mt-6">
             <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Assign</button>
         </div>
+        <x-action-message class="me-3 font-medium !dark:text-green-400 !text-green-600" on="territory-assigned">
+            {{ __('Assigned.') }}
+        </x-action-message>         
     </form>
 </div>
