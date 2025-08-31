@@ -205,58 +205,11 @@
                         </div>
                     </div>
                     {{-- territory section --}}
-<div x-show="activeTab ==='territory'" class="space-y-4">
-    {{-- @if ($user->territory) --}}
-        <div class="space-y-2">
-            <div class="flex items-center space-x-2">
-                <x-graphic name="map" class="size-5 text-gray-500"/>
-                <h3 class="font-medium text-gray-900">Territory Details</h3>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <p class="text-sm text-gray-500">Country:</p>
-                    {{-- <p class="text-base font-semibold text-gray-900">{{ $user->territory->country }}</p> --}}
-                    <p class="text-base font-semibold text-gray-900">Zimbabwe</p>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500">Province:</p>
-                    {{-- <p class="text-base font-semibold text-gray-900">{{ $user->territory->province }}</p> --}}
-                    <p class="text-base font-semibold text-gray-900">Mashonaland East</p>
-                </div>
-            </div>
-        </div>
+                        <div x-show="activeTab ==='territory'" class="space-y-4">
+                            @livewire('territory.user-territory', ['createdUser' => $user->slug])
 
-        <div class="space-y-2">
-            <div class="flex items-center space-x-2">
-                <x-graphic name="city" class="size-5 text-gray-500"/>
-                <h3 class="font-medium text-gray-900">Towns Included</h3>
-            </div>
-            <ul class="list-disc list-inside text-gray-600 pl-4 space-y-1">
-                {{-- @foreach($user->territory->towns as $town)
-                    <li>{{ $town->name }}</li>
-                @endforeach --}}
-                <li>Harare</li>
-                <li>Bulawayo</li>
-                <li>Gweru</li>
-            </ul>
-        </div>
-
-        <div class="space-y-2">
-            <div class="flex items-center space-x-2">
-                <x-graphic name="users" class="size-5 text-gray-500"/>
-                <h3 class="font-medium text-gray-900">Users in This Territory</h3>
-            </div>
-            {{-- <p class="text-lg font-bold text-gray-900">{{ $user->territory->users_count }}</p> --}}
-            <p class="text-lg font-bold text-gray-900">20</p>
-        </div>
-    {{-- @else --}}
-        <div class="text-center py-8">
-            <p class="text-gray-500">No territory has been assigned to this user yet.</p>
-        </div>
-    {{-- @endif --}}
-
-    <livewire:users.assign_territory :createdUser="$user->slug"/>
-</div>                       
+                            <livewire:users.assign_territory :createdUser="$user->slug"/>
+                        </div>                       
                     </div>
                 </div>
             </div>
