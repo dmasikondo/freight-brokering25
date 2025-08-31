@@ -63,14 +63,6 @@ class UserIndex extends Component
         return redirect()->route('users.edit', ['slug' => $slug]);
     }
 
-    /**
-     * Renders the view for the component.
-     * @return \Illuminate\Contracts\View\View
-     */
-    public function render()
-    {
-        return view('livewire.users.user-index');
-    }
 
     /**
      * A helper method to highlight the search term in a given string.

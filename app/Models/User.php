@@ -164,6 +164,24 @@ class User extends Authenticatable
             'creator_user_id', 
             'id'
         );
+    } 
+    
+    /**
+     * Get the territories assigned to the user.
+     */
+    public function territories(): BelongsToMany
+    {
+        return $this->belongsToMany(Territory::class, 'territory_user')
+            ->withPivot('assigned_by_user_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the users that were assigned by this user.
+     */
+    public function assignedUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'territory_user', 'assigned_by_user_id', 'user_id');
     }    
     
     // This accessor generates the identification number based on your new format
