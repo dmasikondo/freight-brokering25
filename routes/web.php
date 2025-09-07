@@ -29,8 +29,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('users/create',[UserController::class, 'create'])->name('users.create');
     Route::get('users',[UserController::class, 'index'])->name('users.index');
     Route::get('users/{user:slug}', [UserController::class, 'show'])->name('users.show');
-   Volt::route('users/{slug}/edit', 'auth.register')->name('users.edit');
-  // Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+    Volt::route('users/{slug}/edit', 'auth.register')->name('users.edit');
+
+    Volt::route('territories/create', 'territory.create')->name('territories.create');
+
 
 
     });

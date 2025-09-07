@@ -38,6 +38,17 @@ new class extends Component {
 
     }
 
+    public function userTerritoryAssignmentStatus()
+    {
+       $user = User::whereSlug($this->slug);
+
+        // Check if the user is assigned to any territories
+        $assignedTerritories = $user->territories; // Assuming 'territories' is the relationship name
+        dd($assignedTerritories);
+
+        return !$assignedTerritories->isEmpty(); // Returns true if there are assigned territories
+    }
+
     public function mount(?String $createdUser):void
     {
         if($createdUser){
@@ -87,12 +98,12 @@ new class extends Component {
 
                 <p class="mt-2 text-gray-700">
                     <flux:icon.users class="inline-block w-5 h-5 text-gray-600" />
-                    {{ $territory->users_count }} user{{ $territory->users_count > 1 ? 's' : '' }} in this territory.
+                    {{ $territory->users->count() }} users{{ $territory->users_count > 1 ? 's' : '' }} in this territory.
                 </p>
 
                 @if ($otherUsers = $territory->users->where('id', '!=', auth()->id()))
                     <p class="mt-1 text-sm text-gray-600">
-                        <span class="font-medium">{{ $otherUsers->count() }} user{{ $otherUsers->count() > 1 ? 's' : '' }}</span> including 
+                        <span class="font-medium">{{ $otherUsers->count() }} {{Str::plural('user', $otherUsers->count())}}</span> including 
                         @foreach ($otherUsers->take(2) as $user)
                             <a href="{{ route('users.show', $user->slug) }}" class="text-blue-600 hover:underline">{{ $user->name }}</a>{{ !$loop->last ? ', ' : '' }}
                         @endforeach

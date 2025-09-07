@@ -182,6 +182,15 @@ class User extends Authenticatable
     public function assignedUsers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'territory_user', 'assigned_by_user_id', 'user_id');
+    } 
+    
+    public function userTerritoryAssignmentStatus($territoryName)
+    {
+        if ($this->territories()->where('name', $territoryName)->exists()) {
+            return true;
+        }
+
+        return false;
     }    
     
     // This accessor generates the identification number based on your new format
