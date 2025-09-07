@@ -32,6 +32,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('users/{slug}/edit', 'auth.register')->name('users.edit');
 
     Volt::route('territories/create', 'territory.create')->name('territories.create');
+    Volt::route('territories', 'territory.index')->name('territories.index');
 
 
 
