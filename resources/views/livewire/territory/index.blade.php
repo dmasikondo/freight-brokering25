@@ -21,15 +21,16 @@ new class extends Component {
     public function deleteTerritory($territoryId)
     {
         // Validate that the user and territory exist
-        // $territory = Territory::findOrFail($territoryId);
-        // $userId = User::whereSlug($this->slug)->pluck('id');
+        $territory = Territory::find($territoryId);
 
-        // // Check if the user is associated with the territory
-        // if ($territory->users()->find($userId)) {
-        //     // Remove the user from the territory
-        //     $territory->users()->detach($userId);  
-        //     $this->dispatch('user-removed');      
-        // }
+        // // Check if the territory exists
+        if ($territory) {
+            $territory->delete();   
+            session()->flash('message', 'Territory successfull deleted.');   
+        }
+        else{
+            session()->flash('error', 'Territory not deleted.');  
+        }
 
     }
 
@@ -49,6 +50,16 @@ new class extends Component {
         </flux:callout>          
     </div>
     @endif  
+        @if(session()->has('error'))
+    <div class="my-2">
+        <flux:callout icon="bolt-slash" color='orange'>
+            <flux:callout.heading>Territory creation</flux:callout.heading>
+            <flux:callout.text color='orange'>
+            {{ session('error') }}     
+            </flux:callout.text>
+        </flux:callout>          
+    </div>
+    @endif 
     @if ($this->getTerritories->isEmpty())
         <flux:callout icon="face-frown">
             <flux:callout.heading>No territories</flux:callout.heading>
