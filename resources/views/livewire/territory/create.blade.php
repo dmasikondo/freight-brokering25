@@ -25,9 +25,10 @@ new class extends Component
     public $fullySelectedProvinces = [];
     public $partiallySelectedCities = []; 
     public $territoryExistanceMessage =''; 
+    public $createOrUpdateMessage = 'Create';
 
     // Properties to hold the selected territories
-    public $selectedTerritories = [];
+    public $selectedTerritories;
     public $selectedCountry= [];
     public $selectedProvinces = [];
     public $selectedCities = [];
@@ -67,10 +68,17 @@ new class extends Component
        $countryIds = Country::whereIn('name', $this->selectedCountry)->pluck('id');
        $this->validate();
 
-        // Create a new territory
-        $territory = Territory::create([
-            'name' => $this->territory,
-        ]);
+       if(!$this->territoryId){
+            $territory = Territory::create([
+                'name' => $this->territory,
+            ]);
+            session()->flash('message', 'Territory successfull created.');
+       }
+       else{
+            $territory = Territory::findOrFail($this->territoryId);
+            $territory->update(['name' => $this->territory]);
+            session()->flash('message', 'Territory successfull updated.');
+       }
 
         // Attach countries, provinces, and cities to the territory
         $territory->countries()->sync($countryIds);
@@ -80,7 +88,7 @@ new class extends Component
         // Reset the fields
         $this->reset(['territory', 'selectedCountry', 'selectedProvinces', 'selectedCities','showProvinces','territoryExistanceMessage']);
         $this->hideTerritorySelectionDetails();        
-        $this->dispatch('territory-created');       
+        $this->redirectRoute('territories.index');      
     }
 
     public function updatedSelectedCountry()
@@ -144,14 +152,25 @@ new class extends Component
         $this->showProvinces = false; 
     }
 
-    public function mount(?string $territoryId = null): void
-    {
-        if ($territoryId) {
-            $this->territoryId = $territoryId;
-            $territory = Territory::findOrFail($territoryId);
+    public function mount(?string $territory = null): void
+    {        
+        if ($territory) {
+            $this->territoryId = $territory;
+            $territory = Territory::findOrFail($territory);
             $this->territory = $territory->name;
-            // $this->selectedCities = $territory->zimbabweCities()->toArray();
-            // $this->selectedProvinces = $territory->provincies()->to
+            $this->selectedProvinces = $territory->provinces()->get();
+            
+            foreach($this->selectedProvinces as $province){
+                $this->selectedCities[] =$province->zimbabweCities()->pluck('id')->toArray();
+            }
+            $this->selectedProvinces = $this->selectedProvinces->pluck('id')->toArray();
+            $this->selectedCities = array_merge(...$this->selectedCities);
+            $individuallySelectedCities = $territory->zimbabweCities()->pluck('territory_zimbabwe_city.zimbabwe_city_id')->toArray();
+            $this->selectedCities = array_merge($this->selectedCities, $individuallySelectedCities);
+            $this->selectedCountry = $territory->countries()->pluck('name')->toArray();           
+            $this->showCountries = true;
+            $this->getProvinces();
+            $this->createOrUpdateMessage = "Update";
         }
     }
  
@@ -162,8 +181,7 @@ new class extends Component
 
 <div class="bg-white rounded-lg shadow p-6 sm:p-8 space-y-6">
     <div>
-        <h2 class="text-xl font-semibold text-gray-900">Assign Territory</h2>
-        <p class="mt-2 text-gray-600">Select / Create a territory</p>
+        <h2 class="text-xl font-semibold text-gray-900">{{ $createOrUpdateMessage }}  Territory</h2>
     </div>
 
     <form wire:submit.prevent="createTerritory" class="space-y-6">
@@ -191,7 +209,6 @@ new class extends Component
         @endif
         </div>
 
-
         @if ($showProvinces)
             <div class="mt-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Select Province(s) / Town(s)</label>
@@ -213,11 +230,11 @@ new class extends Component
 
         <div class="flex items-center gap-4">
             <div class="flex items-center justify-end">
-                <flux:button variant="primary" type="submit" class="w-full">{{ __('Create') }}</flux:button>
+                <flux:button variant="primary" type="submit" class="w-full">{{$createOrUpdateMessage}}</flux:button>
             </div>
 
             <x-action-message class="me-3" on="territory-created">
-                {{ __('Created.') }}
+               {{$createOrUpdateMessage}}d.
             </x-action-message>
         </div>       
     </form>

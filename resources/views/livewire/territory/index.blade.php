@@ -39,6 +39,16 @@ new class extends Component {
 }; ?>
 
 <div class="p-6 bg-white shadow-md rounded-lg mb-6 relative">
+    @if(session()->has('message'))
+    <div class="my-2">
+        <flux:callout icon="check" color='green'>
+            <flux:callout.heading>Territory creation</flux:callout.heading>
+            <flux:callout.text color='green'>
+            {{ session('message') }}     
+            </flux:callout.text>
+        </flux:callout>          
+    </div>
+    @endif  
     @if ($this->getTerritories->isEmpty())
         <flux:callout icon="face-frown">
             <flux:callout.heading>No territories</flux:callout.heading>
@@ -54,7 +64,7 @@ new class extends Component {
                         <flux:button icon:trailing="ellipsis-horizontal"/>
 
                         <flux:navmenu>
-                            <flux:navmenu.item href="#" icon="pencil-square">Edit Territory</flux:navmenu.item>
+                            <flux:navmenu.item href="{{ route('territories.edit',['territory'=>$territory->id]) }}" icon="pencil-square">Edit Territory</flux:navmenu.item>
                             <flux:navmenu.item  icon="trash" variant="danger"                        
                             wire:click="deleteTerritory('{{ $territory->id }}')"
                             wire:confirm.prompt="Are you sure you want to delete the territory: {{ strtoupper($territory->name) }}? \n\nType REMOVE to confirm your  action|REMOVE">
