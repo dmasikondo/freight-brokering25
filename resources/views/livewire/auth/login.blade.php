@@ -73,7 +73,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
     }
 }; ?>
 
-<div id="login" x-data="loginForm()" class="min-h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white p-4 flex flex-col items-center pb-8">
+<div id="login" class="min-h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white p-4 flex flex-col items-center pb-8">
     <div class="w-full max-w-md mt-12">
         <h1 class="text-5xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text mb-4">
             Welcome Back
@@ -84,7 +84,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
 
         <div class="bg-gray-800 p-8 rounded-3xl shadow-xl">
             <!-- Login Form -->
-            <form @submit.prevent="login">
+            <form method="post" wire:submit="login">
                 <div class="space-y-6">
                     <!-- Email Field -->
                     <div>
@@ -92,7 +92,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
                         <input
                             type="email"
                             id="email"
-                            x-model="email"
+                            wire:model="email"
                             placeholder="your@email.com"
                             class="w-full p-4 bg-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
                             required
@@ -108,7 +108,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
                         <input
                             type="password"
                             id="password"
-                            x-model="password"
+                            wire:model="password"
                             placeholder="••••••••"
                             class="w-full p-4 bg-gray-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
                             required
@@ -121,7 +121,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
                             <input
                                 type="checkbox"
                                 id="remember"
-                                x-model="rememberMe"
+                                wire:model="remember"
                                 class="h-4 w-4 text-blue-500 focus:ring-blue-400 border-gray-600 rounded bg-gray-700"
                             />
                             <label for="remember" class="ml-2 block text-sm text-gray-300">Remember me</label>
@@ -153,22 +153,4 @@ new #[Layout('components.layouts.auth')] class extends Component {
         </div>
     </div>
 
-    <script>
-        function loginForm() {
-            return {
-                email: '',
-                password: '',
-                rememberMe: false,
-                submitForm() {
-                    console.log('Form submitted:', {
-                        email: this.email,
-                        password: this.password,
-                        rememberMe: this.rememberMe
-                    });
-                    // Here you would typically make an API call to authenticate
-                    alert('Login successful!');
-                }
-            };
-        }
-    </script>
 </div>
