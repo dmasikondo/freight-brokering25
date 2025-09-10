@@ -26,10 +26,10 @@ new class extends Component {
         // // Check if the territory exists
         if ($territory) {
             $territory->delete();   
-            session()->flash('message', 'Territory successfull deleted.');   
+            session()->flash('message', 'Territory successfully deleted.');   
         }
         else{
-            session()->flash('error', 'Territory not deleted.');  
+            session()->flash('error', 'Territory could not be deleted.');  
         }
 
     }
