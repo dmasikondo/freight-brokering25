@@ -72,12 +72,12 @@ new class extends Component
             $territory = Territory::create([
                 'name' => $this->territory,
             ]);
-            session()->flash('message', 'Territory successfull created.');
+            session()->flash('message', 'Territory successfully created.');
        }
        else{
             $territory = Territory::findOrFail($this->territoryId);
             $territory->update(['name' => $this->territory]);
-            session()->flash('message', 'Territory successfull updated.');
+            session()->flash('message', 'Territory successfully updated.');
        }
 
         // Attach countries, provinces, and cities to the territory
@@ -181,7 +181,7 @@ new class extends Component
 
 <div class="bg-white rounded-lg shadow p-6 sm:p-8 space-y-6">
     <div>
-        <h2 class="text-xl font-semibold text-gray-900">{{ $createOrUpdateMessage }}  Territory</h2>
+        <h2 class="text-xl font-semibold text-gray-900">{{ $createOrUpdateMessage }} Territory</h2>
     </div>
 
     <form wire:submit.prevent="createTerritory" class="space-y-6">
