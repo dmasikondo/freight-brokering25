@@ -16,6 +16,8 @@ class Freight extends Model
     protected function casts(): array
     {
         return [
+            'dateto' => 'datetime',
+            'datefrom' => 'datetime',
             'status' =>FreightStatus::class,
             'shipmentStatus' => ShipmentStatus::class,
             'pricingType' =>PricingType::class,
@@ -41,6 +43,8 @@ class Freight extends Model
         'distance',
         'is_read',
         'is_hazardous',
+        'pickup_address',
+        'delivery_address',
     ];
 
     public function goods(){

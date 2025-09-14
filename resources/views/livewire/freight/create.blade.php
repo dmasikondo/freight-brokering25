@@ -128,7 +128,7 @@ new class extends Component {
          $validated = $this->validate();
          $validated['name'] = $validated['goods'];
          $validated['is_hazardous'] = $validated['hazardous'];
-         $validated['weight'] = $validated['quantity']. $this->unit;
+         $validated['weight'] = $validated['quantity'].' '. $this->unit;
          $validated['countryfrom'] = $validated['originCountry'];
          $validated['cityfrom'] = $validated['originCity'];
          $validated['pickup_address'] = $validated['originAddress'];

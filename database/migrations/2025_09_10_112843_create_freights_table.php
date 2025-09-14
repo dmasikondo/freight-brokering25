@@ -25,6 +25,8 @@ return new class extends Migration
             $table->string('cityto');
             $table->string('countryfrom');
             $table->string('countryto');
+            $table->string('pickup_address');
+            $table->string('delivery_address');
             $table->timestamp('datefrom');
             $table->timestamp('dateto');
             $table->boolean('is_published')->default(false)->nullable();
