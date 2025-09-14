@@ -249,7 +249,6 @@
 		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 		  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
 		</svg>
-	{{-- beaker --}}
 	{{-- globe-alt --}}
 	@elseif($name=='globe-alt')
 		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -361,4 +360,142 @@
 		<svg  {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" viewBox="0 0 24 24" stroke="currentColor">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
 		</svg>	
+	{{-- Air Ride Van --}}
+	@elseif($name=='air-ride-van')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="5" y="10" width="90" height="35" rx="5" fill="#3b82f6"/>
+			<rect x="5" y="45" width="90" height="5" fill="#60a5fa"/>
+			<rect x="5" y="50" width="90" height="5" fill="#1e40af"/>
+			<circle cx="20" cy="45" r="7" fill="#1f2937"/>
+			<circle cx="80" cy="45" r="7" fill="#1f2937"/>
+			<path d="M20 45 L20 50 M80 45 L80 50" stroke="#d1d5db" stroke-width="2"/>
+		</svg>	
+	{{--dry bulk  --}}
+	@elseif($name=='dry-bulk')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<path d="M10 50 L10 20 A30 30 0 0 1 90 20 L90 50" stroke="#6b7280" stroke-width="3" fill="#9ca3af"/>
+			<path d="M50 20 L50 10" stroke="#6b7280" stroke-width="3"/>
+			<rect x="40" y="50" width="20" height="5" fill="#6b7280" rx="2"/>
+			<circle cx="25" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="75" cy="55" r="5" fill="#1f2937"/>
+		</svg>
+	@elseif($name=='dump')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<path d="M10 50 L20 20 L90 25 L80 50 Z" fill="#991b1b" stroke="#7f1d1d" stroke-width="2"/>
+			<line x1="20" y1="20" x2="25" y2="40" stroke="#4b5563" stroke-width="2"/>
+			<circle cx="30" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="70" cy="55" r="5" fill="#1f2937"/>
+		</svg>	
+	@elseif($name=='car-carrying')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="5" y="30" width="90" height="20" rx="3" fill="#9ca3af"/>
+			<rect x="10" y="10" width="80" height="15" rx="3" fill="#9ca3af"/>
+			<rect x="15" y="35" width="20" height="10" fill="#4b5563"/>
+			<rect x="40" y="35" width="20" height="10" fill="#4b5563"/>
+			<rect x="65" y="35" width="20" height="10" fill="#4b5563"/>
+			<circle cx="20" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="80" cy="55" r="5" fill="#1f2937"/>
+		</svg>	
+	@elseif($name=='curtain-side')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="5" y="10" width="90" height="40" rx="5" fill="#fcd34d"/>
+			<line x1="20" y1="10" x2="20" y2="50" stroke="#92400e" stroke-width="2" stroke-dasharray="4"/>
+			<line x1="40" y1="10" x2="40" y2="50" stroke="#92400e" stroke-width="2" stroke-dasharray="4"/>
+			<line x1="60" y1="10" x2="60" y2="50" stroke="#92400e" stroke-width="2" stroke-dasharray="4"/>
+			<line x1="80" y1="10" x2="80" y2="50" stroke="#92400e" stroke-width="2" stroke-dasharray="4"/>
+			<circle cx="20" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="80" cy="55" r="5" fill="#1f2937"/>
+		</svg>	
+	@elseif($name=='double-decker')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="5" y="5" width="90" height="45" rx="5" fill="#d1d5db"/>
+			<line x1="5" y1="30" x2="95" y2="30" stroke="#6b7280" stroke-width="2"/>
+			<circle cx="20" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="80" cy="55" r="5" fill="#1f2937"/>
+		</svg>	
+	@elseif($name=='drop-decker')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<path d="M5 10 L30 10 L30 30 L70 30 L70 10 L95 10 L95 50 L5 50 Z" fill="#4b5563"/>
+			<circle cx="20" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="80" cy="55" r="5" fill="#1f2937"/>
+		</svg>	
+	@elseif($name=='flat-bed')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="5" y="30" width="90" height="10" fill="#6b7280"/>
+			<circle cx="20" cy="45" r="5" fill="#1f2937"/>
+			<circle cx="80" cy="45" r="5" fill="#1f2937"/>
+		</svg>		
+	@elseif($name=='hopper-bottom')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="5" y="10" width="90" height="25" fill="#374151"/>
+			<path d="M15 35 L40 50 L60 50 L85 35 Z" fill="#374151"/>
+			<circle cx="20" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="80" cy="55" r="5" fill="#1f2937"/>
+		</svg>	
+	@elseif($name=='live-bottom')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="5" y="10" width="90" height="30" fill="#4b5563"/>
+			<line x1="20" y1="50" x2="80" y2="50" stroke="#fcd34d" stroke-width="4"/>
+			<polyline points="25,45 30,50 25,55" stroke="#fcd34d" stroke-width="2" fill="none"/>
+			<polyline points="75,45 70,50 75,55" stroke="#fcd34d" stroke-width="2" fill="none"/>
+			<circle cx="20" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="80" cy="55" r="5" fill="#1f2937"/>
+		</svg>	
+	@elseif($name=='livestock')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="5" y="10" width="90" height="40" fill="#a16207"/>
+			<line x1="5" y1="20" x2="95" y2="20" stroke="#78350f" stroke-width="2"/>
+			<line x1="5" y1="30" x2="95" y2="30" stroke="#78350f" stroke-width="2"/>
+			<line x1="5" y1="40" x2="95" y2="40" stroke="#78350f" stroke-width="2"/>
+			<path d="M5 10 L5 50 M95 10 L95 50" stroke="#78350f" stroke-width="4" stroke-linecap="round"/>
+			<circle cx="20" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="80" cy="55" r="5" fill="#1f2937"/>
+		</svg>	
+	@elseif($name=='low-boy')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="5" y="35" width="90" height="10" fill="#4b5563"/>
+			<rect x="5" y="30" width="15" height="5" fill="#6b7280"/>
+			<rect x="80" y="30" width="15" height="5" fill="#6b7280"/>
+			<circle cx="15" cy="50" r="5" fill="#1f2937"/>
+			<circle cx="85" cy="50" r="5" fill="#1f2937"/>
+			<circle cx="70" cy="50" r="5" fill="#1f2937"/>
+		</svg>	
+	@elseif($name=='power-only')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<path d="M10 40 L30 40 L35 25 L50 25 L50 40 L90 40 L90 50 L10 50 Z" fill="#94a3b8"/>
+			<rect x="15" y="30" width="30" height="15" rx="5" fill="#475569"/>
+			<circle cx="20" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="80" cy="55" r="5" fill="#1f2937"/>
+		</svg>	
+	@elseif($name=='reefer')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="5" y="10" width="90" height="40" rx="5" fill="#60a5fa"/>
+			<rect x="5" y="10" width="10" height="20" fill="#1e40af"/>
+			<line x1="10" y1="15" x2="10" y2="25" stroke="#d1d5db" stroke-width="2"/>
+			<circle cx="20" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="80" cy="55" r="5" fill="#1f2937"/>
+		</svg>	
+	@elseif($name=='removable-gooseneck')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="15" y="30" width="70" height="10" fill="#4b5563"/>
+			<line x1="5" y1="40" x2="15" y2="30" stroke="#6b7280" stroke-width="2"/>
+			<rect x="5" y="30" width="10" height="5" fill="#6b7280"/>
+			<circle cx="25" cy="45" r="5" fill="#1f2937"/>
+			<circle cx="75" cy="45" r="5" fill="#1f2937"/>
+		</svg>					
+	@elseif($name=='slide')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<rect x="5" y="10" width="90" height="35" rx="5" fill="#d1d5db"/>
+			<line x1="20" y1="45" x2="80" y2="45" stroke="#6b7280" stroke-width="3" stroke-dasharray="5 5"/>
+			<circle cx="20" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="80" cy="55" r="5" fill="#1f2937"/>
+		</svg>	
+	@elseif($name=='step-deck')
+		<svg {{$attributes(['class'=>"",'stroke-width'=>''])}} fill="none" xmlns="http://www.w3.org/2000/svg">
+			<path d="M5 25 L35 25 L35 45 L95 45 L95 50 L5 50 Z" fill="#6b7280" stroke="#4b5563" stroke-width="1"/>
+			<circle cx="20" cy="55" r="5" fill="#1f2937"/>
+			<circle cx="80" cy="55" r="5" fill="#1f2937"/>
+		</svg>		
+
 	@endif
+

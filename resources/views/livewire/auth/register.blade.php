@@ -212,7 +212,6 @@ new #[Layout('components.layouts.auth')] class extends Component {
         { currentStep: @entangle('currentStep'), 
             isStaffRegistration: @entangle('isStaffRegistration'), 
             role: @entangle('role'),
-            currentStep: @entangle('currentStep'),
             first_name: @entangle('first_name'),
             surname: @entangle('surname'),
             phone_type: @entangle('phone_type'),
@@ -231,7 +230,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
          x-cloak
     class="min-h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white p-4 flex flex-col items-center pb-8">
 
-    <div class="w-full max-w-6xl mt-8">
+    <div class="w-full max-w-7xl mt-8">
         <h1 class="text-5xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text mb-4">
             Ship Smarter!!
         </h1>
@@ -248,7 +247,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
                     :step="1"
                     icon="user"
                     title="Full Name"
-                    description="Enter your legal name as it appears on official documents."
+                    description="Enter the legal name as it appears on official documents."
                     usageTitle="Used for:"
                     :items="['Account verification', 'Shipping documentation']"
                 />
