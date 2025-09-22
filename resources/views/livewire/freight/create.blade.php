@@ -2,9 +2,11 @@
 
 use Livewire\Volt\Component;
 use App\Models\Good;
-use App\Models\Trailer;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use App\Models\User;
+use App\Models\Freight;
+use App\Models\Trailer;
 
 new class extends Component {
 
@@ -36,6 +38,12 @@ new class extends Component {
     public $whatsapp;
     public $self = false;
     public $isDraft = false;
+    public $amount;
+    public $badgeStatusColor;
+    public $badgeStatusLabel;
+
+    #Locked
+    public $freightId;
     
     #[Computed]
     public function categories()
@@ -69,7 +77,10 @@ new class extends Component {
             $this->fullName = $selfContact->contact_person;
         }
         else{
-            $this->reset(['email','phone','whatsapp','fullName']);
+            if(!$this->freightId){
+                $this->reset(['email','phone','whatsapp','fullName']);
+            }
+            
         }
         
     }
@@ -143,7 +154,7 @@ new class extends Component {
          $this->isDraft? $validated['status'] = 'draft': $validated['status'] = 'submitted';
 
          $categoryId = Good::select('id')->whereName($validated['category'])->first();
-         $freight = auth()->user()->freights()->create($validated);
+         $freight = auth()->user()->freights()->updateOrCreate(['id'=>$this->freightId], $validated);
          $freight->goods()->sync($categoryId->id);	
 
          if($this->currentStep ==7){
@@ -151,20 +162,61 @@ new class extends Component {
             $validatedContacts['phone_number'] = $validated['fullName'];
             $validatedContacts['whatsapp'] = $validated['whatsapp'];
             $validatedContacts['email'] = $validated['email'];
-           $freight->contacts()->create($validatedContacts);
+           $freight->contacts()->updateOrCreate(['contactable_id'=>$this->freightId], $validatedContacts);
          }
-
-         session()->flash('message','Freight successfully uploaded');
+         $this->freightId? $sessionMessage ='Freight successfully updated' : $sessionMessage ='Freight successfully uploaded';
+         session()->flash('message', $sessionMessage);
          $this->redirectRoute('freights.index'); 
     }
 
-    public function mount()
+    public function mount(?string $freight =null)
     {
         $this->zimbabweCities = \App\Models\ZimbabweCity::orderBy('name')->pluck('name', 'name')->toArray();
-       // $this->trailers = \App\Models\Trailer::orderBy('name')->pluck('name','id')->toArray();   
-            
-        
+       // $this->trailers = \App\Models\Trailer::orderBy('name')->pluck('name','id')->toArray();  
+       
+       if($freight){
+            $this->freightId = $freight;
+            $freight= Freight::with('createdBy','goods',)->findOrFail($freight);
+            foreach($freight->goods as $good){
+                $this->category = $good->name;
+            }
+            $this->goods = $freight->name;
+            $this->description = $freight->description;
+            $this->quantity = $freight->weight;
+            $this->originCountry = $freight->countryfrom;
+            $this->originCity = $freight->cityfrom;
+            $this->originAddress = $freight->pickup_address;
+            $this->destinationCountry = $freight->countryto;
+            $this->destinationCity = $freight->cityto;
+            $this->destinationAddress = $freight->delivery_address;
+            $this->amount = $freight->weight;
+            $this->hazardous = $freight->hazardous;
+            $this->distance = $freight->distance;
+            $this->paymentOption = $freight->payment_option;
+            $this->carriageRate = $freight->carriage_rate;
+            $this->selectedTrailer = $freight->vehicle_type;
+            $this->pickupDate = date('Y-m-d', strtotime($freight->datefrom));
+            $this->deliveryDate = date('Y-m-d', strtotime($freight->dateto));
+            $this->fullName = $freight->createdBy->contact_person;
+            $this->email = $freight->createdBy->email;
+            $this->phone = $freight->createdBy->contact_phone;
+            $this->whatsapp = $freight->createdBy->whatsapp;
+            $this->badgeStatusColor = $freight->status->color();
+            $this->badgeStatusLabel = $freight->status->label();            
+            $this->parseGoodsQuantity();
+       }        
     }
+    
+    public function parseGoodsQuantity()
+    {
+        if(preg_match('/(\d+)\s*(tonnes|litres)/i',$this->amount, $matches)){
+            $this->quantity = (int)$matches[1];
+            $this->unitType = strtolower($matches[2]) == 'tonnes' ? 'weight' : 'volume';
+            $this->unit = strtolower($matches[2]);
+        }
+    }  
+    
+
 
     // Multi-step form navigation methods
     public function nextStep(): void
@@ -259,7 +311,11 @@ new class extends Component {
     class="min-h-screen p-4 flex flex-col items-center pb-8">
     <div class="w-full max-w-7xl mt-8">
         <div class="flex flex-col md:flex-row gap-8 w-full">
-            <div class="p-6 rounded-3xl shadow-xl w-full md:w-1/2 order-2 md:order-1">
+            <div class="p-6 rounded-3xl shadow-xl w-full md:w-1/2 order-2 md:order-1"> 
+                <div class="text-right">
+                    <flux:badge size='sm' :color="$badgeStatusColor" >{{ $badgeStatusLabel}}</flux:badge> 
+                </div> 
+                           
                 <!-- Step 1: Shipment -->
                 <x-steps.registration-steps
                     :step="1"
@@ -361,14 +417,27 @@ new class extends Component {
                                 @php
                                     $iconName = strtolower(str_replace(' ', '-', $selectedTrailer));
                                 @endphp
-                                <x-graphic name="{{ $iconName }}" class="size-4" />
-                                <span x-text="selectedTrailer"></span>                          
-                            </template>
+                                <x-graphic name="{{ $iconName }}" class="size-24" />                       
+                            </template>                            
+                             <flux:text>{{$selectedTrailer}}</flux:text>  
                         </div> 
                         
                         <div class="flex items-center gap-2" x-show="pickupDate">
                             <x-graphic name="calendar-days" class="size-4.5 text-indigo-400"/>
-                            <span x-text="'To be picked up on: ' + pickupDate + ' & delivered on:  ' + deliveryDate" ></span>
+                            <span x-text="'To be picked up on: ' + 
+                            new Date(pickupDate).toLocaleDateString('en-GB', {
+                            weekday: 'short', 
+                            day: '2-digit', 
+                            month: 'short', 
+                            year: 'numeric'})">
+                            </span>
+                            <span x-text ="' & delivered on:  ' +
+                            new Date(deliveryDate).toLocaleDateString('en-GB', {
+                            weekday: 'short', 
+                            day: '2-digit', 
+                            month: 'short', 
+                            year: 'numeric'})" >
+                            </span>
                         </div>                        
 
                         <div class="flex items-center gap-2" x-show="fullName">
@@ -472,7 +541,7 @@ new class extends Component {
                     </div>  
                         
                     <div  x-show="currentStep==5" class="my space-y-2">
-                        <flux:text class="text-base my-2">Preferences</flux:text>
+                        <flux:text class="text-base my-2">Preferences</flux:text>                            
                             <flux:radio.group wire:model="paymentOption" label="Preferred Payment Option" variant="segmented" size="sm">
                                 <flux:radio label="Full Budget" value="full_budget"/>
                                 <flux:radio label="Rate of Carriage" value="rate_of_carriage"/>
@@ -490,7 +559,7 @@ new class extends Component {
                                         <div class="flex flex-col items-center justify-center p-4 rounded-lg border-2 border-gray-200 transition-all duration-200 hover:bg-gray-100 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500">
                                             <x-graphic name="{{ $iconName }}" class="size-24" />
                                             <span class="mt-2 text-sm font-medium text-gray-600 has-[:checked]:text-blue-700">{{ $trailer->name }}</span>
-                                            <input id="trailer-{{ $trailer->id}}" type="radio" wire:model="selectedTrailer" value="{{ $trailer->name}}" class="sr-only" />
+                                            <input id="trailer-{{ $trailer->id}}" type="radio" wire:model.live="selectedTrailer" value="{{ $trailer->name}}" class="sr-only" />
                                         </div>
                                     </label>
                                 @endforeach
@@ -498,7 +567,7 @@ new class extends Component {
                     </div>
                     <div  x-show="currentStep==6" class="my-2 space-y-2">
                         <flux:text class="text-base my-2">Transportation Dates</flux:text>
-                        <flux:input type="date" label="Freight Pickup Date" wire:model="pickupDate"/>
+                        <flux:input type="date" label="Freight Pickup Date" wire:model.live="pickupDate"/>
                         <flux:input type="date" label="Expected Delivery Date" wire:model="deliveryDate"/>
                     </div>
                     <div  x-show="currentStep==7" class="my-2 space-y-2">

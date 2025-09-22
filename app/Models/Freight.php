@@ -61,5 +61,7 @@ class Freight extends Model
         return $this->morphMany(Contact::class,'contactable');
     }
 
+
+
 }
  

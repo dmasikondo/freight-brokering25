@@ -10,7 +10,9 @@ new class extends Component {
     public function getFreights()
     {
        return Freight::orderBy('updated_at')->with(['goods', 'contacts', 'createdBy'])->get();      
-    }    
+    }   
+    
+    
 }; ?>
 
 <div class="rounded-lg mb-6 relative">
@@ -40,7 +42,7 @@ new class extends Component {
                     <flux:button icon:trailing="ellipsis-horizontal"/>
 
                     <flux:navmenu>
-                        <flux:navmenu.item href="#" icon="pencil-square">Edit Freight</flux:navmenu.item>
+                        <flux:navmenu.item href="{{ route('freights.edit',['freight'=>$freight->id]) }}" icon="pencil-square">Edit Freight</flux:navmenu.item>
                         <flux:navmenu.item  icon="trash" variant="danger"                        
                         wire:click="deleteFreight('{{ $freight->id }}')"
                         wire:confirm.prompt="Are you sure you want to delete the freight: {{ strtoupper($freight->name) }}? \n\nType REMOVE to confirm your  action|REMOVE">
