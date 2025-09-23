@@ -2,22 +2,34 @@
 
 use Livewire\Volt\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use App\Models\Freight;
 
 new class extends Component {
+
+    #[Locked]
+    public $freightId;
 
     #[Computed]
     public function getFreights()
     {
        return Freight::orderBy('updated_at')->with(['goods', 'contacts', 'createdBy'])->get();      
-    }   
+    } 
+    
+    public function deleteFreight($freightId)
+    {
+        $this->freightId = $freightId;
+        $freight = Freight::findOrFail($this->freightId);
+        $freight->delete();
+        session()->flash('message','The freight was successfully deleted');
+    }
     
     
 }; ?>
 
 <div class="rounded-lg mb-6 relative">
     @if(session()->has('message'))
-    <div class="my-2">
+    <div class="my-2 toast toast-top toast-center">
         <flux:callout icon="check" color='green'>
             <flux:callout.heading>Freight Upload!</flux:callout.heading>
             <flux:callout.text color='green'>

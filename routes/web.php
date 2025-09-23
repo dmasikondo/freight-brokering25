@@ -38,6 +38,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('freights/create','freight.create')->name('freights.create');
     Volt::route('freights','freight.index')->name('freights.index');
     Volt::route('freights/{freight}/edit','freight.create')->name('freights.edit');
+    Volt::route('freights/{freight}/edit','freight.create')->name('freights.edit');
 
 
     });

@@ -26,6 +26,18 @@
     --color-accent: var(--color-neutral-800);
     --color-accent-content: var(--color-neutral-800);
     --color-accent-foreground: var(--color-white);
+
+    --animate-fade-out: fade-out 6s easy-in-out forwards;
+
+    @keyframes fade-out {
+        0%, 70% {
+            opacity: 1;
+        }
+        100% {
+            opacity: 0;
+            pointer-events: none;
+        }
+    }
 }
 
 @layer theme {
