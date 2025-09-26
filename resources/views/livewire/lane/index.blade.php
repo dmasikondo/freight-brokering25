@@ -2,15 +2,28 @@
 
 use Livewire\Volt\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use App\Models\Lane;
 
 new class extends Component {
+
+    #[Locked]
+    public $freightId;
 
     #[Computed]
     public function getLanes()
     {
        return Lane::orderBy('updated_at')->with(['contacts', 'createdBy'])->get();      
-    }     
+    } 
+    
+    public function deleteLane($laneId)
+    {
+        $this->laneId = $laneId;
+        $lane = Lane::findOrFail($this->laneId);
+        $lane->delete();
+        session()->flash('message','The VEHICLE was successfully deleted');
+    }    
+
 }; ?>
 
 <div class="p-4 sm:p-8 max-w-7xl mx-auto">
