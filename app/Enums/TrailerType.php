@@ -22,4 +22,31 @@ enum TrailerType: string
     case SLIDE = 'slide';
     case STEP_DECK = 'step deck';
     case TANKER = 'tanker';
+
+    /**
+     * Finds the matching Enum case from the capitalized string stored in the database.
+     */
+    public static function fromDLane(string $dbLane): ?self
+    {
+        // Optional: Perform a case-insensitive match for robustness
+        $normalizedDbTrailer = trim($dbLane);
+
+        foreach (self::cases() as $case) {
+            if ($case->value === $normalizedDbTrailer) {
+                return $case;
+            }
+        }
+        
+        // Handle cases where the DB string doesn't match a defined Enum case
+        return null;
+    } 
+    
+    /**
+     * Gets the hyphenated, lower-case icon name (e.g., 'step-deck').
+     */
+    public function iconName(): string
+    {
+        // Convert the Enum's backing value ('Step Deck') to 'step-deck'
+        return strtolower(str_replace(' ', '-', $this->value));
+    }    
 }

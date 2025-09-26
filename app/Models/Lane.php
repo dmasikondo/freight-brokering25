@@ -37,7 +37,12 @@ class Lane extends Model
             'vehicle_status' => VehiclePositionStatus::class,
             'trailer' =>TrailerType::class,
         ];
-    } 
+    }
+     
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'creator_id');
+    }
 
     public function contacts()
     {
