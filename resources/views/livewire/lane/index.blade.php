@@ -38,9 +38,22 @@ new class extends Component {
     <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($this->getLanes as $lane)
         <!-- Vehicle Card  -->
-        <div class="card  p-6 rounded-xl shadow-lg border border-gray-700 text-gray-500">
-            
-            <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-700">
+        <div class="relative card  p-6 rounded-xl shadow-lg border border-gray-700 text-gray-500">
+            <div class="mr-2 absolute top-0 right-0">
+                <flux:dropdown position="right" align="end">
+                    <flux:button icon:trailing="ellipsis-horizontal"/>
+
+                    <flux:navmenu>
+                        <flux:navmenu.item href="{{ route('lanes.edit',['lane'=>$lane->id]) }}" icon="pencil-square">Edit Vehicle</flux:navmenu.item>
+                        <flux:navmenu.item  icon="trash" variant="danger"                        
+                        wire:click="deleteLane('{{ $lane->id }}')"
+                        wire:confirm.prompt="Are you sure you want to delete the lane: {{ strtoupper($lane->name) }}? \n\nType REMOVE to confirm your  action|REMOVE">
+                        Remove Vehicle
+                        </flux:navmenu.item>
+                    </flux:navmenu>
+                </flux:dropdown>                  
+            </div>            
+            <div class="my-4 flex items-center justify-between mb-4 pb-2 border-b border-gray-700">
                 <flux:badge size='sm' :color="$lane->status->color()" >{{ $lane->status->label() }}</flux:badge>
                     
                 {{-- <span class="text-2xl">🚛</span>  --}}

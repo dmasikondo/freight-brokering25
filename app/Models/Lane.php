@@ -38,7 +38,7 @@ class Lane extends Model
             'trailer' =>TrailerType::class,
         ];
     }
-     
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'creator_id');

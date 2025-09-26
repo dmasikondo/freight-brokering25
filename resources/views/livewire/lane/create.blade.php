@@ -5,6 +5,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use App\Models\Trailer;
 use App\Models\User;
+use App\Models\Lane;
 
 new class extends Component {
     public $currentStep =1;
@@ -23,6 +24,8 @@ new class extends Component {
     public $whatsapp;
     public $self = false;
     public $isDraft = false;
+
+    public Lane $lane;
 
     #[Locked]
     public $laneId;
@@ -66,7 +69,9 @@ new class extends Component {
            $lane->contacts()->updateOrCreate(['contactable_id'=>$this->laneId], $validatedContacts);
          }
          $this->laneId? $sessionMessage ='vehicle successfully updated' : $sessionMessage ='Vehicle successfully submitted';
-         session()->flash('message', $sessionMessage);        
+         session()->flash('message', $sessionMessage);   
+         $this->redirectRoute('lanes.index');
+
     }
 
 
@@ -117,9 +122,23 @@ new class extends Component {
 
 
 
-    public function mount()
+    public function mount(Lane $lane = null)
     {
         $this->zimbabweCities = \App\Models\ZimbabweCity::orderBy('name')->pluck('name', 'name')->toArray();
+        $this->lane = $lane->load('contacts');
+        $this->laneId = $lane->id;
+        $this->availability_date =date('Y-m-d', strtotime($lane->availability_date));
+        $this->origin_country = $lane->countryfrom;
+        $this->origin_city = $lane->cityfrom;
+        $this->destination_country = $lane->countryto;
+        $this->destination_city = $lane->cityto;
+        $this->trailer_type = $lane->trailer->label();
+        $this->available_capacity = $lane->capacity;
+        $this->rate = $lane->rate;
+        $this->fullName = $lane->contacts->first()?->full_name;
+        $this->email = $lane->contacts->first()?->email;
+        $this->phone = $lane->contacts->first()?->contact_phone;
+        $this->whatsapp = $lane->contacts->first()?->whatsapp;        
     }
 
     // Multi-step form navigation methods
@@ -335,25 +354,21 @@ new class extends Component {
                     <!-- Step 2: Vehicle Specifications -->
                     <div x-show="currentStep==2" class="my-2 space-y-2">
                         <flux:text class="text-base my-2">  Vehicle Specifications </flux:text>
-                            <flux:text class="text-base my-2">Selected your Prefferred Trailer (if any)</flux:text>  
+                            <flux:text class="text-base my-2">Selected your Vehicle's Trailer Type</flux:text>  
                             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 
-                                @foreach($this->trailers as $trailer)
-                                    @php
-                                        // Convert the name to the hyphenated format for the icon.
-                                        $iconName = strtolower(str_replace(' ', '-', $trailer->name));
-                                    @endphp
-                                    <label for="trailer-{{ $trailer->id}}" class="cursor-pointer">
+                                @foreach(\App\Enums\TrailerType::cases() as $trailer)
+                                    <label for="trailer-{{ $trailer->value}}" class="cursor-pointer">
                                         <div class="flex flex-col items-center justify-center p-4 rounded-lg border-2 border-gray-200 transition-all duration-200 hover:bg-gray-100 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500">
-                                            <x-graphic name="{{ $iconName }}" class="size-24" />
-                                            <span class="mt-2 text-sm font-medium text-gray-600 has-[:checked]:text-blue-700">{{ $trailer->name }}</span>
-                                            <input id="trailer-{{ $trailer->id}}" type="radio" wire:model.live="trailer_type" value="{{ $trailer->name}}" class="sr-only" />
+                                            <x-graphic :name="$trailer->iconName()" class="size-24" />
+                                            <span class="mt-2 text-sm font-medium text-gray-600 has-[:checked]:text-blue-700">{{ $trailer->label() }}</span>
+                                            <input id="trailer-{{ $trailer->value}}" type="radio" wire:model.live="trailer_type" value="{{ $trailer->label()}}" class="sr-only" />
                                         </div>
                                     </label>
                                 @endforeach
                             </div> 
 
-                        <flux:input kbd="tonnes" label="Available Capacity" wire:model="available_capacity" type="number"/> 
+                        <flux:input kbd="tonnes" label="Available Trailer Capacity" wire:model="available_capacity" type="number"/> 
                     </div>
 
                     <!-- Step 3: Pricing Information -->
