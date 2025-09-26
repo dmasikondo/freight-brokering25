@@ -197,6 +197,11 @@ class User extends Authenticatable
     {
         return $this->hasMany(Freight::class, 'creator_id');
     }
+
+    public function lanes()
+    {
+        return $this->hasMany(Lane::class, 'creator_id');
+    }    
     
     // This accessor generates the identification number based on your new format
     protected function identificationNumber(): Attribute
