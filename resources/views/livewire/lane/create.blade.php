@@ -122,23 +122,30 @@ new class extends Component {
 
 
 
-    public function mount(Lane $lane = null)
-    {
+    public function mount(Lane $lane)
+    { 
+               
         $this->zimbabweCities = \App\Models\ZimbabweCity::orderBy('name')->pluck('name', 'name')->toArray();
-        $this->lane = $lane->load('contacts');
-        $this->laneId = $lane->id;
-        $this->availability_date =date('Y-m-d', strtotime($lane->availability_date));
-        $this->origin_country = $lane->countryfrom;
-        $this->origin_city = $lane->cityfrom;
-        $this->destination_country = $lane->countryto;
-        $this->destination_city = $lane->cityto;
-        $this->trailer_type = $lane->trailer->label();
-        $this->available_capacity = $lane->capacity;
-        $this->rate = $lane->rate;
-        $this->fullName = $lane->contacts->first()?->full_name;
-        $this->email = $lane->contacts->first()?->email;
-        $this->phone = $lane->contacts->first()?->contact_phone;
-        $this->whatsapp = $lane->contacts->first()?->whatsapp;        
+        $this->availability_date = date('Y-m-d');
+       if($lane->id){
+            $this->lane = $lane->load('contacts');
+            $this->laneId = $lane->id;
+            $this->availability_date =date('Y-m-d', strtotime($lane->availability_date));
+            $this->origin_country = $lane->countryfrom;
+            $this->origin_city = $lane->cityfrom;
+            $this->destination_country = $lane->countryto;
+            $this->destination_city = $lane->cityto;
+            $this->trailer_type = $lane?->trailer?->label();
+            $this->available_capacity = $lane->capacity;
+            $this->rate = $lane->rate;
+            $this->fullName = $lane->contacts->first()?->full_name;
+            $this->email = $lane->contacts->first()?->email;
+            $this->phone = $lane->contacts->first()?->contact_phone;
+            $this->whatsapp = $lane->contacts->first()?->whatsapp;                   
+       }
+            
+   
+       
     }
 
     // Multi-step form navigation methods
@@ -252,7 +259,7 @@ new class extends Component {
                 
                 <div class="mt-6 pt-4 border-t border-gray-700">
                     <h4 class="text-sm font-medium mb-2">Your Information</h4>
-                    <div class="space-y-2 text-xs">
+                    <div class="space-y-2 text-sm">
                         <div class="flex items-center gap-2 text-gray-400" x-show="availability_date">
                             <span class="w-4 h-4 text-indigo-400">📅</span>
                             <span x-text="'Available on: ' + new Date(availability_date).toLocaleDateString()"></span>
