@@ -137,11 +137,11 @@ new class extends Component {
                         <span class="text-teal-400 mt-0.5">📞</span>
                         <div>
                             <p class="font-bold">Phone:</p>
-                            <p class="">+1 (555) 901-2345</p>
+                            <p class="">{{$lane->contacts->first()?->phone_number}}</p>
                         </div>
                         <div>
                             <p class="font-bold">Whatsapp:</p>
-                            <p class="">+263772421868</p>
+                            <p class="">{{$lane->contacts->first()?->whatsapp}}</p>
                         </div>                        
                     </div>
                     <div class="my-2">	

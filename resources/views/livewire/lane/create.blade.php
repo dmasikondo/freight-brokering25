@@ -63,7 +63,7 @@ new class extends Component {
 
          if($this->currentStep ==4){
             $validatedContacts['full_name'] = $validated['fullName'];
-            $validatedContacts['phone_number'] = $validated['fullName'];
+            $validatedContacts['phone_number'] = $validated['phone'];
             $validatedContacts['whatsapp'] = $validated['whatsapp'];
             $validatedContacts['email'] = $validated['email'];
            $lane->contacts()->updateOrCreate(['contactable_id'=>$this->laneId], $validatedContacts);
@@ -86,7 +86,7 @@ new class extends Component {
             $this->fullName = $selfContact->contact_person;
         }
         else{
-            if(!$this->LaneId){
+            if(!$this->laneId){
                 $this->reset(['email','phone','whatsapp','fullName']);
             }
             
@@ -140,7 +140,7 @@ new class extends Component {
             $this->rate = $lane->rate;
             $this->fullName = $lane->contacts->first()?->full_name;
             $this->email = $lane->contacts->first()?->email;
-            $this->phone = $lane->contacts->first()?->contact_phone;
+            $this->phone = $lane->contacts->first()?->phone_number;
             $this->whatsapp = $lane->contacts->first()?->whatsapp;                   
        }
             
