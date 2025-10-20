@@ -65,7 +65,13 @@
                         </flux:menu.item>
                     </form>
                 </flux:menu>
-            </flux:dropdown>            
+            </flux:dropdown>   
+            
+            <flux:navlist variant="outline">
+                <flux:navlist.item icon="question-mark-circle" :href="route('faq')" :current="request()->routeIs('faq')" wire:navigate>
+                    {{ __('About Us') }}
+                </flux:navlist.item>   
+            </flux:navlist>              
 
             <flux:spacer />
 

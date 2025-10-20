@@ -18,11 +18,9 @@ Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 Route::view('register2','livewire.auth.register2');
-// Route::get('about-us',function(){
-//     return view('pages.about');
-// });
 
 Route::view('about-us','pages.about')->name('about-us');
+Route::view('faq','pages.faq')->name('faq');
 
 
 Route::middleware(['auth'])->group(function () {
