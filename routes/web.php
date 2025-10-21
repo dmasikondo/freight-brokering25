@@ -21,6 +21,7 @@ Route::view('register2','livewire.auth.register2');
 
 Route::view('about-us','pages.about')->name('about-us');
 Route::view('faq','pages.faq')->name('faq');
+Route::view('consultancy','pages.consultancy')->name('consultancy');
 
 
 Route::middleware(['auth'])->group(function () {
