@@ -23,14 +23,14 @@
                 </flux:navlist.item>   
             </flux:navlist>            
 
-            <flux:navlist.group  variant="outline" icon="home" heading="Services" expandable>
-                <flux:navlist.item :href="route('lanes.index')" :current="request()->routeIs('lanes.index')" wire:navigate>
+            <flux:navlist.group  variant="outline" icon="home" heading="Services"  :current="request()->routeIs('consultancy') || request()->routeIs('lanes.index') || request()->routeIs('freights.index')" expandable>
+                <flux:navlist.item icon="truck" :href="route('lanes.index')" :current="request()->routeIs('lanes.index')" wire:navigate>
                     {{ __('Available Vehicles') }}
                 </flux:navlist.item>
-                <flux:navlist.item  :href="route('freights.index')" :current="request()->routeIs('freights.index')" wire:navigate>
+                <flux:navlist.item icon="cube"  :href="route('freights.index')" :current="request()->routeIs('freights.index')" wire:navigate>
                     {{__('Available Loads') }}
                 </flux:navlist.item>
-                <flux:navlist.item  :href="route('consultancy')" :current="request()->routeIs('consultancy')" wire:navigate>
+                <flux:navlist.item icon="arrow-trending-up"  :href="route('consultancy')" :current="request()->routeIs('consultancy')" wire:navigate>
                     {{__('Consultancy') }}
                 </flux:navlist.item>                
             </flux:navlist.group>
@@ -39,7 +39,9 @@
                 <flux:navlist.item icon="question-mark-circle" :href="route('faq')" :current="request()->routeIs('faq')" wire:navigate>
                     {{ __('F.A.Q') }}
                 </flux:navlist.item>   
-            </flux:navlist>              
+            </flux:navlist>
+            
+            
 
             <flux:spacer />
 
@@ -50,20 +52,28 @@
                     <span class="">My Vehicles</span>
                     </flux:navlist.item>
                 </flux:navlist.group>
-
-
-                <flux:navlist.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                {{ __('Documentation') }}
-                </flux:navlist.item>
             </flux:navlist>
+
+            <flux:navlist.item icon="scale" :href="route('terms')" :current="request()->routeIs('terms')" wire:navigate>
+                {{ __('Terms') }}
+            </flux:navlist.item>
+            <flux:navlist variant="outline">
+                <flux:navlist.item icon="envelope" href="http://webmail.transpartnerlogistics.co.zw/" target="_blank">
+                    {{ __('Webmail') }}
+                </flux:navlist.item>   
+            </flux:navlist>             
+            
 
             <!-- Desktop User Menu -->
             <flux:dropdown class="hidden lg:block" position="bottom" align="start">
+            @auth
                 <flux:profile
                     :name="auth()->user()->contact_person"
                     :initials="auth()->user()->initials()"
                     icon:trailing="chevrons-up-down"
-                />
+                />                
+            @endauth
+
 
                 <flux:menu class="w-[220px]">
                     <flux:menu.radio.group>
@@ -73,14 +83,15 @@
                                     <span
                                         class="flex h-full w-full items-center justify-center rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white"
                                     >
-                                        {{ auth()->user()->initials() }}
+                                      @auth  {{ auth()->user()->initials() }} @endauth
                                     </span>
                                 </span>
-
+                                @auth
                                 <div class="grid flex-1 text-start text-sm leading-tight">
-                                    <span class="truncate font-semibold">{{ auth()->user()->contact_person }}</span>
+                                    <span class="truncate font-semibold">{{ auth()->user()->name }}</span>
                                     <span class="truncate text-xs">{{ auth()->user()->email }}</span>
                                 </div>
+                                @endauth
                             </div>
                         </div>
                     </flux:menu.radio.group>
