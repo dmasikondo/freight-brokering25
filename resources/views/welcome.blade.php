@@ -52,7 +52,7 @@
                             <div class="flex flex-col sm:flex-row gap-4 py-4">
                                 <flux:button variant="primary"
                                     class="group bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 border-0 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                                    href="{{route('consultancy')}}" wire:navigate>
+                                    href="{{ route('consultancy') }}" wire:navigate>
                                     Get Consultancy Today
                                     <flux:icon.arrow-right
                                         class="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -183,14 +183,14 @@
                         @foreach ($features as $feature)
                             <div class="group relative">
                                 <div class="hidden"> <!-- render tailwind classes -->
-                                        <div class=" bg-gradient-to-br from-emerald-500 to-emerald-600"> </div>                                    
-                                        <div class=" bg-gradient-to-br from-amber-500 to-amber-600"> </div>                                    
-                                        <div class=" bg-gradient-to-br from-red-500 to-red-600"> </div>                                    
-                                        <div class=" bg-gradient-to-br from-yellow-500 to-yellow-600"> </div>                                    
-                                        <div class=" bg-gradient-to-br from-cyan-500 to-cyan-600"> </div>                                    
-                                        <div class=" bg-gradient-to-br from-teal-500 to-teal-600"> </div>                                    
+                                    <div class=" bg-gradient-to-br from-emerald-500 to-emerald-600"> </div>
+                                    <div class=" bg-gradient-to-br from-amber-500 to-amber-600"> </div>
+                                    <div class=" bg-gradient-to-br from-red-500 to-red-600"> </div>
+                                    <div class=" bg-gradient-to-br from-yellow-500 to-yellow-600"> </div>
+                                    <div class=" bg-gradient-to-br from-cyan-500 to-cyan-600"> </div>
+                                    <div class=" bg-gradient-to-br from-teal-500 to-teal-600"> </div>
                                 </div>
-                                                                       
+
                                 <div
                                     class="absolute -inset-0.5 bg-gradient-to-r from-{{ $feature['color'] }}-500 to-green-500 rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-1000 group-hover:duration-200">
                                 </div>
