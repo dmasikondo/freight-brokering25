@@ -226,7 +226,7 @@ new class extends Component {
                     <div class="bg-blue-500 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">1</div>
                     <div>
                         <h3 class="text-lg font-bold">Journey Details</h3>
-                        <p class="text-sm text-gray-400">Where is the vehicle available for a journey?</p>
+                        <p class="text-sm text-gray-400">When is the vehicle available for a journey?</p>
                     </div>
                 </div>
                 
@@ -302,13 +302,13 @@ new class extends Component {
                     <!-- Step 1: Journey Details -->
                   <div x-show ="currentStep == 1">
                     <div  class="my-2 space-y-2">
-                        <flux:text class="text-base my-2">Tell us about the journey</flux:text>                     
+                        <flux:text class="text-base my-2">Vehicle Location on Availability Date </flux:text>                     
                         <flux:input type="date" label="Availability Date" wire:model="availability_date"/>
 
                         <flux:fieldset class="border border-gray-400 p-4">
                             <flux:legend>
 
-                               <span class="text-2xl"> &#128667; </span> Vehicle Location on Availability Date 
+                               <span class="text-2xl"> &#128667; </span> Departure Point &nbsp;
                             </flux:legend>
                                 <flux:select label="Country" wire:model="origin_country" placeholder="Select Origin Country">
                                     <flux:select.option></flux:select.option>

@@ -13,7 +13,7 @@
                 isOperationsLA: '{{ $user->hasRole('operations logistics associate') }}',
                 activeTab: 'activity' // Default active tab is 'activity'          
             }" 
-            class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full p-8 transition-all duration-300 animate-fade-in"
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl  w-full p-8 transition-all duration-300 animate-fade-in"
         >
             <div class="flex flex-col md:flex-row gap-8">
                 <!-- User Profile Section -->
@@ -209,7 +209,8 @@
                             @livewire('territory.user-territory', ['createdUser' => $user->slug])
 
                             <livewire:territory.assign-territory :createdUser="$user->slug"/>
-                        </div>                       
+                        </div>  
+                    @include('partials.vehicle_animation')       
                     </div>
                 </div>
             </div>

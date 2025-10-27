@@ -72,10 +72,12 @@ new #[Layout('components.layouts.auth')] class extends Component {
         return Str::transliterate(Str::lower($this->email).'|'.request()->ip());
     }
 }; ?>
-
-<div id="login" class="min-h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white p-4 flex flex-col items-center pb-8">
+<div class="">
+<x-layouts.app :title="__('Transpartner Logistics::login')">
+{{-- <div id="login" class="min-h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white p-4 flex flex-col items-center pb-8"> --}}
+<div id="login" class="min-h-screen  flex flex-col items-center pb-8">
     <div class="w-full max-w-md mt-12">
-        <h1 class="text-5xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text mb-4">
+        <h1 class="text-5xl font-bold text-center bg-gradient-to-r from-blue-400 to-emerald-500 text-transparent bg-clip-text mb-4">
             Welcome Back
         </h1>
         <p class="text-center text-gray-400 text-xl mb-12">
@@ -154,3 +156,6 @@ new #[Layout('components.layouts.auth')] class extends Component {
     </div>
 
 </div>
+</x-layouts.app>    
+</div>
+

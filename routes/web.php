@@ -19,6 +19,10 @@ Route::view('dashboard', 'dashboard')
     ->name('dashboard');
 Route::view('register2','livewire.auth.register2');
 
+Volt::route('freights','freight.index')->name('freights.index');
+Volt::route('lanes','lane.index')->name('lanes.index');
+
+
 Route::view('about-us','pages.about')->name('about-us');
 Route::view('faq','pages.faq')->name('faq');
 Route::view('consultancy','pages.consultancy')->name('consultancy');
@@ -42,12 +46,10 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('territories/{territory}/edit','territory.create')->name('territories.edit');
 
     Volt::route('freights/create','freight.create')->name('freights.create');
-    Volt::route('freights','freight.index')->name('freights.index');
     Volt::route('freights/{freight}/edit','freight.create')->name('freights.edit');
     Volt::route('freights/{freight}/edit','freight.create')->name('freights.edit');
 
     Volt::route('lanes/create','lane.create')->name('lane.create');
-    Volt::route('lanes','lane.index')->name('lanes.index');
     Volt::route('lanes/{lane}/edit','lane.create')->name('lanes.edit');
 
 
