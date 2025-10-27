@@ -42,10 +42,16 @@
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
+        --color-accent: var(--color-lime-400);
+        --color-accent-content: var(--color-lime-400);
+        --color-accent-foreground: var(--color-lime-950);
     }
+}
+
+@theme {
+    --color-accent: var(--color-lime-400);
+    --color-accent-content: var(--color-lime-600);
+    --color-accent-foreground: var(--color-lime-900);
 }
 
 @layer base {
