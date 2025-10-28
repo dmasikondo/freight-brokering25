@@ -209,10 +209,28 @@
                             @livewire('territory.user-territory', ['createdUser' => $user->slug])
 
                             <livewire:territory.assign-territory :createdUser="$user->slug"/>
-                        </div>  
-                    @include('partials.vehicle_animation')       
+                        </div>       
                     </div>
                 </div>
+
+{{-- Example usage with custom classes --}}
+{{-- <x-nav-tab :tabs="[
+    [
+        'name' => 'activity',
+        'label' => 'Activity',
+        'content' => '<div>Content for Activity Tab</div>',
+    ],
+    [
+        'name' => 'contact',
+        'label' => 'Contact Info',
+        'content' => '<div>Content for Contact Info Tab</div>',
+    ],
+    [
+        'name' => 'territory',
+        'label' => 'Territory',
+        'content' => '<div>Content for Territory Tab</div>',
+    ],
+]" class="" />                 --}}
             </div>
         </div>
     </div>

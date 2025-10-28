@@ -8,6 +8,9 @@ enum LaneStatus: string
     case PUBLISHED = 'published';
     case UNPUBLISHED = 'unpublished';
     case DRAFT = 'draft';   
+    case EXPIRED='0';
+    case UNAVAILABLE='1';
+    case CEASED='2';
 
     public function label(): string
     {
@@ -16,6 +19,10 @@ enum LaneStatus: string
             self::PUBLISHED => 'Published',
             self::UNPUBLISHED => 'Unpublished',
             self::DRAFT => 'Draft',
+            self::EXPIRED => '0',
+            self::UNAVAILABLE => '1',
+            self::CEASED => '2',
+
         };
     }
 
@@ -26,6 +33,9 @@ enum LaneStatus: string
             self::PUBLISHED => 'teal',
             self::UNPUBLISHED =>'fuchsia',
             self::DRAFT => 'zinc',
+            self::EXPIRED => 'red',
+            self::CEASED => 'red',
+            self::UNAVAILABLE => 'red',
         };
     }
 }

@@ -22,6 +22,8 @@ enum TrailerType: string
     case SLIDE = 'slide';
     case STEP_DECK = 'step deck';
     case TANKER = 'tanker';
+    // case NOT_STATED = 'not stated';
+    // case NOT_GIVEN = 'not given';
 
     public function label()
     {

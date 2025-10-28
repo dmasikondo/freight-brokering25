@@ -7,7 +7,8 @@ enum FreightStatus: string
     case SUBMITTED = 'submitted';
     case PUBLISHED = 'published';
     case UNPUBLISHED = 'unpublished';
-    case DRAFT = 'draft';   
+    case DRAFT = 'draft';  
+    case EXPIRED ='0'; 
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum FreightStatus: string
             self::PUBLISHED => 'Published',
             self::UNPUBLISHED => 'Unpublished',
             self::DRAFT => 'Draft',
+            self::EXPIRED => '0',
         };
     }
 
@@ -26,6 +28,7 @@ enum FreightStatus: string
             self::PUBLISHED => 'teal',
             self::UNPUBLISHED =>'fuchsia',
             self::DRAFT => 'zinc',
+            self::EXPIRED => 'red',
         };
     }
 }

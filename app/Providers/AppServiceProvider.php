@@ -17,8 +17,16 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void
-    {
-        //
+    // public function boot(): void
+    // {
+    //     //
+    // }
+public function boot()
+{
+    if (app()->environment('local')) {
+        \DB::listen(function ($query) {
+            \Log::info($query->sql, $query->bindings);
+        });
     }
+}    
 }

@@ -119,7 +119,7 @@ new class extends Component {
                         <span class="text-pink-400 mt-0.5">🏢</span>
                         <div>
                             <p class="font-bold">Posted By:</p>
-                            <p class="">{{ $lane->createdBy->contact_person }}</p>
+                            <p class="">{{ $lane->createdBy?->contact_person }}</p>
                         </div>
                     </div>
                 </div>
