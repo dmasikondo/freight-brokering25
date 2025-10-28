@@ -19,9 +19,9 @@ enum LaneStatus: string
             self::PUBLISHED => 'Published',
             self::UNPUBLISHED => 'Unpublished',
             self::DRAFT => 'Draft',
-            self::EXPIRED => '0',
-            self::UNAVAILABLE => '1',
-            self::CEASED => '2',
+            self::EXPIRED => 'Expired',
+            self::UNAVAILABLE => 'Expired',
+            self::CEASED => 'Expired',
 
         };
     }

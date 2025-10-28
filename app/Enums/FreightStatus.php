@@ -17,7 +17,7 @@ enum FreightStatus: string
             self::PUBLISHED => 'Published',
             self::UNPUBLISHED => 'Unpublished',
             self::DRAFT => 'Draft',
-            self::EXPIRED => '0',
+            self::EXPIRED => 'No longer Available',
         };
     }
 
