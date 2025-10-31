@@ -75,13 +75,13 @@ new #[Layout('components.layouts.auth')] class extends Component {
 <div class="">
     <x-layouts.app :title="__('Transpartner Logistics::login')">
         {{-- <div id="login" class="min-h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b] text-white p-4 flex flex-col items-center pb-8"> --}}
-        <div id="login" class="min-h-screen  flex flex-col items-center pb-8">
-            <div class="w-full max-w-md mt-4">
+        <div id="login" class="min-h-screen  flex flexflex-col items-center pb-8">
+            <div class="w-full lg:max-w-md mt-4">
                 <a href="{{ route('home') }}" class="flex flex-col items-center gap-2 font-medium" wire:navigate>
-                    <span class="flex  mb-1 items-center justify-center rounded-md">
+                    <span class="flex md:max-w-lg  mb-1 items-center justify-center rounded-md">
                         <x-app-logo-icon class="size-16 fill-current text-black dark:text-white" />
                     </span>
-                    <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
+                    <span class="sr-only">{{ config('app.name', 'Transpartner Logistics') }}</span>
                 </a>
                 <h1
                     class="text-5xl font-bold text-center bg-gradient-to-r from-blue-400 to-emerald-500 text-transparent bg-clip-text mb-4">
@@ -96,39 +96,40 @@ new #[Layout('components.layouts.auth')] class extends Component {
                         'color' => 'emerald',
                         'title' => 'Login',
                         'icon' => 'key',
+                        'iconContainerClass' => 'w-8 h-8',
                         'description' => 'Please enter your credentials to continue.',
                     ]">
                         <!-- Login Form -->
                         <form method="post" wire:submit="login">
                             <div class="space-y-6 mt-4">
                                 <flux:input :invalid label="Email Address" placeholder="your@email.com"
-                                    wire:model="email" />
+                                    wire:model="email" class="w-full" />
 
 
                                 <flux:input :invalid type='password' label="Password" placeholder="••••••••"
-                                    wire:model="password" viewable />
+                                    wire:model="password" viewable class="w-full" />
 
-                                <div class="my-2 text-right">
-                                    <a href="#" class="text-sm text-blue-400 hover:text-emerald-300">Forgot
-                                        password?</a>
-                                </div>
+
 
 
 
                                 <!-- Remember Me & Submit -->
-                                <div class="flex items-center justify-between">
+                                <div class="">
                                     <div class="flex items-center">
                                         <input type="checkbox" id="remember" wire:model="remember"
                                             class="h-4 w-4 text-blue-500 focus:ring-blue-400 border-gray-600 rounded bg-gray-700" />
                                         <label for="remember" class="ml-2 block text-sm text-gray-300">Remember
                                             me</label>
                                     </div>
-
-                                    <button type="submit"
-                                        class="px-6 py-3 bg-blue-600 hover:bg-emerald-500 rounded-xl transition duration-300">
-                                        Sign In
-                                    </button>
+                                    <div class="my-2 text-right">
+                                        <flux:button type="submit" variant="primary">Sign In</flux:button>
+                                    </div>
+                                    
                                 </div>
+                                <div class="my-6 text-right">
+                                    <a href="#" class="text-sm text-blue-400 hover:text-emerald-300">Forgot
+                                        password?</a>
+                                </div>                                
                             </div>
                         </form>
 
