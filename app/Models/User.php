@@ -201,6 +201,12 @@ class User extends Authenticatable
     public function lanes()
     {
         return $this->hasMany(Lane::class, 'creator_id');
+    }  
+    
+    // A company has many directors (through contacts)
+    public function directors()
+    {
+        return $this->morphMany(Contact::class, 'contactable')->where('type', 'director');
     }    
     
     // This accessor generates the identification number based on your new format

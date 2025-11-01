@@ -15,6 +15,10 @@ class Contact extends Model
         'phone_number',
         'whatsapp',
         'email',
+        'address',
+        'city',
+        'country',
+        'type',     
     ];
 
     public function contactable()
