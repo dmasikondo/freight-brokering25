@@ -20,10 +20,13 @@
     </div> --}}
     <div class="p-6 space-y-6">
     <!-- Header Section -->
+        @php
+        $user = auth()->user();
+        @endphp
+    <livewire:carrier.profile-completion-check :user="$user" />
     <div class="flex justify-between items-center">
         <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Carrier Onboarding</h1>
-            <p class="text-gray-600 dark:text-gray-400">Complete your profile to start accepting loads</p>
         </div>
         <div class="flex gap-3">
             <button class="px-4 py-2 bg-lime-500 text-white rounded-lg hover:bg-lime-600 transition-colors flex items-center gap-2">
