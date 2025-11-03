@@ -207,7 +207,12 @@ class User extends Authenticatable
     public function directors()
     {
         return $this->morphMany(Contact::class, 'contactable')->where('type', 'director');
-    }    
+    }  
+    
+	 public function fleets()
+	 {
+		 return $this->hasMany(Fleet::class);
+	 }    
     
     // This accessor generates the identification number based on your new format
     protected function identificationNumber(): Attribute
