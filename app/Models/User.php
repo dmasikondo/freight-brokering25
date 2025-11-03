@@ -208,6 +208,12 @@ class User extends Authenticatable
     {
         return $this->morphMany(Contact::class, 'contactable')->where('type', 'director');
     }  
+
+    // A company has many tradereferences (through contacts)
+    public function traderefs()
+    {
+        return $this->morphMany(Contact::class, 'contactable')->where('type', 'traderef');
+    }    
     
 	 public function fleets()
 	 {

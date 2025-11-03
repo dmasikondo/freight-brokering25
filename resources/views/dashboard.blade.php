@@ -112,7 +112,7 @@
 <livewire:carrier.fleet.status-info />
 
         <!-- Trade References Status -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700">
+        {{-- <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center dark:bg-amber-900">
@@ -167,7 +167,8 @@
                 <flux:icon name="plus-circle" class="w-4 h-4 inline mr-2" />
                 Add References
             </button>
-        </div>
+        </div> --}}
+<livewire:carrier.traderef.status-info />        
     </div>
 
     <!-- Upload Truck Loads Section -->
