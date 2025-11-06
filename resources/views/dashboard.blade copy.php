@@ -175,8 +175,133 @@
     </div>
 
     <livewire:carrier.document-upload />
+    <!-- Upload Truck Loads Section -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+        <div class="p-6 border-b border-gray-200 dark:border-slate-700">
+            <div class="flex items-center gap-3">
+                <flux:icon name="cloud-arrow-up" class="w-6 h-6 text-lime-600 dark:text-lime-400" />
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Upload Truck Loads</h3>
+            </div>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">Upload your vehicle requirements to get matched with available loads</p>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- CSV Upload Area -->
+                <div class="space-y-4">
+                    <h4 class="font-medium text-gray-900 dark:text-white">Bulk Upload</h4>
+                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center dark:border-slate-600 hover:border-lime-400 transition-colors cursor-pointer">
+                        <flux:icon name="document-arrow-up" class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Upload CSV File</h4>
+                        <p class="text-gray-600 dark:text-gray-400 mb-4">
+                            Upload a CSV file with your vehicle specifications and load requirements
+                        </p>
+                        <div class="flex gap-3 justify-center">
+                            <button class="px-4 py-2 bg-lime-500 text-white rounded-lg hover:bg-lime-600 transition-colors">
+                                Choose File
+                            </button>
+                            <button class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 dark:border-slate-600 dark:text-gray-300 dark:hover:bg-slate-700">
+                                Download Template
+                            </button>
+                        </div>
+                    </div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                        <flux:icon name="information-circle" class="w-4 h-4 inline mr-1" />
+                        Supported formats: CSV, XLSX (Max 10MB)
+                    </div>
+                </div>
 
-    <livewire:carrier.recent-file-uploads />
+                <!-- Manual Entry Form -->
+                <div class="space-y-4">
+                    <h4 class="font-medium text-gray-900 dark:text-white">Manual Entry</h4>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Vehicle Type
+                                </label>
+                                <select class="w-full border border-gray-300 rounded-lg px-3 py-2 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                                    <option>Dry Van</option>
+                                    <option>Refrigerated</option>
+                                    <option>Flatbed</option>
+                                    <option>Tanker</option>
+                                    <option>Container</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Capacity (tons)
+                                </label>
+                                <input type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2 dark:bg-slate-700 dark:border-slate-600 dark:text-white" placeholder="e.g., 25">
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Available From
+                                </label>
+                                <input type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Service Area
+                                </label>
+                                <select class="w-full border border-gray-300 rounded-lg px-3 py-2 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                                    <option>Local</option>
+                                    <option>Regional</option>
+                                    <option>National</option>
+                                    <option>International</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Special Requirements
+                            </label>
+                            <textarea rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 dark:bg-slate-700 dark:border-slate-600 dark:text-white" placeholder="Any special equipment or requirements..."></textarea>
+                        </div>
+
+                        <button class="w-full bg-lime-500 text-white py-3 rounded-lg hover:bg-lime-600 transition-colors font-medium flex items-center justify-center gap-2">
+                            <flux:icon name="plus-circle" class="w-5 h-5" />
+                            Add Load Requirement
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Uploads -->
+            <div class="mt-8 pt-6 border-t border-gray-200 dark:border-slate-700">
+                <h4 class="font-medium text-gray-900 dark:text-white mb-4">Recent Uploads</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg dark:bg-slate-700">
+                        <flux:icon name="document-text" class="w-8 h-8 text-blue-500" />
+                        <div>
+                            <div class="font-medium text-gray-900 dark:text-white">fleet_vehicles.csv</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">Uploaded 2 hours ago</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg dark:bg-slate-700">
+                        <flux:icon name="document-text" class="w-8 h-8 text-green-500" />
+                        <div>
+                            <div class="font-medium text-gray-900 dark:text-white">load_requirements.csv</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">Uploaded 1 day ago</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg dark:bg-slate-700">
+                        <div class="w-8 h-8">
+                            <x-placeholder-pattern class="w-full h-full text-gray-400" />
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-900 dark:text-white">No recent files</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">Upload your first file</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
     
 </x-layouts.app>

@@ -219,6 +219,14 @@ class User extends Authenticatable
 	 {
 		 return $this->hasMany(Fleet::class);
 	 }    
+
+    
+    public function profileDocuments()
+    {
+        return $this->morphMany(Document::class, 'documentable')->where('document_type', 'company profile');
+    }  
+    
+
     
     // This accessor generates the identification number based on your new format
     protected function identificationNumber(): Attribute
