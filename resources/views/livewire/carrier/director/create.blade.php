@@ -42,7 +42,7 @@ new class extends Component {
             auth()->user()->directors()->create($validatedContacts);
 
             // Close modal
-            $this->dispatch('director-created', 'contactSaved');
+            $this->dispatch('director-created','profile-updated');
             \Flux::modals()->close();  
             
             // Reset form

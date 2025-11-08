@@ -5,8 +5,10 @@ namespace App\Livewire;
 use Livewire\Volt\Component;
 use App\Models\Fleet;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 new class extends Component {
+    public $user;
     public $fleetsCount = 0;
     public $horsesCount = 0;
     public $trailersCount = 0;
@@ -16,16 +18,16 @@ new class extends Component {
     public $iconColor = 'amber';
     public $statusItems = [];
 
-    public function mount()
+    public function mount(User $user = null)
     {
+        $this->user = $user;
         $this->loadFleetData();
         $this->updateStatus();
     }
 
     protected function loadFleetData()
     {
-        $user = Auth::user();
-        $fleets = $user->fleets()->with('trailers')->get();
+        $fleets = $this->user->fleets()->with('trailers')->get();
 
         $this->fleetsCount = $fleets->count();
         $this->horsesCount = $fleets->sum('horses');
@@ -78,10 +80,6 @@ new class extends Component {
             $this->completionText = "0/{$totalItems}";
         } else {
             $completedItems = 3;
-
-            // if ($this->horsesCount > 0) $completedItems++;
-            // if ($this->trailersCount > 0) $completedItems++;
-            // if (!empty($this->trailerTypes)) $completedItems++;
 
             $this->completionText = "{$completedItems}/{$totalItems}";
         }
@@ -152,6 +150,8 @@ new class extends Component {
         $this->loadFleetData();
         $this->updateStatus();
     }
+
+
 };
 
 ?>

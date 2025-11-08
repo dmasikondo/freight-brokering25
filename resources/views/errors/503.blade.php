@@ -1,5 +1,4 @@
 <x-layouts.app  :title="__('Service Unavailable - 503 | Transpartner Logistics')">
-<x-layouts.app >
     <div
         class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
         <div

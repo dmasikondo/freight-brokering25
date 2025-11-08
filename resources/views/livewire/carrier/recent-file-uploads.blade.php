@@ -11,6 +11,8 @@ new class extends Component {
     public $user;
     public $showCompanyProfile = false;
     public $showLoadConfirmation = false;
+    public $showVehicles =false;
+    public $numberOfVehicles;
 
     #[On('profile-updated')]
     public function checkUploadedFilesStatus()
@@ -27,16 +29,39 @@ new class extends Component {
         return $latestDocument ? $latestDocument->created_at->diffForHumans() : null;
     }    
 
+    #[Computed]
+    public function latestProfileDocumentName()
+    {
+        $latestDocument = $this->user->profileDocuments()->latest()->first();
+        return $latestDocument ? $latestDocument->filename : null;
+    } 
+
+    #[Computed]
+    public function uploadedVehiclesCheck()
+    {
+        $uploadedVehicles = $this->user->lanes()->count();
+        if($uploadedVehicles>0){
+            $this->showVehicles = true;
+            $this->numberOfVehicles = $uploadedVehicles;
+            return [
+                $this->showVehicles,
+                $this->numberOfVehicles,
+        ];
+
+        }
+    }
+
     public function mount($user = null)
     {
-        $this->user = auth()->user();
+        $this->user = $user;
         $this->checkUploadedFilesStatus();
+        $this->uploadedVehiclesCheck();
     }    
 }?>
 
 <div>
     <div class="mt-8 pt-6 border-t border-gray-200 dark:border-slate-700">
-        <h4 class="font-medium text-gray-900 dark:text-white mb-4">Recent Uploads</h4>
+        <h4 class="font-medium text-gray-900 dark:text-white mb-4">Recent Activity</h4>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             @if ($showCompanyProfile)
                 <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg dark:bg-slate-700">
@@ -45,8 +70,12 @@ new class extends Component {
                         <div class="font-medium text-gray-900 dark:text-white">Company Profile</div>
                         <div class="text-sm text-gray-600 dark:text-gray-400">Uploaded {{ $this->latestProfileDocumentCreatedTime}}</div>
                     </div>
+                    <a href="{{ asset('storage/documents/'.$this->latestProfileDocumentName)}}" target="_blank">
+                        <flux:icon name="arrow-down-tray" class="size-5 text-right" />
+                    </a>                   
                 </div>
-            @elseif($showLoadConfirmation)
+            @endif
+            @if($showLoadConfirmation)
                 <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg dark:bg-slate-700">
                     <flux:icon name="document-text" class="w-8 h-8 text-green-500" />
                     <div>
@@ -54,7 +83,22 @@ new class extends Component {
                         <div class="text-sm text-gray-600 dark:text-gray-400">Uploaded 1 day ago</div>
                     </div>
                 </div>
-            @else
+            @endif
+            @if($showVehicles)
+                <a href="#" class="hover:border hover:border-accent">
+                    <div class="flex justify-between items-center gap-3 p-3 bg-gray-50 rounded-lg dark:bg-slate-700">
+                        <flux:icon name="truck" class="w-8 h-8 text-indigo-500" />
+                        <div>
+                            <div class="font-medium text-gray-900 dark:text-white">Vehicle Uploads</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">Total: {{$numberOfVehicles }}</div>
+                        </div>
+                        <flux:icon name="arrow-right" class="size-5" />
+                    </div>                 
+                </a>
+                   
+            @endif 
+
+            @if(!$showCompanyProfile)
                 <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg dark:bg-slate-700">
                     <div class="w-8 h-8">
                         <x-placeholder-pattern class="w-full h-full text-gray-400" />

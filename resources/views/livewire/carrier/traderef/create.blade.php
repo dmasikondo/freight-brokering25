@@ -42,7 +42,7 @@ new class extends Component {
             auth()->user()->traderefs()->create($validatedContacts);
 
             // Close modal
-            $this->dispatch('traderef-created', 'contactSaved');
+            $this->dispatch('traderef-created','profile-updated');
             \Flux::modals()->close();
 
             // Reset form

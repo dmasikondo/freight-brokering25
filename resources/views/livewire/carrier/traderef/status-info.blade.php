@@ -112,7 +112,7 @@ new class extends Component {
     @endif    
     <x-card.status-progress
         title="Trade References"
-        icon="users"
+        icon="bookmark"
         :iconColor="$this->getIconColor()"
         :completionPercentage="$this->getCompletionPercentage()"
         :completionText="$this->getCompletionText()"

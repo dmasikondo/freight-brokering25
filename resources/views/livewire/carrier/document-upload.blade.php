@@ -22,12 +22,12 @@ new class extends Component {
 
         // Store the file
         $filename = time() . $this->file->getClientOriginalName() . $this->file->getClientOriginalExtension();
-        $path = $this->file->storeAs(path: 'documents'); // Store in 'documents' directory
+        $path = $this->file->storePubliclyAs('documents',$filename, 'public'); // Store in 'documents' directory
 
         // Create a new Document entry in the database
         $this->user->profileDocuments()->create([
             'filename' => $filename,
-            'disk_path' => $path,
+            'disk_path' => 'documents',
             'document_type' => 'company profile',
             'comment' => null,
         ]);

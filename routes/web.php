@@ -3,20 +3,22 @@
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\Auth\DashboardController;
 
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
 Route::get('/login-as', function() {
+    abort(501, 'Unauthorized access to this resource.');
     $user = App\Models\User::where('email', 'd@taraz')->first();
     auth()->login($user);
     return redirect('/users/create');
 }); 
 
-Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+// Route::view('dashboard', 'dashboard')
+//     ->middleware(['auth', 'verified'])
+//     ->name('dashboard');
 Route::view('register2','livewire.auth.register2');
 
 Volt::route('freights','freight.index')->name('freights.index');
@@ -31,6 +33,8 @@ Route::view('terms','pages.terms')->name('terms');
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
+
+    Route::get('dashboard',[DashboardController::class, 'dashboard'])->name('dashboard');
 
     Volt::route('settings/profile', 'settings.profile')->name('settings.profile');
     Volt::route('settings/password', 'settings.password')->name('settings.password');

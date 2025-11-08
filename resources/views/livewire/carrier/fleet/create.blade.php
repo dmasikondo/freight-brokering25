@@ -94,8 +94,7 @@ new class extends Component {
             $this->loadExistingFleet(); // Reload in case it was created
             
             // Dispatch events
-            $this->dispatch('fleet-created');
-            $this->dispatch('close-modal', name: 'manage-fleet');
+            $this->dispatch('fleet-created','profile-updated');
             
             \Flux::modals()->close();              
             // Show success message

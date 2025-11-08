@@ -5,8 +5,11 @@ namespace App\Livewire;
 use Livewire\Volt\Component;
 use App\Models\Contact;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 new class extends Component {
+
+    public $user;
     public $directorsCount = 0;
     public $requiredDirectors = 2;
     
@@ -59,15 +62,15 @@ new class extends Component {
         return $items;
     }
     
-    public function mount()
+    public function mount(User $user = null)
     {
+        $this->user = $user;
         $this->loadDirectorsCount();
     }
     
     protected function loadDirectorsCount()
-    {
-        $user = Auth::user();
-        $this->directorsCount = $user->directors()->count();
+    {        
+        $this->directorsCount = $this->user->directors()->count();
     }
     
     // Listen for director creation events

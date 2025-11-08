@@ -5,8 +5,8 @@ use App\Models\User;
 use Livewire\Attributes\On;
 
 new class extends Component {
-    public User $user;
-    
+
+    public User $user;    
     public bool $profileComplete = false;
     public string $missingSections = '';
 
@@ -17,7 +17,7 @@ new class extends Component {
         $this->checkProfileCompletion();
     }
 
-    #[On('director-created', 'traderef-created', 'fleet-created')]
+    #[On('profile-updated')]
     public function checkProfileCompletion()
     {
         $missing = [];
