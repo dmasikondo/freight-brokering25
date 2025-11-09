@@ -33,21 +33,28 @@ new class extends Component {
     #[Locked]
     public $userId;
 
+    #[Locked]
+    public $directorId;
+
+    public $user;
+
+    protected $listeners = ['editing-director' =>'mount'];
+
     public function createDirector()
     {
         $validatedContacts = $this->validate();
         $validatedContacts['type'] = 'director';
         $validatedContacts['phone_number'] = $validatedContacts['phone'];
         try {
-            auth()->user()->directors()->create($validatedContacts);
+            $this->user->directors()->updateOrCreate(['contacts.id'=>$this->directorId], $validatedContacts);
 
             // Close modal
-            $this->dispatch('director-created','profile-updated');
-            \Flux::modals()->close();  
-            
+            $this->dispatch('profile-updated');
+            $this->dispatch('show-flashMessage');
+            \Flux::modals()->close();
+
             // Reset form
-            $this->reset();            
-            
+           $this->reset();            
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to create director. Please try again.');
         }
@@ -59,9 +66,20 @@ new class extends Component {
         $this->dispatch('close-modal', name: 'create-director');
     }
 
-    public function mount($userId = null)
+    public function mount(User $user = null, $directorId = null)
     {
-        $this->userId = $userId;
+        $this->user = $user;
+        if ($directorId) {
+            $this->directorId = $directorId;
+            $director = Contact::findOrFail($this->directorId);
+            $this->full_name = $director->full_name;
+            $this->country = $director->country;
+            $this->city = $director->city;
+            $this->address = $director->address;
+            $this->email = $director->email;
+            $this->whatsapp = $director->whatsapp;
+            $this->phone = $director->phone_number;
+        }
     }
 };
 
@@ -78,18 +96,19 @@ new class extends Component {
             </div>
 
             <!-- Full Name -->
-            <flux:input  label="Full Name" placeholder="Enter full name" wire:model="full_name" required />
+            <flux:input label="Full Name" placeholder="Enter full name" wire:model="full_name" required />
             <!-- Address -->
-            <flux:textarea   rows="auto" label="Address" placeholder="Enter complete address" wire:model="address" required/>
+            <flux:textarea rows="auto" label="Address" placeholder="Enter complete address" wire:model="address"
+                required />
 
             <!-- City and Country -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <flux:input   label="City" placeholder="Enter city" wire:model="city" required />
+                    <flux:input label="City" placeholder="Enter city" wire:model="city" required />
                 </div>
 
                 <div>
-                    <flux:input   label="Country" placeholder="Enter country" wire:model="country" required />
+                    <flux:input label="Country" placeholder="Enter country" wire:model="country" required />
                 </div>
             </div>
 
@@ -100,19 +119,19 @@ new class extends Component {
 
                 <div class="space-y-4">
                     <!-- Email -->
-                    <flux:input   label="Email Address" placeholder="email@example.com" type="email"
+                    <flux:input label="Email Address" placeholder="email@example.com" type="email"
                         wire:model="email" />
 
                     <!-- Phone and WhatsApp -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <flux:input   label="Phone Number" placeholder="+1234567890" wire:model="phone" />
-                            <flux:error name="phone"/>
+                            <flux:input label="Phone Number" placeholder="+1234567890" wire:model="phone" />
+                            <flux:error name="phone" />
                         </div>
 
                         <div>
-                            <flux:input   label="WhatsApp Number" placeholder="+1234567890" wire:model="whatsapp" />
-                            <flux:error name="whatsapp"/>
+                            <flux:input label="WhatsApp Number" placeholder="+1234567890" wire:model="whatsapp" />
+                            <flux:error name="whatsapp" />
                         </div>
                     </div>
                 </div>
@@ -127,11 +146,11 @@ new class extends Component {
                 </flux:button>
 
                 <flux:button icon="user-plus" type="submit" variant="primary" wire:loading.attr="disabled">
-                    Add Director
+                    {{$directorId? 'Edit Director': 'Save Director' }}
                 </flux:button>
             </div>
         </form>
     </flux:modal>
 
-  
+
 </div>

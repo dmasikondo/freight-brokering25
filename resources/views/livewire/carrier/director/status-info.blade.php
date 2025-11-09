@@ -11,8 +11,9 @@ new class extends Component {
 
     public $user;
     public $directorsCount = 0;
-    public $requiredDirectors = 5;
-    
+    public $requiredDirectors = 2;
+
+    protected $listeners =['profile-updated' =>'updateDirectorsCount', 'show-flashMessage'=>'flashMessage'];
     // Computed properties for dynamic status
     public function getCompletionPercentage(): int
     {
@@ -72,35 +73,32 @@ new class extends Component {
     {        
         $this->directorsCount = $this->user->directors()->count();
     }
-    
-    // Listen for director creation events
-    protected $listeners = ['director-created' => 'updateDirectorsCount', 'contactSaved'=>'showFlashSuccessMesage'];
+
 
     public function showFlashSuccessMesage()
     {
         session()->flash('message', 'Director created successfully!');
     }
     
+    public function flashMessage()
+    {
+        session()->flash('message', 'Director record successfully saved!');
+    } 
+   
     public function updateDirectorsCount()
     {
         $this->loadDirectorsCount();
     }
+   
 };
 
 ?>
 
 <div>
   <!-- Success Message -->
-    @if (session()->has('message'))
-        <div class="fixed top-4 right-4 z-50">
-            <flux:callout icon="check-circle" color="green" class="shadow-lg animate-fade-in">
-                <flux:callout.heading class="text-green-900 dark:text-green-100">Success!</flux:callout.heading>
-                <flux:callout.text class="text-green-800 dark:text-green-200">
-                    {{ session('message') }}
-                </flux:callout.text>
-            </flux:callout>
-        </div>
-    @endif
+    <div class="block w-full p-2">
+        <x-form.flash-message-success />
+    </div>
 
     <!-- Error Message -->
     @if (session()->has('error'))
@@ -132,7 +130,7 @@ new class extends Component {
                     variant="{{ $directorsCount > 0 ? 'outline' : 'primary' }}"
                 >
                     <flux:icon name="user-plus" class="w-4 h-4 mr-2" />
-                    {{ $directorsCount > 0 ? 'Add Director' : 'Add First Director' }}
+                    {{ $directorsCount > 0 ? 'Add Another Director' : 'Add First Director' }}
                 </flux:button>
             </flux:modal.trigger>
         @else

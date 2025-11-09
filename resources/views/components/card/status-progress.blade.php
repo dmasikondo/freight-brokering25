@@ -143,7 +143,7 @@
         </flux:modal.trigger>
     @else
         <flux:modal.trigger name="{{ $modalName }}">
-            <flux:button
+            <flux:button type="submit"
                 class="w-full mt-4 px-4 py-2 {{ $colors['solidButton'] }} text-white rounded-lg  transition-colors cursor-pointer">
                 <flux:icon name="{{ $buttonIcon }}" class="w-4 h-4 inline mr-2" />
                 {{ $buttonText }}
