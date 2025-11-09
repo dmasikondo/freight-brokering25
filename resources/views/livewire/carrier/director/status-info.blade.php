@@ -11,7 +11,7 @@ new class extends Component {
 
     public $user;
     public $directorsCount = 0;
-    public $requiredDirectors = 2;
+    public $requiredDirectors = 5;
     
     // Computed properties for dynamic status
     public function getCompletionPercentage(): int
@@ -121,6 +121,8 @@ new class extends Component {
         :completionText="$this->getCompletionText()"
         :statusItems="$this->getStatusItems()"
         showButton="false"
+        buttonText="View Directors"
+        modalName="show-directors"
     >
         <!-- Add Director Button and Modal Trigger -->
         @if($directorsCount < $requiredDirectors)
@@ -145,6 +147,8 @@ new class extends Component {
         @endif
     </x-card.status-progress>
 
-    <!-- Include the director creation modal -->
-    <livewire:carrier.director.create />
+    <!-- Include the director creation and list modals -->
+    <livewire:carrier.director.create :user="$user" />
+    <livewire:carrier.director.index :user="$user" />
+
 </div>

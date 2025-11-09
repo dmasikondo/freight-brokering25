@@ -8,6 +8,7 @@
     'buttonText' => 'View Details',
     'buttonAction' => 'view',
     'buttonVariant' => 'outline',
+    'modalName' => '',
 ])
 
 @php
@@ -71,7 +72,7 @@
     ];
 
     $colors = $colorClasses[$iconColor] ?? $colorClasses['lime'];
-    
+
     // Button configuration
     $buttonIcons = [
         'view' => 'eye',
@@ -80,11 +81,12 @@
         'complete' => 'check-circle',
         'upload' => 'cloud-arrow-up',
     ];
-    
+
     $buttonIcon = $buttonIcons[$buttonAction] ?? 'eye';
 @endphp
 
-<div {{ $attributes->merge(['class' => 'bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700']) }}>
+<div
+    {{ $attributes->merge(['class' => 'bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700']) }}>
     <!-- Header Section -->
     <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
@@ -97,7 +99,7 @@
             {{ $completionPercentage }}%
         </span>
     </div>
-    
+
     <!-- Progress Bar -->
     <div class="mb-4">
         <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -105,16 +107,17 @@
             <span>{{ $completionText }}</span>
         </div>
         <div class="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-            <div class="h-2 rounded-full {{ $colors['progressBar'] }}" style="width: {{ $completionPercentage }}%"></div>
+            <div class="h-2 rounded-full {{ $colors['progressBar'] }}" style="width: {{ $completionPercentage }}%">
+            </div>
         </div>
     </div>
 
     <!-- Status Items -->
     <div class="space-y-2">
-        @foreach($statusItems as $item)
+        @foreach ($statusItems as $item)
             <div class="flex items-center justify-between text-sm">
                 <span class="text-gray-600 dark:text-gray-400">{{ $item['label'] }}</span>
-                @if($item['status'] === 'completed')
+                @if ($item['status'] === 'completed')
                     <flux:icon name="check-circle" class="w-4 h-4 text-green-500" />
                 @elseif($item['status'] === 'pending')
                     <flux:icon name="clock" class="w-4 h-4 text-amber-500" />
@@ -130,17 +133,23 @@
     </div>
 
     <!-- Action Button -->
-    @if($buttonVariant === 'outline')
-        <button class="w-full mt-4 px-4 py-2 border {{ $colors['buttonBorder'] }} {{ $colors['buttonText'] }} rounded-lg {{ $colors['buttonHover'] }} transition-colors">
-            <flux:icon name="{{ $buttonIcon }}" class="w-4 h-4 inline mr-2" />
-            {{ $buttonText }}
-        </button>
+    @if ($buttonVariant === 'outline')
+        <flux:modal.trigger name="{{ $modalName }}">
+            <flux:button type="submit"
+                class="w-full mt-4 px-4 py-2 border {{ $colors['buttonBorder'] }} {{ $colors['buttonText'] }} rounded-lg {{ $colors['buttonHover'] }} transition-colors cursor-pointer">
+                <flux:icon name="{{ $buttonIcon }}" class="w-4 h-4 inline mr-2" />
+                {{ $buttonText }}
+            </flux:button>
+        </flux:modal.trigger>
     @else
-        <button class="w-full mt-4 px-4 py-2 {{ $colors['solidButton'] }} text-white rounded-lg transition-colors">
-            <flux:icon name="{{ $buttonIcon }}" class="w-4 h-4 inline mr-2" />
-            {{ $buttonText }}
-        </button>
+        <flux:modal.trigger name="{{ $modalName }}">
+            <flux:button
+                class="w-full mt-4 px-4 py-2 {{ $colors['solidButton'] }} text-white rounded-lg  transition-colors cursor-pointer">
+                <flux:icon name="{{ $buttonIcon }}" class="w-4 h-4 inline mr-2" />
+                {{ $buttonText }}
+            </flux:button>
+        </flux:modal.trigger>
     @endif
 
-{{ $slot }}
+    {{ $slot }}
 </div>

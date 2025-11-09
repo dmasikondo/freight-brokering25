@@ -234,7 +234,7 @@ class User extends Authenticatable
         return Attribute::make(
             get: function () {
                 // Ensure all relationships are loaded to prevent errors
-                if (!$this->buslocation || $this->roles->isEmpty()) {
+                if ($this->roles->isEmpty()) {
                     return null;
                 }
                 if(!$this->hasAnyRole(['shipper', 'carrier'])){
