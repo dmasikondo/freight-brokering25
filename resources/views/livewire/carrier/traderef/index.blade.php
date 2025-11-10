@@ -33,8 +33,8 @@ new class extends Component {
         $traderef->delete();
         $this->dispatch('traderef-updated');
         $this->dispatch('show-tradeFlashMessage');
-        
-       // session()->flash('message', 'Traderef record successfully deleted!');
+        $this->dispatch('editing-traderef', $this->user);
+       // $this->redirectRoute('dashboard');
     }
 
     public function editTraderef($traderefId = null)
@@ -55,7 +55,7 @@ new class extends Component {
 <div>
 
 
-    <flux:modal name="show-traderefs" class="max-w-2xl">
+    <flux:modal name="show-traderefs" class="max-w-3xl">
 
         <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
             <flux:icon name="users" class="size-6 inline-block mr-2 text-lime-600 dark:text-lime-400" />

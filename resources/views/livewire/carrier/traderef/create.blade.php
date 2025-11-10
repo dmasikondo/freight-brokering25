@@ -31,7 +31,11 @@ new class extends Component {
     public ?string $phone = null;
 
     #[Locked]
-    public $userId;
+    public $traderefId;
+
+    public $user;
+
+    protected $listeners = ['editing-traderef' =>'mount'];
 
     public function createTraderef()
     {
@@ -39,10 +43,13 @@ new class extends Component {
         $validatedContacts['type'] = 'traderef';
         $validatedContacts['phone_number'] = $validatedContacts['phone'];
         try {
-            auth()->user()->traderefs()->create($validatedContacts);
+            $this->user->traderefs()->updateOrCreate(['contacts.id'=>$this->traderefId], $validatedContacts);
 
             // Close modal
-            $this->dispatch('traderef-created','profile-updated');
+            $this->dispatch('traderef-updated', $this->user);
+            $this->dispatch('show-tradeFlashMessage');
+            $this->dispatch('editing-traderef', $this->user);
+
             \Flux::modals()->close();
 
             // Reset form
@@ -58,9 +65,20 @@ new class extends Component {
         $this->dispatch('close-modal', name: 'create-traderef');
     }
 
-    public function mount($userId = null)
+    public function mount(User $user = null, $traderefId = null)
     {
-        $this->userId = $userId;
+        $this->user = $user;
+        if ($traderefId) {
+            $this->traderefId = $traderefId;
+            $traderef = Contact::findOrFail($this->traderefId);
+            $this->full_name = $traderef->full_name;
+            $this->country = $traderef->country;
+            $this->city = $traderef->city;
+            $this->address = $traderef->address;
+            $this->email = $traderef->email;
+            $this->whatsapp = $traderef->whatsapp;
+            $this->phone = $traderef->phone_number;
+        }
     }
 };
 
