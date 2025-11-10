@@ -98,10 +98,7 @@ new class extends Component {
             $this->loadExistingFleet(); // Reload in case it was created
             
             // Dispatch events
-            $this->dispatch('fleet-updated');
-            $this->dispatch('show-flashFleetMessage');
-            $this->dispatch('reload-status');
-
+            $this->dispatch('fleet-updated','');
             
             \Flux::modals()->close();              
             // Show success message

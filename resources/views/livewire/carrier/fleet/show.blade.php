@@ -2,16 +2,34 @@
 
 use Livewire\Volt\Component;
 use App\Models\User;
+use App\Models\Fleet;
 use Livewire\Attributes\On;
 
 new class extends Component {
     public $user;
     public $fleet;
 
+    #[Locked]
+    public $fleetId;
+
+    protected $listeners = ['fleet-updated'=>'getFleet'];
+
     #[Computed]
     public function getFleet()
     {
         return [($this->fleet = $this->user->fleets()->with('trailers')->get())];
+    }
+
+    public function deleteFleet($fleetId)
+    {
+        $this->fleetId = $fleetId;
+        $fleet = Fleet::findOrFail($this->fleetId);
+        $fleet->delete();
+        $this->dispatch('fleet-updated');
+        $this->dispatch('show-flashFleetMessage');
+        $this->dispatch('reload-status');
+        session()->flash('message', 'Fleet record successfully deleted!');
+       $this->redirectRoute('dashboard');
     }
 
     public function mount(User $user = null)
@@ -26,14 +44,31 @@ new class extends Component {
 
         <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
             <flux:icon name="truck" class="size-6 inline-block mr-2 text-lime-600 dark:text-lime-400" />
-            Showing Fleet
+             {{ $user?->organisation }}: Fleet Info
         </h3>
         <div class="block w-full p-2">
             <x-form.flash-message-success />
         </div>
         @if ($fleet->count() > 0)
             <ul class="mx-2 px-2">
+              
                 @foreach ($fleet as $fleet)
+                        <flux:dropdown position="bottom" align="end" class="float-end">
+                            <flux:button icon:trailing="ellipsis-horizontal" size="xs" />
+
+                            <flux:menu>
+                                <flux:menu.item icon="pencil-square" class="hover:text-cyan-700 hover:bg-cyan-200" wire:click="editFleet('{{ $fleet['id'] }}')">
+                                    Edit                                    
+                                </flux:menu.item>
+                                <flux:menu.separator />
+                                <flux:menu.item variant="danger" icon="trash"
+                                    wire:click="deleteFleet('{{ $fleet['id'] }}')"
+                                    wire:confirm.prompt="Are you sure you want to delete this fleet information?\n\nType DELETE to confirm|DELETE">
+                                    Delete Fleet Info
+
+                                </flux:menu.item>
+                            </flux:menu>
+                        </flux:dropdown>                  
                     <li>
                         <flux:icon name="truck" class="size-12 text-gray-500 dark:text-gray-400 mr-2" />
                         <div class="">
@@ -60,6 +95,14 @@ new class extends Component {
 
             </ul>
         @endforeach
+        @else
+            {{-- Fallback if no fleet data is available --}}
+            <flux:callout icon="information-circle">
+                <flux:callout.heading>No Fleet Data Found</flux:callout.heading>
+                <flux:callout.text>
+                   The fleet information is currently unavailable or has not been provided.
+                </flux:callout.text>
+            </flux:callout>        
         @endif
     </flux:modal>
 </div>

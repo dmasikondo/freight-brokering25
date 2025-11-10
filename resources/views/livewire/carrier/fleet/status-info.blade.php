@@ -18,6 +18,8 @@ new class extends Component {
     public $iconColor = 'amber';
     public $statusItems = [];
 
+     protected $listeners =['fleet-updated' =>'updateFleetData', 'show-flashFleetMessage'=>'flashMessage','reload-status'=>'$refresh'];
+
     public function mount(User $user = null)
     {
         $this->user = $user;
@@ -142,14 +144,16 @@ new class extends Component {
         return $items;
     }
 
-    // Listen for fleet creation/update events
-    protected $listeners = ['fleet-created' => 'updateFleetData', 'fleet-updated' => 'updateFleetData'];
-
     public function updateFleetData()
     {
         $this->loadFleetData();
         $this->updateStatus();
     }
+
+    public function flashMessage()
+    {
+        session()->flash('message', 'Director record successfully saved!');
+    }     
 
 
 };
