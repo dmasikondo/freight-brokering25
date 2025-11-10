@@ -165,9 +165,6 @@ new class extends Component {
                         wire:model="horses"
                         required
                     />
-                    @error('horses')
-                        <flux:text class="text-red-600 text-sm mt-1">{{ $message }}</flux:text>
-                    @enderror
                 </div>
 
                 <!-- Number of Trailers -->
@@ -180,9 +177,6 @@ new class extends Component {
                         wire:model="trailer_qty"
                         required
                     />
-                    @error('trailer_qty')
-                        <flux:text class="text-red-600 text-sm mt-1">{{ $message }}</flux:text>
-                    @enderror
                 </div>
             </div>
 

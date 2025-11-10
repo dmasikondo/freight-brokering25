@@ -78,7 +78,6 @@ new class extends Component {
         @if ($directorCount > 0)
             <div class="grid {{ $gridClasses }} gap-6">
                 @foreach ($directors as $director)
-                    {{-- Use Flux Card for a clean, modern container --}}
                     <div
                         class="shadow-lg hover:shadow-xl transition duration-300 border border-lime-200 dark:border-slate-700 p-2">
                         <flux:dropdown position="bottom" align="end" class="float-end">

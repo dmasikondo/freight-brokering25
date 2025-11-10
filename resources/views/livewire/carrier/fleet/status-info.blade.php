@@ -157,8 +157,17 @@ new class extends Component {
 ?>
 
 <div>
-    <x-card.status-progress title="Fleet Information" icon="truck" :iconColor="$iconColor" :completionPercentage="$completionPercentage" :completionText="$completionText"
-        :statusItems="$statusItems" showButton="false">
+    <x-card.status-progress 
+    title="Fleet Information" 
+    icon="truck" 
+    :iconColor="$iconColor" 
+    :completionPercentage="$completionPercentage" 
+    :completionText="$completionText"    
+    :statusItems="$statusItems" 
+    showButton="false"
+    buttonText="View Fleet"
+    modalName="show-fleet"    
+    >
         <!-- Custom content for trailer type icons -->
         @if (!empty($trailerTypes))
             <div class="mt-3 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg">
@@ -194,5 +203,6 @@ new class extends Component {
     </x-card.status-progress>
 
     <!-- Include the fleet management modal -->
-    <livewire:carrier.fleet.create />
+    <livewire:carrier.fleet.create :user="$user" />
+    <livewire:carrier.fleet.show :user="$user" />
 </div>
