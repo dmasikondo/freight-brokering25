@@ -4,12 +4,16 @@ namespace App\Livewire;
 
 use Livewire\Volt\Component;
 use App\Models\Contact;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 new class extends Component {
+    public $user;
     public $referencesCount = 0;
     public $requiredReferences = 3;
+
     
+    protected $listeners = ['traderef-updated' => 'updateReferencesCount', 'show-tradeFlashMessage'=>'flashMessage'];
     // Computed properties for dynamic status
     public function getCompletionPercentage(): int
     {
@@ -59,19 +63,19 @@ new class extends Component {
         return $items;
     }
     
-    public function mount()
+    public function mount(User $user = null)
     {
+        $this->user = $user;
         $this->loadReferencesCount();
     }
     
     protected function loadReferencesCount()
     {
-        $user = Auth::user();
-        $this->referencesCount = $user->traderefs()->count();
+       
+        $this->referencesCount = $this->user->traderefs()->count();
     }
     
-    // Listen for traderefs creation events
-    protected $listeners = ['traderef-created' => 'updateReferencesCount', 'contactSaved'=>'showFlashSuccessMesage'];
+ 
 
     public function showFlashSuccessMesage()
     {
@@ -82,6 +86,11 @@ new class extends Component {
     {
         $this->loadReferencesCount();
     }
+
+    public function flashMessage()
+    {
+        session()->flash('message', 'trade Reference record successfully updated!');
+    }    
 };
 
 ?>
@@ -118,6 +127,8 @@ new class extends Component {
         :completionText="$this->getCompletionText()"
         :statusItems="$this->getStatusItems()"
         showButton="false"
+        buttonText="View Traderefs"
+        modalName="show-traderefs"        
     >
         <!-- Add TradeRef Button and Modal Trigger -->
         @if($referencesCount < $requiredReferences)
@@ -143,5 +154,6 @@ new class extends Component {
     </x-card.status-progress>
 
     <!-- Include the trade reference creation modal -->
-    <livewire:carrier.traderef.create />
+    <livewire:carrier.traderef.create :user="$user" />
+    <livewire:carrier.traderef.index :user="$user" />
 </div>
