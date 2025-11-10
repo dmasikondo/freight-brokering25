@@ -32,6 +32,13 @@ new class extends Component {
        $this->redirectRoute('dashboard');
     }
 
+    public function editFleet()
+    {
+        $this->dispatch('editing-fleet', $this->user);
+        \Flux::modals()->close();  
+        \Flux::modal('manage-fleet')->show();
+    }     
+
     public function mount(User $user = null)
     {
         $this->user = $user;
@@ -57,7 +64,7 @@ new class extends Component {
                             <flux:button icon:trailing="ellipsis-horizontal" size="xs" />
 
                             <flux:menu>
-                                <flux:menu.item icon="pencil-square" class="hover:text-cyan-700 hover:bg-cyan-200" wire:click="editFleet('{{ $fleet['id'] }}')">
+                                <flux:menu.item icon="pencil-square" class="hover:text-cyan-700 hover:bg-cyan-200" wire:click="editFleet">
                                     Edit                                    
                                 </flux:menu.item>
                                 <flux:menu.separator />

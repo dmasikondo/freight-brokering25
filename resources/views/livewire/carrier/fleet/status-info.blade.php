@@ -152,7 +152,7 @@ new class extends Component {
 
     public function flashMessage()
     {
-        session()->flash('message', 'Director record successfully saved!');
+        session()->flash('message', 'Fleet record successfully saved!');
     }     
 
 

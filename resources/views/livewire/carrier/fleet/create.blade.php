@@ -26,6 +26,8 @@ new class extends Component {
     public $existingFleet = null;
     public $availableTrailerTypes = [];
 
+    protected $listeners = ['editing-fleet' =>'mount'];
+
     public function mount(User $user = null)
     {
         $this->user = $user;
@@ -231,7 +233,7 @@ new class extends Component {
                                     />
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <div class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white ">
                                         {{ $trailerType->label() }}
                                     </div>
                                     <div class="flex items-center mt-1">
