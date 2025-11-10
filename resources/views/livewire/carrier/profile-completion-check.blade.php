@@ -38,6 +38,11 @@ new class extends Component {
         if ($this->user->traderefs()->count() < 3) {
             $missing[] = 'trade references';
         }
+
+        // Check if user has business location
+        if ($this->user->buslocation()->count() ==0) {
+            $missing[] = 'business location';
+        }        
         
         $this->profileComplete = empty($missing);
         $this->missingSections = implode(', ', $missing);
