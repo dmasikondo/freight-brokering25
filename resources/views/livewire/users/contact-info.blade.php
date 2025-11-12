@@ -38,7 +38,7 @@ new class extends Component {
             <div>
                 <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
                     {{ $user->organisation }}
-                    <span class=" font-extralight"> | {{ $user->roles->first()->name }}: {{$user->identificationNumber}}</span>
+                    <span class=" font-extralight"> | {{ $user->roles?->first()?->name }}: {{$user->identificationNumber}}</span>
                 </h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400 flex items-center mt-1">
                     <flux:icon name="user-circle" class="size-4 mr-1" />
