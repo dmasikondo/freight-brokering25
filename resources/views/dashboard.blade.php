@@ -9,4 +9,5 @@
     @if($user->hasAnyRole(['admin','superadmin']))
         <livewire:admin.dashboard :user="$user" />
     @endif
+        <livewire:markerting.dashboard :user="$user" />
 </x-layouts.app>
