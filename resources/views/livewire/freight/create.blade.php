@@ -553,7 +553,7 @@ new class extends Component {
                                 @foreach($this->trailers as $trailer)
                                     @php
                                         // Convert the name to the hyphenated format for the icon.
-                                        $iconName = strtolower(str_replace(' ', '-', $trailer->name));
+                                        $iconName = strtolower(str_replace(' ', '-', $trailer->name->iconName()));
                                     @endphp
                                     <label for="trailer-{{ $trailer->id}}" class="cursor-pointer">
                                         <div class="flex flex-col items-center justify-center p-4 rounded-lg border-2 border-gray-200 transition-all duration-200 hover:bg-gray-100 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500">
