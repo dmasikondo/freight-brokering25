@@ -5,7 +5,8 @@
     @endif
     @if($user->hasRole('shipper'))
         <livewire:shipper.dashboard :user="$user" />
-    @else
+    @endif
+    @if($user->hasAnyRole(['admin','superadmin']))
         <livewire:admin.dashboard :user="$user" />
     @endif
 </x-layouts.app>
