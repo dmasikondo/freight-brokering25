@@ -22,6 +22,9 @@ new class extends Component {
     public function mount(User $user = null)
     {
         $this->user = $user;
+        if ($this->user) {
+                $this->user->load('roles', 'buslocation');
+            }        
         $this->getBusinessContacts();
     }
 }; ?>
@@ -75,9 +78,7 @@ new class extends Component {
             {{-- ADDRESS DETAILS --}}
 
             <div class="lg:col-span-2 space-y-3">
-                <div class="block w-full p-2">
                     <x-form.flash-message-success />
-                </div>
                 <h4
                     class="text-lg font-semibold text-lime-600 dark:text-lime-400 border-b border-lime-100 dark:border-lime-900/50 pb-1 mb-2">
                     Location</h4>

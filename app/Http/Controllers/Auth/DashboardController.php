@@ -9,7 +9,7 @@ class DashboardController extends Controller
 {
     public function dashboard()
     {
-        $user = auth()->user();
+        $user = auth()->user()->load('roles');
         return view('dashboard',compact('user'));
     }
 }

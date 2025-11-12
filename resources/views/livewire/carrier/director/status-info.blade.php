@@ -112,7 +112,7 @@ new class extends Component {
         </div>
     @endif    
     <x-card.status-progress
-        title="Directors"
+        title="Company Directors"
         icon="users"
         :iconColor="$this->getIconColor()"
         :completionPercentage="$this->getCompletionPercentage()"

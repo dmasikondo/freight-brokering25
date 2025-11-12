@@ -25,23 +25,23 @@ new class extends Component {
         // Check if user has any fleet
        
         if ($this->user->fleets()->count() === 0) {
-            $missing[] = 'fleet';
+            $missing[] = 'Fleet Information';
         }
         
         // Check if user has any directors
         
         if ($this->user->directors()->count() < 2) {
-            $missing[] = 'directors';
+            $missing[] = 'Company Directors';
         }
         
         // Check if user has any trade references
         if ($this->user->traderefs()->count() < 3) {
-            $missing[] = 'trade references';
+            $missing[] = 'Trade References';
         }
 
         // Check if user has business location
         if ($this->user->buslocation()->count() ==0) {
-            $missing[] = 'business location';
+            $missing[] = 'Business Location';
         }        
         
         $this->profileComplete = empty($missing);
