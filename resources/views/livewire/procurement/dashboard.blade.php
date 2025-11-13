@@ -1,433 +1,455 @@
 <?php
 
 use Livewire\Volt\Component;
+use App\Models\User;
 
 new class extends Component {
-    //
-}; ?>
+    public $registeredCarriers;
+    public $incompleteRegistrations;
+    public $payments;
+    public $notifications;
+    public $user;
+    
+    protected function loadRegisteredCarriers()
+    {
+        $user = $this->user;
+        
+        // Get carriers registered by the user or in user's territories
+        $this->registeredCarriers = User::whereHas('roles', function($query) {
+                $query->where('name', 'carrier');
+            })
+            ->where(function($query) use ($user) {
+                // Carriers created by this user
+                $query->whereHas('createdBy', function($q) use ($user) {
+                    $q->where('creator_user_id', $user->id);
+                })
+                // Or carriers in user's territories
+                ->orWhereHas('territories', function($q) use ($user) {
+                    $q->whereIn('territories.id', $user->territories->pluck('id'));
+                });
+            })
+            ->with(['fleets', 'buslocation', 'directors', 'traderefs'])
+            ->get()
+            ->map(function($carrier) {
+                return [
+                    'id' => $carrier->id,
+                    'name' => $carrier->name,
+                    'email' => $carrier->email,
+                    'status' => $carrier->status ?? 'active',
+                    'registration_date' => $carrier->created_at->format('Y-m-d'),
+                    'fleet_count' => $carrier->fleets->count(),
+                    'bus_location_count' => $carrier->buslocation->count(),
+                    'directors_count' => $carrier->directors->count(),
+                    'traderefs_count' => $carrier->traderefs->count(),
+                ];
+            });
+    }
+    
+    protected function loadIncompleteRegistrations()
+    {
+        $user = $this->user;
+        
+        // Get user's territory IDs
+        $userTerritoryIds = $user->territories->pluck('id');
+        
+        // Get incomplete carriers in two parts:
+        // 1. Carriers registered by user OR in user's territories with missing fleet, directors, or traderefs
+        $incompleteCarriersPart1 = User::whereHas('roles', function($query) {
+                $query->where('name', 'carrier');
+            })
+            ->where(function($query) use ($user, $userTerritoryIds) {
+                // Carriers created by this user
+                $query->whereHas('createdBy', function($q) use ($user) {
+                    $q->where('creator_user_id', $user->id);
+                })
+                // Or carriers in user's territories
+                ->orWhereHas('territories', function($q) use ($userTerritoryIds) {
+                    $q->whereIn('territories.id', $userTerritoryIds);
+                });
+            })
+            ->with(['fleets', 'buslocation', 'directors', 'traderefs'])
+            ->get()
+            ->filter(function($carrier) {
+                // Check if any required information is missing (fleet, directors, traderefs)
+                return $carrier->fleets->count() === 0 || 
+                    $carrier->directors->count() === 0 || 
+                    $carrier->traderefs->count() === 0;
+            });
+        
+        // 2. Carriers with missing buslocation (regardless of who registered them or territory)
+        $incompleteCarriersPart2 = User::whereHas('roles', function($query) {
+                $query->where('name', 'carrier');
+            })
+            ->with(['fleets', 'buslocation', 'directors', 'traderefs'])
+            ->get()
+            ->filter(function($carrier) {
+                // Check if buslocation is missing
+                return $carrier->buslocation->count() === 0;
+            });
+        
+        // Combine both results and remove duplicates
+        $allIncompleteCarriers = $incompleteCarriersPart1->merge($incompleteCarriersPart2)->unique('id');
+        
+        // Store the full count for the stats card
+        $this->incompleteRegistrationsCount = $allIncompleteCarriers->count();
+        
+        // But only take 5 for the display list
+        $this->incompleteRegistrations = $allIncompleteCarriers->take(5)->map(function($carrier) {
+            $missingInfo = [];
+            if ($carrier->fleets->count() === 0) $missingInfo[] = 'fleet';
+            if ($carrier->buslocation->count() === 0) $missingInfo[] = 'buslocation';
+            if ($carrier->directors->count() === 0) $missingInfo[] = 'directors';
+            if ($carrier->traderefs->count() === 0) $missingInfo[] = 'traderefs';   
+            return [
+                'id' => $carrier->id,
+                'name' => $carrier->name,
+                'email' => $carrier->email,
+                'missing_info' => $missingInfo,
+                'created_at' => $carrier->created_at->format('Y-m-d'),
+                'is_buslocation_only' => $carrier->buslocation->count() === 0 && 
+                                    $carrier->fleets->count() > 0 && 
+                                    $carrier->directors->count() > 0 && 
+                                    $carrier->traderefs->count() > 0,
+            ];
+        });
+    }
+    
+    protected function loadPayments()
+    {
+        // Dummy payment data only
+        $this->payments = [
+            [
+                'id' => 1,
+                'carrier_name' => 'ABC Transport Ltd',
+                'amount' => 2500.00,
+                'due_date' => '2024-04-15',
+                'status' => 'pending'
+            ],
+            [
+                'id' => 2,
+                'carrier_name' => 'XYZ Logistics',
+                'amount' => 1800.50,
+                'due_date' => '2024-04-10',
+                'status' => 'paid'
+            ],
+            [
+                'id' => 3,
+                'carrier_name' => 'Quick Delivery Services',
+                'amount' => 3200.75,
+                'due_date' => '2024-04-20',
+                'status' => 'overdue'
+            ]
+        ];
+    }
+    
+    protected function loadNotifications()
+    {
+        // Notification headings only as requested
+        $this->notifications = [
+            'New carrier registration pending approval',
+            'Payment received from ABC Transport Ltd',
+            'Incomplete registration requires attention',
+            'Territory assignment updated',
+            'Document verification completed'
+        ];
+    }
+    
+    public function getRegisteredCarriersCountProperty()
+    {
+        return $this->registeredCarriers->count();
+    }
+    
+    public function getIncompleteRegistrationsCountProperty()
+    {
+        return $this->incompleteRegistrations->count();
+    }
+    
+    public function getPendingPaymentsCountProperty()
+    {
+        return collect($this->payments)->where('status', 'pending')->count();
+    }
+    
+    public function getOverduePaymentsCountProperty()
+    {
+        return collect($this->payments)->where('status', 'overdue')->count();
+    }
+    
+    // Additional helper to show carriers that only need buslocation
+    public function getBuslocationOnlyCountProperty()
+    {
+        return $this->incompleteRegistrations->where('is_buslocation_only', true)->count();
+    }
 
-<div>
-<?php
+    public function mount(User $user = null)
+    {
+        $this->user = $user?->load('roles');
+        $this->loadRegisteredCarriers();
+        $this->loadIncompleteRegistrations();
+        $this->loadPayments();
+        $this->loadNotifications();
+    }    
+};?>
 
-use Livewire\Volt\Component;
-
-new class extends Component {
-    //
-}; ?>
-
-<div>
-<div class="p-6 space-y-6">
-    <!-- Header Section -->
-    <div class="flex justify-between items-center">
+<div class="p-6">
+<div class="flex justify-between items-center">
         <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Procurement Associate Dashboard</h1>
             <p class="text-gray-600 dark:text-gray-400">Manage carriers, vehicle availability, and logistics operations</p>
         </div>
         <div class="flex gap-3">
-            <button class="px-4 py-2 bg-lime-500 text-white rounded-lg hover:bg-lime-600 transition-colors flex items-center gap-2">
-                <flux:icon name="truck" class="w-5 h-5" />
-                Register Carrier
-            </button>
-            <button class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
-                <flux:icon name="cloud-arrow-up" class="w-5 h-5" />
-                Upload Documents
-            </button>
+            <div class="flex gap-3">
+                <flux:button  type="submit" icon="user-plus"  href="{{ route('users.create') }}" wire:navigation
+                     variant='primary' color="emerald"
+                >
+                    Register Carrier
+                </flux:button>
+                <flux:button type="submit" icon="document-plus"  href="{{ route('lane.create') }}" wire:navigation
+                     variant='primary' color="sky"
+                >
+                    Post Truck
+                </flux:button>  
         </div>
-    </div>
-
+    </div> 
+</div>   
     <!-- Stats Overview -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <!-- Total Registered Carriers -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Registered Carriers</h3>
-                <flux:icon name="building-library" class="w-6 h-6 text-blue-500" />
-            </div>
-            <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">18</div>
-            <div class="text-sm text-gray-600 dark:text-gray-400">
-                <span class="text-green-600 font-semibold">+2</span> this week
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Registered Carriers -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-blue-100 rounded-lg">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-sm font-medium text-gray-500">Registered Carriers</h3>
+                    <p class="text-2xl font-semibold text-gray-900">{{ $this->registeredCarriersCount }}</p>
+                </div>
             </div>
         </div>
 
         <!-- Incomplete Registrations -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Incomplete Registration</h3>
-                <flux:icon name="exclamation-circle" class="w-6 h-6 text-amber-500" />
-            </div>
-            <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">5</div>
-            <div class="text-sm text-gray-600 dark:text-gray-400">
-                Need document upload
-            </div>
-        </div>
-
-        <!-- Available Trucks -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Available Trucks</h3>
-                <flux:icon name="truck" class="w-6 h-6 text-green-500" />
-            </div>
-            <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">42</div>
-            <div class="text-sm text-gray-600 dark:text-gray-400">
-                Across <span class="font-semibold">12</span> carriers
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-yellow-100 rounded-lg">
+                    <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-sm font-medium text-gray-500">Incomplete Registrations</h3>
+                    <p class="text-2xl font-semibold text-gray-900">{{ $this->incompleteRegistrationsCount }}</p>
+                </div>
             </div>
         </div>
 
         <!-- Pending Payments -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Pending Payments</h3>
-                <flux:icon name="currency-dollar" class="w-6 h-6 text-purple-500" />
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-orange-100 rounded-lg">
+                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-sm font-medium text-gray-500">Pending Payments</h3>
+                    <p class="text-2xl font-semibold text-gray-900">
+                        {{-- {{ $this->pendingPaymentsCount }} --}} --
+
+                    </p>
+                </div>
             </div>
-            <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">7</div>
-            <div class="text-sm text-gray-600 dark:text-gray-400">
-                <span class="font-semibold">$23,850</span> total
+        </div>
+
+        <!-- Overdue Payments -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-red-100 rounded-lg">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-sm font-medium text-gray-500">Overdue Payments</h3>
+                    <p class="text-2xl font-semibold text-gray-900">
+                        {{-- {{ $this->overduePaymentsCount }} --}} --
+
+                    </p>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Quick Actions Grid -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <button class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-lime-400 transition-colors group">
-            <div class="w-12 h-12 bg-lime-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-lime-200 transition-colors dark:bg-lime-900">
-                <flux:icon name="user-plus" class="w-6 h-6 text-lime-600 dark:text-lime-400" />
-            </div>
-            <div class="text-left">
-                <div class="font-semibold text-gray-900 dark:text-white">Register Carrier</div>
-                <div class="text-sm text-gray-600 dark:text-gray-400">Add new carrier</div>
-            </div>
-        </button>
-
-        <button class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-blue-400 transition-colors group">
-            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-blue-200 transition-colors dark:bg-blue-900">
-                <flux:icon name="clipboard-document-list" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div class="text-left">
-                <div class="font-semibold text-gray-900 dark:text-white">Post Availability</div>
-                <div class="text-sm text-gray-600 dark:text-gray-400">Truck details</div>
-            </div>
-        </button>
-
-        <button class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-green-400 transition-colors group">
-            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-green-200 transition-colors dark:bg-green-900">
-                <flux:icon name="credit-card" class="w-6 h-6 text-green-600 dark:text-green-400" />
-            </div>
-            <div class="text-left">
-                <div class="font-semibold text-gray-900 dark:text-white">Process Payments</div>
-                <div class="text-sm text-gray-600 dark:text-gray-400">Mark invoices paid</div>
-            </div>
-        </button>
-
-        <button class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-purple-400 transition-colors group">
-            <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-purple-200 transition-colors dark:bg-purple-900">
-                <flux:icon name="map-pin" class="w-6 h-6 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div class="text-left">
-                <div class="font-semibold text-gray-900 dark:text-white">Update Tracking</div>
-                <div class="text-sm text-gray-600 dark:text-gray-400">Shipment status</div>
-            </div>
-        </button>
-    </div>
-
-    <!-- Main Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Truck Availability Summary -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-            <div class="p-6 border-b border-gray-200 dark:border-slate-700">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Truck Availability</h3>
-                    <button class="text-blue-600 hover:text-blue-700 text-sm font-medium dark:text-blue-400">
-                        View All
-                    </button>
-                </div>
+        <!-- Registered Carriers List -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Registered Carriers</h3>
             </div>
-            <div class="p-6 space-y-4">
-                <div class="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200 dark:bg-green-900/20 dark:border-green-700/30">
-                    <div class="flex items-center gap-3">
-                        <flux:icon name="truck" class="w-8 h-8 text-green-600 dark:text-green-400" />
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Dry Van Trailers</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Available: 15 trucks</p>
-                        </div>
+            <div class="p-6">
+                @if($registeredCarriers->count() > 0)
+                    <div class="space-y-4">
+                        @foreach($registeredCarriers as $carrier)
+                            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                                <div>
+                                    <h4 class="font-medium text-gray-900">{{ $carrier['name'] }}</h4>
+                                    <p class="text-sm text-gray-500">{{ $carrier['email'] }}</p>
+                                    <div class="flex space-x-4 mt-2 text-xs text-gray-500">
+                                        <span>Fleets: {{ $carrier['fleet_count'] }}</span>
+                                        <span>Locations: {{ $carrier['bus_location_count'] }}</span>
+                                        <span>Directors: {{ $carrier['directors_count'] }}</span>
+                                        <span>Trade Refs: {{ $carrier['traderefs_count'] }}</span>
+                                    </div>
+                                </div>
+                                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                    {{ $carrier['status'] }}
+                                </span>
+                            </div>
+                        @endforeach
                     </div>
-                    <div class="text-right">
-                        <div class="font-semibold text-green-600">Available</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">24-48 ton capacity</div>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200 dark:bg-blue-900/20 dark:border-blue-700/30">
-                    <div class="flex items-center gap-3">
-                        <flux:icon name="truck" class="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Refrigerated</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Available: 8 trucks</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-semibold text-blue-600">Available</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">Temp controlled</div>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between p-4 bg-amber-50 rounded-lg border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700/30">
-                    <div class="flex items-center gap-3">
-                        <flux:icon name="truck" class="w-8 h-8 text-amber-600 dark:text-amber-400" />
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Flatbed Trailers</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Available: 12 trucks</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-semibold text-amber-600">Limited</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">Heavy loads</div>
-                    </div>
-                </div>
+                @else
+                    <p class="text-gray-500 text-center py-4">No registered carriers found.</p>
+                @endif
             </div>
         </div>
 
-        <!-- Recent Carriers -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-            <div class="p-6 border-b border-gray-200 dark:border-slate-700">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Recent Carriers</h3>
-                    <button class="text-blue-600 hover:text-blue-700 text-sm font-medium dark:text-blue-400">
-                        View All
-                    </button>
-                </div>
+        <!-- Incomplete Registrations -->
+        {{-- <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Incomplete Registrations</h3>
             </div>
-            <div class="p-6 space-y-4">
-                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-slate-700">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center dark:bg-blue-900">
-                            <flux:icon name="building-office" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Swift Logistics</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Registered: 2 days ago</p>
-                        </div>
+            <div class="p-6">
+                @if($incompleteRegistrations->count() > 0)
+                    <div class="space-y-4">
+                        @foreach($incompleteRegistrations as $registration)
+                            <div class="p-4 border border-yellow-200 rounded-lg bg-yellow-50">
+                                <h4 class="font-medium text-gray-900">{{ $registration['name'] }}</h4>
+                                <p class="text-sm text-gray-500">{{ $registration['email'] }}</p>
+                                <div class="mt-2">
+                                    <span class="text-xs font-medium text-yellow-800">Missing:</span>
+                                    <div class="flex flex-wrap gap-1 mt-1">
+                                        @foreach($registration['missing_info'] as $missing)
+                                            <span class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                                                {{ $missing }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
-                    <div class="text-right">
-                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full dark:bg-green-900 dark:text-green-200">
-                            Complete
-                        </span>
-                        <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">8 trucks</div>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-slate-700">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center dark:bg-blue-900">
-                            <flux:icon name="building-storefront" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Metro Haulers</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Registered: 1 week ago</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full dark:bg-amber-900 dark:text-amber-200">
-                            Incomplete
-                        </span>
-                        <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">5 trucks</div>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-slate-700">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center dark:bg-blue-900">
-                            <flux:icon name="building-library" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Global Transport</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Registered: 2 weeks ago</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full dark:bg-green-900 dark:text-green-200">
-                            Complete
-                        </span>
-                        <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">12 trucks</div>
-                    </div>
-                </div>
+                @else
+                    <p class="text-gray-500 text-center py-4">All registrations are complete.</p>
+                @endif
             </div>
+        </div> --}}
+<!-- Incomplete Registrations -->
+<div class="bg-white rounded-lg shadow">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex justify-between items-center">
+            <h3 class="text-lg font-medium text-gray-900">Incomplete Registrations</h3>
+            @if($this->buslocationOnlyCount > 0)
+                <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                    {{ $this->buslocationOnlyCount }} need buslocation only
+                </span>
+            @endif
         </div>
     </div>
-
-    <!-- Vehicle Management Section -->
-    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-        <div class="p-6 border-b border-gray-200 dark:border-slate-700">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Vehicle Management</h3>
-            <p class="text-gray-600 dark:text-gray-400 mt-1">Publish or unpublish vehicles for public viewing</p>
-        </div>
-        <div class="p-6">
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead>
-                        <tr class="border-b border-gray-200 dark:border-slate-700">
-                            <th class="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Vehicle</th>
-                            <th class="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Carrier</th>
-                            <th class="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Type</th>
-                            <th class="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Capacity</th>
-                            <th class="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Status</th>
-                            <th class="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
-                        <tr>
-                            <td class="py-4">
-                                <div class="font-medium text-gray-900 dark:text-white">TRK-7842</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">Dry Van</div>
-                            </td>
-                            <td class="py-4 text-gray-900 dark:text-white">Swift Logistics</td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">Trailer</td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">24 tons</td>
-                            <td class="py-4">
-                                <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full dark:bg-green-900 dark:text-green-200">
-                                    Published
-                                </span>
-                            </td>
-                            <td class="py-4">
-                                <button class="text-red-600 hover:text-red-700 text-sm font-medium dark:text-red-400">
-                                    Unpublish
-                                </button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="py-4">
-                                <div class="font-medium text-gray-900 dark:text-white">TRK-7891</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">Refrigerated</div>
-                            </td>
-                            <td class="py-4 text-gray-900 dark:text-white">Metro Haulers</td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">Truck</td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">18 tons</td>
-                            <td class="py-4">
-                                <span class="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full dark:bg-gray-700 dark:text-gray-200">
-                                    Unpublished
-                                </span>
-                            </td>
-                            <td class="py-4">
-                                <button class="text-green-600 hover:text-green-700 text-sm font-medium dark:text-green-400">
-                                    Publish
-                                </button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="py-4">
-                                <div class="font-medium text-gray-900 dark:text-white">TRK-7923</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">Flatbed</div>
-                            </td>
-                            <td class="py-4 text-gray-900 dark:text-white">Global Transport</td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">Trailer</td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">32 tons</td>
-                            <td class="py-4">
-                                <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full dark:bg-green-900 dark:text-green-200">
-                                    Published
-                                </span>
-                            </td>
-                            <td class="py-4">
-                                <button class="text-red-600 hover:text-red-700 text-sm font-medium dark:text-red-400">
-                                    Unpublish
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Notifications Section -->
-    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-        <div class="p-6 border-b border-gray-200 dark:border-slate-700">
-            <div class="flex items-center gap-2">
-                <flux:icon name="bell-alert" class="w-5 h-5 text-lime-600 dark:text-lime-400" />
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
-            </div>
-        </div>
-        <div class="p-6">
+    <div class="p-6">
+        @if($incompleteRegistrations->count() > 0)
             <div class="space-y-4">
-                <div class="flex items-start gap-4 p-4 bg-blue-50 rounded-lg dark:bg-blue-900/20">
-                    <flux:icon name="document-text" class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                    <div class="flex-1">
-                        <div class="font-medium text-gray-900 dark:text-white">New invoice received</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">From Swift Logistics for shipment TRK-7842</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">15 minutes ago</div>
+                @foreach($incompleteRegistrations as $registration)
+                    <div class="p-4 border rounded-lg 
+                        @if($registration['is_buslocation_only']) border-blue-200 bg-blue-50
+                        @else border-yellow-200 bg-yellow-50 @endif">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h4 class="font-medium text-gray-900">{{ $registration['name'] }}</h4>
+                                <p class="text-sm text-gray-500">{{ $registration['email'] }}</p>
+                                <div class="mt-2">
+                                    <span class="text-xs font-medium 
+                                        @if($registration['is_buslocation_only']) text-blue-800
+                                        @else text-yellow-800 @endif">
+                                        Missing Information:
+                                    </span>
+                                    <div class="flex flex-wrap gap-1 mt-1">
+                                        @foreach($registration['missing_info'] as $missing)
+                                            <span class="px-2 py-1 text-xs rounded-full
+                                                @if($missing === 'buslocation' && $registration['is_buslocation_only']) bg-blue-100 text-blue-800 border border-blue-200
+                                                @else bg-yellow-100 text-yellow-800 @endif">
+                                                {{ $missing }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                            @if($registration['is_buslocation_only'])
+                                <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                    Bus Location Only
+                                </span>
+                            @endif
+                        </div>
                     </div>
-                </div>
+                @endforeach
+            </div>
+        @else
+            <p class="text-gray-500 text-center py-4">All registrations are complete.</p>
+        @endif
+    </div>
+</div>        
 
-                <div class="flex items-start gap-4 p-4 bg-green-50 rounded-lg dark:bg-green-900/20">
-                    <flux:icon name="truck" class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
-                    <div class="flex-1">
-                        <div class="font-medium text-gray-900 dark:text-white">Truck availability update</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">Metro Haulers added 3 new refrigerated trucks</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">2 hours ago</div>
-                    </div>
-                </div>
+        <!-- Payments Section -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Recent Payments</h3>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    @foreach($payments as $payment)
+                        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div>
+                                <h4 class="font-medium text-gray-900">
+                                    {{-- {{ $payment['carrier_name'] }} --}}
 
-                <div class="flex items-start gap-4 p-4 bg-red-50 rounded-lg dark:bg-red-900/20">
-                    <flux:icon name="exclamation-triangle" class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
-                    <div class="flex-1">
-                        <div class="font-medium text-gray-900 dark:text-white">Incident report</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">Minor delay reported for TRK-7891 - Weather conditions</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">4 hours ago</div>
-                    </div>
-                </div>
+                                </h4>
+                                <p class="text-sm text-gray-500">
+                                    {{-- ${{ number_format($payment['amount'], 2) }} --}}
 
-                <div class="flex items-start gap-4 p-4 bg-purple-50 rounded-lg dark:bg-purple-900/20">
-                    <flux:icon name="chat-bubble-left-right" class="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5" />
-                    <div class="flex-1">
-                        <div class="font-medium text-gray-900 dark:text-white">Message from carrier</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">Global Transport - Inquiry about load confirmation</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">1 day ago</div>
-                    </div>
+                                </p>
+                                <p class="text-xs text-gray-400">Due: 
+                                    {{-- {{ $payment['due_date'] }} --}}
+
+                                </p>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-medium rounded-full 
+                                @if($payment['status'] === 'paid') bg-green-100 text-green-800
+                                @elseif($payment['status'] === 'pending') bg-orange-100 text-orange-800
+                                @else bg-red-100 text-red-800 @endif">
+                                {{ $payment['status'] }}
+                            </span>
+                        </div>
+                    @endforeach
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Documents Section -->
-    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-        <div class="p-6 border-b border-gray-200 dark:border-slate-700">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Documents</h3>
-        </div>
-        <div class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Upload Documents -->
-                <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center dark:border-slate-600">
-                    <flux:icon name="cloud-arrow-up" class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Upload Documents</h4>
-                    <p class="text-gray-600 dark:text-gray-400 mb-4">
-                        Upload contracts, carrier profiles, invoices, and compliance documents
-                    </p>
-                    <button class="px-4 py-2 bg-lime-500 text-white rounded-lg hover:bg-lime-600 transition-colors">
-                        Upload Files
-                    </button>
-                </div>
-
-                <!-- Download Templates -->
-                <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center dark:border-slate-600">
-                    <flux:icon name="arrow-down-tray" class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Download Templates</h4>
-                    <p class="text-gray-600 dark:text-gray-400 mb-4">
-                        Get standard forms and agreements for carrier management
-                    </p>
-                    <div class="flex gap-2 justify-center flex-wrap">
-                        <button class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm">
-                            Carrier Contracts
-                        </button>
-                        <button class="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm">
-                            Load Confirm
-                        </button>
-                        <button class="px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm">
-                            Guidelines
-                        </button>
-                    </div>
-                </div>
+        <!-- Notifications Section -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Notifications</h3>
             </div>
+            {{-- <div class="p-6">
+                <div class="space-y-3">
+                    @foreach($notifications as $notification)
+                        <div class="flex items-start p-3 border border-gray-200 rounded-lg">
+                            <div class="flex-shrink-0 mt-1">
+                                <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            </div>
+                            <p class="ml-3 text-sm text-gray-700">{{ $notification }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div> --}}
         </div>
     </div>
-</div>
-</div>
-
 </div>
