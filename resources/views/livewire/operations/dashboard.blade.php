@@ -1,3 +1,233 @@
+<?php
+
+use App\Models\User;
+use App\Models\Freight;
+use App\Models\Buslocation;
+use App\Models\Territory;
+use Illuminate\Support\Collection;
+use Livewire\Volt\Component;
+
+new class extends Component {
+    public User $user;    
+    public Collection $territories;
+    public Collection $shippers;
+    public Collection $carriers;
+    public Collection $marketingAssociates;
+    public Collection $procurementAssociates;
+    public Collection $activeShipments;
+    public Collection $recentShippers;
+    public Collection $recentCarriers;
+    public Collection $recentMarketingAssociates;
+    public Collection $recentProcurementAssociates;
+    
+    public int $totalShippers = 0;
+    public int $totalCarriers = 0;
+    public int $totalMarketingAssociates = 0;
+    public int $totalProcurementAssociates = 0;
+    public int $activeShipmentsCount = 0;
+    
+    private function loadTerritories(): void
+    {
+        $this->territories = $this->user->territories()->with(['zimbabweCities', 'countries'])->get();
+    }
+    
+    private function loadShippers(): void
+    {
+        // Get shippers (users with shipper role) in user's territories
+        $shipperUsers = User::whereHas('roles', function ($query) {
+            $query->where('name', 'shipper');
+        })->get();
+        
+        $this->shippers = $shipperUsers->filter(function ($shipper) {
+            return $this->isUserInTerritory($shipper);
+        });
+        
+        $this->totalShippers = $this->shippers->count();
+    }
+    
+    private function loadCarriers(): void
+    {
+        // Get carriers (users with carrier role) in user's territories
+        $carrierUsers = User::whereHas('roles', function ($query) {
+            $query->where('name', 'carrier');
+        })->get();
+        
+        $this->carriers = $carrierUsers->filter(function ($carrier) {
+            return $this->isUserInTerritory($carrier);
+        });
+        
+        $this->totalCarriers = $this->carriers->count();
+    }
+    
+    private function loadMarketingAssociates(): void
+    {
+        // Get marketing logistics associates in user's territories
+        $marketingUsers = User::whereHas('roles', function ($query) {
+            $query->where('name', 'marketing logistics associate');
+        })->get();
+        
+        $this->marketingAssociates = $marketingUsers->filter(function ($marketingUser) {
+            return $this->isUserInTerritory($marketingUser);
+        });
+        
+        $this->totalMarketingAssociates = $this->marketingAssociates->count();
+    }
+    
+    private function loadProcurementAssociates(): void
+    {
+        // Get procurement logistics associates in user's territories
+        $procurementUsers = User::whereHas('roles', function ($query) {
+            $query->where('name', 'procurement logistics associate');
+        })->get();
+        
+        $this->procurementAssociates = $procurementUsers->filter(function ($procurementUser) {
+            return $this->isUserInTerritory($procurementUser);
+        });
+        
+        $this->totalProcurementAssociates = $this->procurementAssociates->count();
+    }
+    
+    private function loadActiveShipments(): void
+    {
+        // Get territories IDs for the current user
+        $territoryIds = $this->territories->pluck('id');
+        
+        // Get users in these territories (including the current user)
+        $territoryUsers = User::whereHas('territories', function ($query) use ($territoryIds) {
+            $query->whereIn('territories.id', $territoryIds);
+        })->pluck('id');
+        
+        // Add current user ID to ensure their shipments are included
+        $territoryUsers->push($this->user->id);
+        
+        $this->activeShipments = Freight::whereIn('creator_id', $territoryUsers)
+            ->where('status', 'published')
+            ->whereIn('shipment_status', ['loading', 'in transit'])
+            ->with(['createdBy'])
+            ->get();
+            
+        $this->activeShipmentsCount = $this->activeShipments->count();
+    }
+    
+    private function loadRecentShippers(): void
+    {
+        $this->recentShippers = $this->shippers
+            ->sortByDesc('created_at')
+            ->take(3);
+    }
+    
+    private function loadRecentCarriers(): void
+    {
+        $this->recentCarriers = $this->carriers
+            ->sortByDesc('created_at')
+            ->take(3);
+    }
+    
+    private function loadRecentMarketingAssociates(): void
+    {
+        $this->recentMarketingAssociates = $this->marketingAssociates
+            ->sortByDesc('created_at')
+            ->take(3);
+    }
+    
+    private function loadRecentProcurementAssociates(): void
+    {
+        $this->recentProcurementAssociates = $this->procurementAssociates
+            ->sortByDesc('created_at')
+            ->take(3);
+    }
+    
+    private function isUserInTerritory(User $targetUser): bool
+    {
+        // Check if user is registered by current user (direct relationship)
+        if ($targetUser->createdBy && $targetUser->createdBy->id === $this->user->id) {
+            return true;
+        }
+        
+        // Get target user's business locations
+        $targetUserLocations = $targetUser->buslocation;
+        
+        if ($targetUserLocations->isEmpty()) {
+            return false;
+        }
+        
+        // Check if any of the target user's locations match any location in current user's territories
+        foreach ($this->territories as $territory) {
+            // Check Zimbabwe cities
+            $territoryCities = $territory->zimbabweCities->pluck('name');
+            $territoryCountries = $territory->countries->pluck('name');
+            
+            foreach ($targetUserLocations as $location) {
+                // Check if location city matches territory cities
+                if ($location->city && $territoryCities->contains($location->city)) {
+                    return true;
+                }
+                
+                // Check if location country matches territory countries
+                if ($location->country && $territoryCountries->contains($location->country)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    public function getTerritoryName(): string
+    {
+        if ($this->territories->isEmpty()) {
+            return 'No Territory Assigned';
+        }
+        
+        return $this->territories->first()->name ?? 'Unnamed Territory';
+    }
+    
+    public function getShipperIncrease(): int
+    {
+        // Calculate shipper increase for current month
+        $currentMonthStart = now()->startOfMonth();
+        return $this->shippers->where('created_at', '>=', $currentMonthStart)->count();
+    }
+    
+    public function getCarrierIncrease(): int
+    {
+        // Calculate carrier increase for current month
+        $currentMonthStart = now()->startOfMonth();
+        return $this->carriers->where('created_at', '>=', $currentMonthStart)->count();
+    }
+    
+    public function getMarketingAssociateIncrease(): int
+    {
+        // Calculate marketing associate increase for current month
+        $currentMonthStart = now()->startOfMonth();
+        return $this->marketingAssociates->where('created_at', '>=', $currentMonthStart)->count();
+    }
+    
+    public function getProcurementAssociateIncrease(): int
+    {
+        // Calculate procurement associate increase for current month
+        $currentMonthStart = now()->startOfMonth();
+        return $this->procurementAssociates->where('created_at', '>=', $currentMonthStart)->count();
+    }
+
+    public function mount(User $user = null): void
+    {
+        $this->user = $user->load('roles');
+        $this->loadTerritories();
+        $this->loadShippers();
+        $this->loadCarriers();
+        $this->loadMarketingAssociates();
+        $this->loadProcurementAssociates();
+        $this->loadActiveShipments();
+        $this->loadRecentShippers();
+        $this->loadRecentCarriers();
+        $this->loadRecentMarketingAssociates();
+        $this->loadRecentProcurementAssociates();
+    }    
+};
+
+?>
+
 <div class="p-6 space-y-6">
     <!-- Header Section -->
     <div class="flex justify-between items-center">
@@ -6,18 +236,20 @@
             <p class="text-gray-600 dark:text-gray-400">Manage carriers and shippers in your sales territory</p>
             <div class="flex items-center gap-2 mt-1">
                 <flux:icon name="map-pin" class="w-4 h-4 text-lime-600 dark:text-lime-400" />
-                <span class="text-sm font-medium text-lime-600 dark:text-lime-400">Territory: East Africa Region</span>
+                <span class="text-sm font-medium text-lime-600 dark:text-lime-400">Territory: {{ $this->getTerritoryName() }}</span>
             </div>
         </div>
         <div class="flex gap-3">
-            <button class="px-4 py-2 bg-lime-500 text-white rounded-lg hover:bg-lime-600 transition-colors flex items-center gap-2">
-                <flux:icon name="user-plus" class="w-5 h-5" />
-                Register Shipper
-            </button>
-            <button class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
-                <flux:icon name="truck" class="w-5 h-5" />
-                Register Carrier
-            </button>
+            <div class="flex gap-3">
+                <flux:button type="submit" icon="user-plus" href="{{ route('users.create') }}" wire:navigation
+                    variant='primary' color="emerald">
+                    Register Shipper
+                </flux:button>
+                <flux:button type="submit" icon="truck" href="{{ route('users.create') }}" wire:navigation
+                    variant='primary' color="sky">
+                    Register Carrier
+                </flux:button>
+            </div>
         </div>
     </div>
 
@@ -29,9 +261,13 @@
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Shippers</h3>
                 <flux:icon name="users" class="w-6 h-6 text-blue-500" />
             </div>
-            <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">32</div>
+            <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{{ $totalShippers }}</div>
             <div class="text-sm text-gray-600 dark:text-gray-400">
-                <span class="text-green-600 font-semibold">+5</span> this month
+                @if($this->getShipperIncrease() > 0)
+                    <span class="text-green-600 font-semibold">+{{ $this->getShipperIncrease() }}</span> this month
+                @else
+                    <span class="text-gray-600">No new shippers</span> this month
+                @endif
             </div>
         </div>
 
@@ -41,33 +277,45 @@
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Carriers</h3>
                 <flux:icon name="building-library" class="w-6 h-6 text-green-500" />
             </div>
-            <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">24</div>
+            <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{{ $totalCarriers }}</div>
             <div class="text-sm text-gray-600 dark:text-gray-400">
-                <span class="text-green-600 font-semibold">+3</span> this month
+                @if($this->getCarrierIncrease() > 0)
+                    <span class="text-green-600 font-semibold">+{{ $this->getCarrierIncrease() }}</span> this month
+                @else
+                    <span class="text-gray-600">No new carriers</span> this month
+                @endif
             </div>
         </div>
 
-        <!-- Active Shipments -->
+        <!-- Marketing Associates -->
         <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Active Shipments</h3>
-                <flux:icon name="truck" class="w-6 h-6 text-amber-500" />
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Marketing Associates</h3>
+                <flux:icon name="megaphone" class="w-6 h-6 text-purple-500" />
             </div>
-            <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">18</div>
+            <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{{ $totalMarketingAssociates }}</div>
             <div class="text-sm text-gray-600 dark:text-gray-400">
-                In your territory
+                @if($this->getMarketingAssociateIncrease() > 0)
+                    <span class="text-green-600 font-semibold">+{{ $this->getMarketingAssociateIncrease() }}</span> this month
+                @else
+                    <span class="text-gray-600">No new associates</span> this month
+                @endif
             </div>
         </div>
 
-        <!-- Territory Performance -->
+        <!-- Procurement Associates -->
         <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Performance</h3>
-                <flux:icon name="chart-bar" class="w-6 h-6 text-purple-500" />
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Procurement Associates</h3>
+                <flux:icon name="shopping-cart" class="w-6 h-6 text-orange-500" />
             </div>
-            <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">94%</div>
+            <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{{ $totalProcurementAssociates }}</div>
             <div class="text-sm text-gray-600 dark:text-gray-400">
-                On-time delivery rate
+                @if($this->getProcurementAssociateIncrease() > 0)
+                    <span class="text-green-600 font-semibold">+{{ $this->getProcurementAssociateIncrease() }}</span> this month
+                @else
+                    <span class="text-gray-600">No new associates</span> this month
+                @endif
             </div>
         </div>
     </div>
@@ -75,40 +323,50 @@
     <!-- Quick Actions Grid -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <!-- Shipper Management -->
-        <button class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-blue-400 transition-colors group">
+        <div class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-blue-400 transition-colors group">
+            <a href="{{ route('users.create') }}" wire:navigate>
             <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-blue-200 transition-colors dark:bg-blue-900">
                 <flux:icon name="user-plus" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div class="text-left">
                 <div class="font-semibold text-gray-900 dark:text-white">Register Shipper</div>
                 <div class="text-sm text-gray-600 dark:text-gray-400">Add new client</div>
-            </div>
-        </button>
+            </div>                
+            </a>
+
+        </div>
 
         <!-- Carrier Management -->
         <button class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-green-400 transition-colors group">
+            <a  href="{{ route('users.create') }}" wire:navigate>
             <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-green-200 transition-colors dark:bg-green-900">
                 <flux:icon name="truck" class="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
             <div class="text-left">
                 <div class="font-semibold text-gray-900 dark:text-white">Register Carrier</div>
                 <div class="text-sm text-gray-600 dark:text-gray-400">Add new carrier</div>
-            </div>
+            </div>                
+            </a>
+
         </button>
 
         <!-- Create Shipment -->
         <button class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-lime-400 transition-colors group">
+            <a href="{{ route('freights.create') }}" wire:navigate>
             <div class="w-12 h-12 bg-lime-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-lime-200 transition-colors dark:bg-lime-900">
                 <flux:icon name="document-plus" class="w-6 h-6 text-lime-600 dark:text-lime-400" />
             </div>
             <div class="text-left">
                 <div class="font-semibold text-gray-900 dark:text-white">Create Shipment</div>
                 <div class="text-sm text-gray-600 dark:text-gray-400">New logistics order</div>
-            </div>
+            </div>                
+            </a>
+
         </button>
 
         <!-- Post Availability -->
         <button class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-purple-400 transition-colors group">
+            <a href="{{ route('lane.create') }}" wire:navigate>
             <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-purple-200 transition-colors dark:bg-purple-900">
                 <flux:icon name="clipboard-document-list" class="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
@@ -116,6 +374,7 @@
                 <div class="font-semibold text-gray-900 dark:text-white">Post Availability</div>
                 <div class="text-sm text-gray-600 dark:text-gray-400">Truck details</div>
             </div>
+            </a>
         </button>
     </div>
 
@@ -132,50 +391,30 @@
                 </div>
             </div>
             <div class="p-6 space-y-4">
+                @forelse($recentShippers as $shipper)
                 <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-slate-700">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center dark:bg-blue-900">
                             <flux:icon name="building-office" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Kenya Exporters Ltd</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Nairobi, Kenya • Registered: 2 days ago</p>
+                            <h4 class="font-medium text-gray-900 dark:text-white">{{ $shipper->company_name ?? $shipper->name }}</h4>
+                            @php
+                                $location = $shipper->buslocation->first();
+                                $locationText = $location ? ($location->city ? $location->city . ', ' : '') . ($location->country ?? '') : 'Location not set';
+                            @endphp
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ $locationText }} • Registered: {{ $shipper->created_at->diffForHumans() }}</p>
                         </div>
                     </div>
                     <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full dark:bg-green-900 dark:text-green-200">
                         Active
                     </span>
                 </div>
-
-                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-slate-700">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center dark:bg-blue-900">
-                            <flux:icon name="building-storefront" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Tanzania Traders Co</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Dar es Salaam • Registered: 1 week ago</p>
-                        </div>
-                    </div>
-                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full dark:bg-green-900 dark:text-green-200">
-                        Active
-                    </span>
+                @empty
+                <div class="text-center py-4 text-gray-500 dark:text-gray-400">
+                    No shippers found in your territory
                 </div>
-
-                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-slate-700">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center dark:bg-blue-900">
-                            <flux:icon name="building-library" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Uganda Manufacturers</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Kampala, Uganda • Registered: 2 weeks ago</p>
-                        </div>
-                    </div>
-                    <span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full dark:bg-amber-900 dark:text-amber-200">
-                        Pending
-                    </span>
-                </div>
+                @endforelse
             </div>
         </div>
 
@@ -190,174 +429,134 @@
                 </div>
             </div>
             <div class="p-6 space-y-4">
+                @forelse($recentCarriers as $carrier)
                 <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-slate-700">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center dark:bg-green-900">
                             <flux:icon name="truck" class="w-5 h-5 text-green-600 dark:text-green-400" />
                         </div>
                         <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">East Africa Logistics</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Mombasa, Kenya • Registered: 3 days ago</p>
+                            <h4 class="font-medium text-gray-900 dark:text-white">{{ $carrier->company_name ?? $carrier->name }}</h4>
+                            @php
+                                $location = $carrier->buslocation->first();
+                                $locationText = $location ? ($location->city ? $location->city . ', ' : '') . ($location->country ?? '') : 'Location not set';
+                            @endphp
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ $locationText }} • Registered: {{ $carrier->created_at->diffForHumans() }}</p>
                         </div>
                     </div>
                     <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full dark:bg-green-900 dark:text-green-200">
                         Complete
                     </span>
                 </div>
-
-                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-slate-700">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center dark:bg-green-900">
-                            <flux:icon name="truck" class="w-5 h-5 text-green-600 dark:text-green-400" />
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Tanzania Haulers</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Arusha, Tanzania • Registered: 1 week ago</p>
-                        </div>
-                    </div>
-                    <span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full dark:bg-amber-900 dark:text-amber-200">
-                        Incomplete
-                    </span>
+                @empty
+                <div class="text-center py-4 text-gray-500 dark:text-gray-400">
+                    No carriers found in your territory
                 </div>
-
-                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-slate-700">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center dark:bg-green-900">
-                            <flux:icon name="truck" class="w-5 h-5 text-green-600 dark:text-green-400" />
-                        </div>
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Rwanda Transport</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Kigali, Rwanda • Registered: 2 weeks ago</p>
-                        </div>
-                    </div>
-                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full dark:bg-green-900 dark:text-green-200">
-                        Complete
-                    </span>
-                </div>
+                @endforelse
             </div>
         </div>
     </div>
 
-    <!-- Territory Shipments -->
+    <!-- Team Associates Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Recent Marketing Associates -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+            <div class="p-6 border-b border-gray-200 dark:border-slate-700">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Marketing Associates</h3>
+                    <button class="text-purple-600 hover:text-purple-700 text-sm font-medium dark:text-purple-400">
+                        View All ({{ $totalMarketingAssociates }})
+                    </button>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                @forelse($recentMarketingAssociates as $associate)
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-slate-700">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center dark:bg-purple-900">
+                            <flux:icon name="megaphone" class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-900 dark:text-white">{{ $associate->name }}</h4>
+                            @php
+                                $location = $associate->buslocation->first();
+                                $locationText = $location ? ($location->city ? $location->city . ', ' : '') . ($location->country ?? '') : 'Location not set';
+                            @endphp
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ $locationText }} • Joined: {{ $associate->created_at->diffForHumans() }}</p>
+                        </div>
+                    </div>
+                    <span class="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full dark:bg-purple-900 dark:text-purple-200">
+                        Active
+                    </span>
+                </div>
+                @empty
+                <div class="text-center py-4 text-gray-500 dark:text-gray-400">
+                    No marketing associates found in your territory
+                </div>
+                @endforelse
+            </div>
+        </div>
+
+        <!-- Recent Procurement Associates -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+            <div class="p-6 border-b border-gray-200 dark:border-slate-700">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Procurement Associates</h3>
+                    <button class="text-orange-600 hover:text-orange-700 text-sm font-medium dark:text-orange-400">
+                        View All ({{ $totalProcurementAssociates }})
+                    </button>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                @forelse($recentProcurementAssociates as $associate)
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-slate-700">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center dark:bg-orange-900">
+                            <flux:icon name="shopping-cart" class="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-900 dark:text-white">{{ $associate->name }}</h4>
+                            @php
+                                $location = $associate->buslocation->first();
+                                $locationText = $location ? ($location->city ? $location->city . ', ' : '') . ($location->country ?? '') : 'Location not set';
+                            @endphp
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ $locationText }} • Joined: {{ $associate->created_at->diffForHumans() }}</p>
+                        </div>
+                    </div>
+                    <span class="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full dark:bg-orange-900 dark:text-orange-200">
+                        Active
+                    </span>
+                </div>
+                @empty
+                <div class="text-center py-4 text-gray-500 dark:text-gray-400">
+                    No procurement associates found in your territory
+                </div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+
+    <!-- Rest of your existing HTML for Active Shipments, Truck Availability, and Notifications -->
+    <!-- Active Shipments in Territory -->
     <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
         <div class="p-6 border-b border-gray-200 dark:border-slate-700">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Active Shipments in Territory</h3>
-            <p class="text-gray-600 dark:text-gray-400 mt-1">Currently active shipments within East Africa Region</p>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">Currently active shipments within {{ $this->getTerritoryName() }}</p>
         </div>
         <div class="p-6">
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead>
-                        <tr class="border-b border-gray-200 dark:border-slate-700">
-                            <th class="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Shipment ID</th>
-                            <th class="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Route</th>
-                            <th class="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Shipper</th>
-                            <th class="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Carrier</th>
-                            <th class="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Status</th>
-                            <th class="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">ETA</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
-                        <tr>
-                            <td class="py-4 font-medium text-gray-900 dark:text-white">TRK-8923</td>
-                            <td class="py-4">
-                                <div class="text-gray-900 dark:text-white">Nairobi → Kampala</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">Dry Van • 24 tons</div>
-                            </td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">Kenya Exporters Ltd</td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">East Africa Logistics</td>
-                            <td class="py-4">
-                                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full dark:bg-blue-900 dark:text-blue-200">
-                                    In Transit
-                                </span>
-                            </td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">Tomorrow</td>
-                        </tr>
-                        <tr>
-                            <td class="py-4 font-medium text-gray-900 dark:text-white">TRK-8917</td>
-                            <td class="py-4">
-                                <div class="text-gray-900 dark:text-white">Dar es Salaam → Mombasa</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">Refrigerated • 18 tons</div>
-                            </td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">Tanzania Traders Co</td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">Tanzania Haulers</td>
-                            <td class="py-4">
-                                <span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full dark:bg-amber-900 dark:text-amber-200">
-                                    Loading
-                                </span>
-                            </td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">Dec 28</td>
-                        </tr>
-                        <tr>
-                            <td class="py-4 font-medium text-gray-900 dark:text-white">TRK-8904</td>
-                            <td class="py-4">
-                                <div class="text-gray-900 dark:text-white">Kigali → Nairobi</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">Flatbed • 32 tons</div>
-                            </td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">Uganda Manufacturers</td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">Rwanda Transport</td>
-                            <td class="py-4">
-                                <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full dark:bg-green-900 dark:text-green-200">
-                                    Delivered
-                                </span>
-                            </td>
-                            <td class="py-4 text-gray-600 dark:text-gray-400">Today</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <!-- Your existing table structure -->
         </div>
     </div>
 
     <!-- Territory Management -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Truck Availability -->
+        <!-- Truck Availability in Territory -->
         <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
             <div class="p-6 border-b border-gray-200 dark:border-slate-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Truck Availability in Territory</h3>
             </div>
             <div class="p-6 space-y-4">
-                <div class="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200 dark:bg-green-900/20 dark:border-green-700/30">
-                    <div class="flex items-center gap-3">
-                        <flux:icon name="truck" class="w-8 h-8 text-green-600 dark:text-green-400" />
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Dry Van Trailers</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Available: 22 trucks</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-semibold text-green-600">Available</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">Across territory</div>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200 dark:bg-blue-900/20 dark:border-blue-700/30">
-                    <div class="flex items-center gap-3">
-                        <flux:icon name="truck" class="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Refrigerated</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Available: 14 trucks</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-semibold text-blue-600">Available</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">Temp controlled</div>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between p-4 bg-amber-50 rounded-lg border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700/30">
-                    <div class="flex items-center gap-3">
-                        <flux:icon name="truck" class="w-8 h-8 text-amber-600 dark:text-amber-400" />
-                        <div>
-                            <h4 class="font-medium text-gray-900 dark:text-white">Flatbed Trailers</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Available: 8 trucks</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-semibold text-amber-600">Limited</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">High demand</div>
-                    </div>
-                </div>
+                <!-- Your existing truck availability content -->
             </div>
         </div>
 
@@ -370,32 +569,7 @@
                 </div>
             </div>
             <div class="p-6 space-y-4">
-                <div class="flex items-start gap-4 p-4 bg-blue-50 rounded-lg dark:bg-blue-900/20">
-                    <flux:icon name="map-pin" class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                    <div class="flex-1">
-                        <div class="font-medium text-gray-900 dark:text-white">New shipper registered</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">Ethiopia Coffee Exporters in Addis Ababa</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">2 hours ago</div>
-                    </div>
-                </div>
-
-                <div class="flex items-start gap-4 p-4 bg-green-50 rounded-lg dark:bg-green-900/20">
-                    <flux:icon name="truck" class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
-                    <div class="flex-1">
-                        <div class="font-medium text-gray-900 dark:text-white">Carrier capacity increased</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">East Africa Logistics added 5 new trucks</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">1 day ago</div>
-                    </div>
-                </div>
-
-                <div class="flex items-start gap-4 p-4 bg-amber-50 rounded-lg dark:bg-amber-900/20">
-                    <flux:icon name="exclamation-triangle" class="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
-                    <div class="flex-1">
-                        <div class="font-medium text-gray-900 dark:text-white">Border delay alert</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">Increased clearance time at Kenya-Tanzania border</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">2 days ago</div>
-                    </div>
-                </div>
+                <!-- Your existing notifications content -->
             </div>
         </div>
     </div>
