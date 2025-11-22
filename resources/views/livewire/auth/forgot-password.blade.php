@@ -18,7 +18,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
 
         Password::sendResetLink($this->only('email'));
 
-        session()->flash('status', __('A reset link will be sent if the account exists.'));
+        session()->flash('status', __('Check a reset link sent to the inbox / spam of the given  email, if it exists in our database.'));
     }
 }; ?>
 <div class="">
@@ -30,8 +30,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
                         'title' => 'Forgot Password',
                         'icon' => 'shield-exclamation',
                         'description' => 'Enter your email to receive a password reset link.',
-                    ]">            
-            {{-- <x-auth-header :title="__('Forgot password')" :description="__('Enter your email to receive a password reset link')" /> --}}
+                    ]"> 
 
             <!-- Session Status -->
             <x-auth-session-status class="text-center" :status="session('status')" />

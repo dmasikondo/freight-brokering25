@@ -5,7 +5,7 @@
         class="absolute -inset-0.5 bg-gradient-to-r from-{{ $feature['color'] }}-500 to-green-500 rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-1000 group-hover:duration-200">
     </div>
     <div
-        class="relative p-8 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-xl transition-all duration-300 group-hover:border-{{ $feature['color'] }}-300 dark:group-hover:border-{{ $feature['color'] }}-500 h-full flex flex-col">
+        class="relative p-2 md:p-8 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-xl transition-all duration-300 group-hover:border-{{ $feature['color'] }}-300 dark:group-hover:border-{{ $feature['color'] }}-500 h-full flex flex-col">
         @if (isset($feature['link']))
             <a href="{{ $feature['link'] }}" wire:navigate class="space-y-6 block flex-1">
         @else

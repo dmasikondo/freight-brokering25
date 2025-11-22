@@ -194,10 +194,10 @@
             </div>
         </flux:sidebar.nav>
     </flux:sidebar>
-    <flux:main container>
-        <div class="flex flex-col items-start">
+    <flux:main>
+        <div class="">
             <flux:separator class="md:hidden" />
-            <div class="flex-1 max-lg:pt-6 self-stretch">
+            <div class="">
                 {{ $slot }}
             </div>
         </div>

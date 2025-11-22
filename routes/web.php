@@ -20,7 +20,6 @@ Route::get('/login-as', function() {
 // Route::view('dashboard', 'dashboard')
 //     ->middleware(['auth', 'verified'])
 //     ->name('dashboard');
-Route::get('/send-email', [EmailController::class, 'sendLaravelEmail'])->name('mail.send');
 Route::view('register2','livewire.auth.register2');
 
 Volt::route('freights','freight.index')->name('freights.index');

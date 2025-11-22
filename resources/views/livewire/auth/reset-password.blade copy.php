@@ -70,38 +70,35 @@ new #[Layout('components.layouts.auth')] class extends Component {
 <div class="">
     <x-layouts.app :title="__('Reset Password')">
         <div class="min-h-screen flex flex-col items-center">
-            <div class=" flex flex-col gap-2 max-w-md">               
+            <div class=" flex flex-col gap-6  md:max-w-md lg:max-w-lg group relative">
+                    <div
+        class="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-green-500 rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-1000 group-hover:duration-200">
+    </div>
 
-                <x-card.feature-card :feature="[
-                    'color' => 'emerald',
-                    'title' => 'Reset Password',
-                    'icon' => 'lock-open',
-                    'description' => 'Please enter your new password below',
-                ]">
+                <x-auth-header :title="__('Reset password')" :description="__('Please enter your new password below')" />
 
-                    <!-- Session Status -->
-                    <x-auth-session-status class="text-center" :status="session('status')" />
+                <!-- Session Status -->
+                <x-auth-session-status class="text-center" :status="session('status')" />
 
-                    <form wire:submit="resetPassword" class="flex flex-col gap-6">
-                        <!-- Email Address -->
-                        <flux:input wire:model="email" :label="__('Email')" type="email" required
-                            autocomplete="email" />
+                <form wire:submit="resetPassword" class="flex flex-col gap-6">
+                    <!-- Email Address -->
+                    <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
 
-                        <!-- Password -->
-                        <flux:input wire:model="password" :label="__('Password')" type="password" required
-                            autocomplete="new-password" :placeholder="__('Password')" viewable />
+                    <!-- Password -->
+                    <flux:input wire:model="password" :label="__('Password')" type="password" required
+                        autocomplete="new-password" :placeholder="__('Password')" viewable />
 
-                        <!-- Confirm Password -->
-                        <flux:input wire:model="password_confirmation" :label="__('Confirm password')" type="password"
-                            required autocomplete="new-password" :placeholder="__('Confirm password')" viewable />
+                    <!-- Confirm Password -->
+                    <flux:input wire:model="password_confirmation" :label="__('Confirm password')" type="password"
+                        required autocomplete="new-password" :placeholder="__('Confirm password')" viewable />
 
-                        <div class="flex items-center justify-end">
-                            <flux:button type="submit" variant="primary" class="w-full">
-                                {{ __('Reset password') }}
-                            </flux:button>
-                        </div>
-                    </form>
-                </x-card.feature-card>
+                    <div class="flex items-center justify-end">
+                        <flux:button type="submit" variant="primary" class="w-full">
+                            {{ __('Reset password') }}
+                        </flux:button>
+                    </div>
+                </form>
+
             </div>
         </div>
     </x-layouts.app>
