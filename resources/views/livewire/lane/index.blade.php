@@ -33,63 +33,63 @@ new class extends Component {
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Available Lanes</h1>
             <p class="text-gray-600 dark:text-gray-400">Browse and bid on available shipping lanes</p>
         </div>
-        <div class="flex gap-3">
-            <!-- Status Filter Dropdown -->
-            <flux:dropdown>
-                <flux:button icon:trailing="chevron-down" variant="outline" class="border-gray-300 dark:border-slate-600">
-                    Status
-                </flux:button>
-                <flux:menu>
-                    <flux:menu.checkbox keep-open checked>Active</flux:menu.checkbox>
-                    <flux:menu.checkbox keep-open>Urgent</flux:menu.checkbox>
-                    <flux:menu.checkbox keep-open>Expiring Soon</flux:menu.checkbox>
-                    <flux:menu.checkbox keep-open>Heavy Load</flux:menu.checkbox>
-                    <flux:menu.separator />
-                    <flux:menu.item variant="danger">Clear Filters</flux:menu.item>
-                </flux:menu>
-            </flux:dropdown>
+<div class="flex flex-wrap gap-3">
+    <!-- Status Filter Dropdown -->
+    <flux:dropdown class="flex-grow">
+        <flux:button icon:trailing="chevron-down" variant="outline" class="border-gray-300 dark:border-slate-600 w-full">
+            Status
+        </flux:button>
+        <flux:menu>
+            <flux:menu.checkbox keep-open checked>Active</flux:menu.checkbox>
+            <flux:menu.checkbox keep-open>Urgent</flux:menu.checkbox>
+            <flux:menu.checkbox keep-open>Expiring Soon</flux:menu.checkbox>
+            <flux:menu.checkbox keep-open>Heavy Load</flux:menu.checkbox>
+            <flux:menu.separator />
+            <flux:menu.item variant="danger">Clear Filters</flux:menu.item>
+        </flux:menu>
+    </flux:dropdown>
 
-            <!-- Vehicle Type Filter Dropdown -->
-            <flux:dropdown>
-                <flux:button icon:trailing="chevron-down" variant="outline" class="border-gray-300 dark:border-slate-600">
-                    Vehicle Type
-                </flux:button>
-                <flux:menu>
-                    <flux:menu.checkbox keep-open checked>Dry Van</flux:menu.checkbox>
-                    <flux:menu.checkbox keep-open checked>Refrigerated</flux:menu.checkbox>
-                    <flux:menu.checkbox keep-open>Flatbed</flux:menu.checkbox>
-                    <flux:menu.checkbox keep-open>Tanker</flux:menu.checkbox>
-                    <flux:menu.checkbox keep-open>Container</flux:menu.checkbox>
-                    <flux:menu.separator />
-                    <flux:menu.item variant="danger">Clear Filters</flux:menu.item>
-                </flux:menu>
-            </flux:dropdown>
+    <!-- Vehicle Type Filter Dropdown -->
+    <flux:dropdown class="flex-grow">
+        <flux:button icon:trailing="chevron-down" variant="outline" class="border-gray-300 dark:border-slate-600 w-full">
+            Vehicle Type
+        </flux:button>
+        <flux:menu>
+            <flux:menu.checkbox keep-open checked>Dry Van</flux:menu.checkbox>
+            <flux:menu.checkbox keep-open checked>Refrigerated</flux:menu.checkbox>
+            <flux:menu.checkbox keep-open>Flatbed</flux:menu.checkbox>
+            <flux:menu.checkbox keep-open>Tanker</flux:menu.checkbox>
+            <flux:menu.checkbox keep-open>Container</flux:menu.checkbox>
+            <flux:menu.separator />
+            <flux:menu.item variant="danger">Clear Filters</flux:menu.item>
+        </flux:menu>
+    </flux:dropdown>
 
-            <!-- Route Type Filter Dropdown -->
-            <flux:dropdown>
-                <flux:button icon:trailing="chevron-down" variant="outline" class="border-gray-300 dark:border-slate-600">
-                    Route Type
-                </flux:button>
-                <flux:menu>
-                    <flux:menu.checkbox keep-open checked>Regional</flux:menu.checkbox>
-                    <flux:menu.checkbox keep-open>National</flux:menu.checkbox>
-                    <flux:menu.checkbox keep-open>International</flux:menu.checkbox>
-                    <flux:menu.checkbox keep-open>Cross-border</flux:menu.checkbox>
-                    <flux:menu.separator />
-                    <flux:menu.item variant="danger">Clear Filters</flux:menu.item>
-                </flux:menu>
-            </flux:dropdown>
+    <!-- Route Type Filter Dropdown -->
+    <flux:dropdown class="flex-grow">
+        <flux:button icon:trailing="chevron-down" variant="outline" class="border-gray-300 dark:border-slate-600 w-full">
+            Route Type
+        </flux:button>
+        <flux:menu>
+            <flux:menu.checkbox keep-open checked>Regional</flux:menu.checkbox>
+            <flux:menu.checkbox keep-open>National</flux:menu.checkbox>
+            <flux:menu.checkbox keep-open>International</flux:menu.checkbox>
+            <flux:menu.checkbox keep-open>Cross-border</flux:menu.checkbox>
+            <flux:menu.separator />
+            <flux:menu.item variant="danger">Clear Filters</flux:menu.item>
+        </flux:menu>
+    </flux:dropdown>
 
-            <!-- Search Input -->
-            <div class="relative">
-                <flux:icon name="magnifying-glass" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                <input 
-                    type="text" 
-                    placeholder="Search lanes..." 
-                    class="pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:focus:ring-lime-600 dark:focus:border-lime-600 w-64"
-                />
-            </div>
-        </div>
+    <!-- Search Input -->
+    <div class="relative flex-grow w-full">
+        <flux:icon name="magnifying-glass" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+        <input 
+            type="text" 
+            placeholder="Search lanes..." 
+            class="pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:focus:ring-lime-600 dark:focus:border-lime-600 w-full sm:w-64"
+        />
+    </div>
+</div>
     </div>
 
     <!-- Stats Overview -->

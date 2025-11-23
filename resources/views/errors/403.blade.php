@@ -1,4 +1,4 @@
-<x-layouts.app :title="__('Access Denied  - 403 | Transpartner Logistics')" >
+<x-layouts.app :title="__('Access Denied  - 403 | Transpartner Logistics')">
     <div
         class="min-h-screen bg-gradient-to-br from-gray-50 to-rose-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
         <div
@@ -6,8 +6,11 @@
 
             <!-- Animated Branding -->
             <div class="mb-8">
-                <h1 class="text-2xl font-black text-rose-600 tracking-wider dark:text-rose-400">
-                    TRANSPARTNER<span class="text-gray-700 font-light ml-1 dark:text-gray-300">LOGISTICS</span>
+                <h1 class="text-2xl sm:text-3xl md:text-5xl font-black text-lime-600 tracking-wider dark:text-lime-400">
+                    TRANSPARTNER
+                    <span class="text-gray-700 font-light ml-1 dark:text-gray-300">
+                        LOGISTICS
+                    </span>
                 </h1>
             </div>
 

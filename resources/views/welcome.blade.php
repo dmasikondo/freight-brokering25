@@ -26,14 +26,14 @@
 
                 </div>
 
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-                    <div class="grid lg:grid-cols-12 gap-12 items-center">
+                <div class="max-w-7xl mx-auto px-4 sm:px-2 lg:px-8 relative">
+                    <div class="grid lg:grid-cols-12 gap-6 items-center">
                         <!-- Text Content -->
                         <div class="lg:col-span-6">
                             <div class="space-y-6">
                                 <x-card.heading>
                                     <p
-                                        class="text-4xl md:text-6xl font-bold tracking-tight text-zinc-900 dark:text-white">
+                                        class="text-3xl md:text-6xl font-bold tracking-tight text-zinc-900 dark:text-white">
                                         <span
                                             class="block bg-gradient-to-r from-zinc-900 to-emerald-600 dark:from-white dark:to-emerald-400 bg-clip-text text-transparent">We
                                             pledge to</span>
@@ -114,7 +114,7 @@
                             class="text-sm font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 rounded-full mb-4">
                             Our Services
                         </flux:badge>
-                        <h2 class="text-4xl md:text-5xl font-bold text-zinc-900 dark:text-white mb-6">
+                        <h2 class="text-3xl md:text-5xl font-bold text-zinc-900 dark:text-white mb-6">
                             Comprehensive <span
                                 class="bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">Transport
                                 Solutions</span>

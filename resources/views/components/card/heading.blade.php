@@ -1,4 +1,4 @@
-<h1 class="max-w-4xl mx-auto  font-bold tracking-normal font-display text-slate-900 sm:text-4xl md:text-2xl lg:text-5xl">
+<h1 class="max-w-4xl mx-auto  font-bold tracking-normal font-display text-slate-900 sm:text-3xl md:text-2xl lg:text-5xl">
     <span class="relative text-blue-600 whitespace-nowrap">
         <svg aria-hidden="true" viewBox="0 0 418 42" class="absolute top-2/3 left-0 h-[0.58em] w-full" preserveAspectRatio="none">
             <defs>

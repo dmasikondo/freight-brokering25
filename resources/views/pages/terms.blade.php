@@ -1,16 +1,17 @@
 <x-layouts.app>
     <section id="terms-of-use" class="py-16 bg-gray-50 dark:bg-gray-900">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-
-            <div
-                class="text-center mb-12 p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-indigo-100 dark:border-indigo-900">
+        <div class="max-w-6xl mx-auto px-4 sm:px-2 lg:px-8 relative">
+            <header class="text-center mb-8 wow fadeInDown">
                 <x-card.heading>
-                    <p
-                        class="text-4xl font-extrabold text-gray-900 dark:text-white sm:text-5xl flex items-center justify-center">
+                <p class="flex space-x-2 items-center text-2xl md:text-6xl font-extrabold text-gray-900 dark:text-white">
                         <flux:icon.scale class="w-10 h-10 mr-3 text-indigo-600" />
-                        Transpartner Logistics' Terms of Use
+                        Transpartner Logistics' <br/> Terms of Use
                     </p>
                 </x-card.heading>
+            </header>
+            <div
+                class="text-center mb-12 p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-indigo-100 dark:border-indigo-900">
+
 
                 <p class="mt-4 text-lg text-gray-600 dark:text-gray-400 max-w-4xl mx-auto">
                     Welcome! By using the Transpartner Logistics platform (the "Site"), you agree to be bound by these
@@ -108,8 +109,6 @@
                                 <h4 class="font-semibold text-gray-900 dark:text-white mt-4">b. Restrictions</h4>
                                 <p>The Site is not open to:</p>
                                 <ul class="list-disc list-inside ml-4 space-y-2 mt-2">
-                                    <li>Freight brokers.</li>
-                                    <li>Carriers who act as a broker.</li>
                                     <li>Carriers who act as double-brokers, unless the opportunity is referred to a
                                         carrier with a written interline agreement.</li>
                                 </ul>
