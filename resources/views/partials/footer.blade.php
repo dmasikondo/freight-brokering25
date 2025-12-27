@@ -88,7 +88,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" class="text-gray-300 hover:text-emerald-400 transition duration-300 flex items-center group">
+                        <a href="{{ route('dashboard') }}" wire:navigate class="text-gray-300 hover:text-emerald-400 transition duration-300 flex items-center group">
                             <span class="w-2 h-2 bg-emerald-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                             Client Portal
                         </a>

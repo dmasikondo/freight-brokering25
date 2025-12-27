@@ -10,22 +10,22 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-Route::get('/login-as', function() {
-    abort(501, 'Unauthorized access to this resource.');
-    $user = App\Models\User::where('email', 'd@taraz')->first();
-    auth()->login($user);
-    return redirect('/users/create');
-}); 
+// Route::get('/login-as', function() {
+//     abort(501, 'Unauthorized access to this resource.');
+//     $user = App\Models\User::where('email', 'd@taraz')->first();
+//     auth()->login($user);
+//     return redirect('/users/create');
+// }); 
 
 // Route::view('dashboard', 'dashboard')
 //     ->middleware(['auth', 'verified'])
 //     ->name('dashboard');
-Route::view('register2','livewire.auth.register2');
+// Route::view('register2','livewire.auth.register2');
 
 Volt::route('freights','freight.index')->name('freights.index');
 Volt::route('lanes','lane.index')->name('lanes.index');
 
-
+Route::view('register','users.register')->name('register');
 Route::view('about-us','pages.about')->name('about-us');
 Route::view('faq','pages.faq')->name('faq');
 Route::view('consultancy','pages.consultancy')->name('consultancy');
@@ -44,7 +44,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('users/create',[UserController::class, 'create'])->name('users.create');
     Route::get('users',[UserController::class, 'index'])->name('users.index');
     Route::get('users/{user:slug}', [UserController::class, 'show'])->name('users.show');
-    Volt::route('users/{slug}/edit', 'auth.register')->name('users.edit');
+    //Volt::route('users/{slug}/edit', 'auth.register')->name('users.edit');
+    Route::get('users/{user:slug}/edit', [UserController::class, 'edit'])->name('users.edit');
 
     Volt::route('territories/create', 'territory.create')->name('territories.create');
     Volt::route('territories','territory.index')->name('territories.index');

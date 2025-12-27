@@ -60,7 +60,7 @@ class UserIndex extends Component
      */
     public function userEdit($slug)
     {
-        return redirect()->route('users.edit', ['slug' => $slug]);
+        return redirect()->route('users.edit', ['user' => $slug]);
     }
 
 

@@ -132,6 +132,10 @@ class UserRegistrationService
             // Marketing logistics associate can register shippers only
             return $allRoles->only(['shipper']);
         }
+        if ($user->hasRole('operations logistics associate')) {
+            // operations logistics associate can register shippers and carriers only
+            return $allRoles->only(['shipper','carrier']);
+        }        
 
         // Default: If no specific role is matched, the user can't register others.
         return collect([]);

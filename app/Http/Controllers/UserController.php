@@ -23,6 +23,14 @@ class UserController extends Controller
         return view('users.create');
     }
 
+    public function edit(User $user)
+    {
+        $slug = $user->slug;
+        $authenticatedUser = auth()->user();
+        Gate::authorize('create', $authenticatedUser); 
+        return view('users.edit', compact('slug'));
+    }    
+
     public function show(User $user)
     {
         Gate::authorize('view',auth()->user(), $user);

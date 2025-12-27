@@ -86,7 +86,7 @@
                         @if (auth()->user()->slug==$user->slug)
                             <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white">Me</span>
                         @endif
-                        {{-- New: Combined role name and classification on a single line --}}
+                        
                         @foreach($user->roles as $role)
                             @if ($role->name)
                                 <div class="flex items-center gap-1 text-sm text-gray-600">
@@ -105,7 +105,7 @@
                     <div class="text-xs leading-snug text-gray-600 mt-1">
                         {!! $this->highlight($user->email, $this->search) !!}
                     </div>
-                    {{-- New: The following content will now be placed below the email on smaller screens --}}
+                    {{--The following content is placed below the email on smaller screens --}}
                     <div class="flex flex-col ml-0 sm:hidden mt-2">
                         @if ($user->createdBy)
                             <div class="flex items-center text-sm font-bold leading-snug text-gray-900">

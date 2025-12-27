@@ -257,7 +257,7 @@ class User extends Authenticatable
                 $classCode = ($ownershipType === 'real_owner') ? '01' : '02';
 
                 // 4. Get the year and month (YYMM format)
-                $yearMonth = $this->created_at->format('ym');
+                $yearMonth = $this->created_at->format('ymd');
 
                 // 5. Get the user ID, padded to three digits
                 $paddedId = str_pad($this->id, 3, '0', STR_PAD_LEFT);

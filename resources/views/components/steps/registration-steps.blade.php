@@ -15,7 +15,7 @@
         <h3 class="text-lg font-semibold">{{ $title }}</h3>
     </div>
     <p class="text-sm text-gray-300">{{ $description }}</p>
-    <div class="bg-gray-700/50 p-3 rounded-lg text-xs space-y-1">
+    <div class="{{-- bg-gray-700/50 --}} p-3 rounded-lg text-xs space-y-1">
         <p class="text-gray-400">{{ $usageTitle }}</p>
         @foreach ($items as $item)
             <div class="flex items-center gap-1.5 text-gray-300">

@@ -84,7 +84,7 @@ class UserPolicy
         }
 
         // Deny all other users
-        return false;
+        return true;
     }
 
     /**
@@ -92,7 +92,7 @@ class UserPolicy
      */
     public function create(User $authenticatedUser): bool
     {
-        return $authenticatedUser->hasAnyRole(['superadmin', 'admin', 'marketing logistics associate', 'procurement logistics associate', 'procurement executive associate']);
+        return $authenticatedUser->hasAnyRole(['superadmin', 'admin', 'marketing logistics associate', 'procurement logistics associate', 'procurement executive associate','operations logistics associate']);
     }
 
     /**
@@ -111,7 +111,7 @@ class UserPolicy
         }
 
         // Other roles can only update users they created
-        if ($authenticatedUser->hasAnyRole(['marketing logistics associate', 'procurement logistics associate'])) {
+        if ($authenticatedUser->hasAnyRole(['marketing logistics associate', 'procurement logistics associate','operations logistics associate'])) {
             // Use a null-safe check to compare the creator's ID with the authenticated user's ID.
             return optional($userToUpdate->createdBy)->id === $authenticatedUser->id;
         }

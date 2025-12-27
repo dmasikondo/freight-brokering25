@@ -15,5 +15,7 @@
     @if($user->hasRole('procurement logistics associate'))
         <livewire:procurement.dashboard :user="$user" />
     @endif
+    @if($user->hasRole('operations logistics associate'))
         <livewire:operations.dashboard :user="$user" />
+    @endif
 </x-layouts.app>
