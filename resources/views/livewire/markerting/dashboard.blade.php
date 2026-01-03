@@ -1,696 +1,373 @@
 <?php
 
 use Livewire\Volt\Component;
-use App\Models\User;
-use App\Models\Invoice;
-use App\Models\Freight;
-use App\Models\Territory;
-use App\Models\Buslocation;
-use App\Models\UserCreation;
+use App\Models\User; 
+use App\Models\Lane; 
+use App\Models\Territory; 
 use App\Models\ZimbabweCity;
 use App\Models\Country;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Carbon;
 
 new class extends Component {
-    // Stats properties
-    public $registeredShippers = 0;
-    public $shippersThisMonth = 0;
-    public $averageRating = 0;
-    public $totalReviews = 0;
-
-    // Data collections
-    public $recentShippers = [];
-    public $notifications = [];
+    public array $stats = [];
+    public array $recentShippers = [];
+    public array $recentLanes = [];
+    public array $assignedTerritories = [];
 
     public function mount()
     {
-        $this->loadStats();
-        $this->loadRecentShippers();
-        $this->loadNotifications();
+        $this->loadDashboard();
     }
 
-    public function loadStats()
+    public function loadDashboard()
     {
-        $currentUser = Auth::user();
+        /** @var User $user */
+        $user = Auth::user();
         
-        // Get shippers created by current user OR in user's assigned territories
-        $shippersQuery = $this->getShippersQuery();
-        $this->registeredShippers = $shippersQuery->count();
-
-        // Shippers registered this month
-        $this->shippersThisMonth = $shippersQuery
-            ->whereMonth('users.created_at', now()->month)
-            ->whereYear('users.created_at', now()->year)
-            ->count();
-
-        // Mock rating data
-        $this->averageRating = 4.2;
-        $this->totalReviews = 18;
-    }
-
-    public function loadRecentShippers()
-    {
-        $shippersQuery = $this->getShippersQuery();
-        
-        $this->recentShippers = $shippersQuery
-            ->with(['roles' => function($query) {
-                $query->where('name', 'shipper');
-            }])
-            ->latest('users.created_at')
-            ->take(5)
-            ->get()
-            ->map(function($shipper) {
-                return [
-                    'id' => $shipper->id,
-                    'name' => $shipper->organisation ?? $shipper->contact_person,
-                    'registration_date' => $shipper->created_at->diffForHumans(),
-                    'status' => $shipper->status ?? 'active',
-                    'email' => $shipper->email,
-                    'phone' => $shipper->phone,
-                    'source' => $shipper->pivot_source ?? 'direct'
-                ];
-            })->toArray();
-
-        // Fallback mock data if no shippers exist
-        if (empty($this->recentShippers)) {
-            $this->recentShippers = [
-                [
-                    'name' => 'Global Traders Ltd',
-                    'registration_date' => '2 days ago',
-                    'status' => 'active',
-                    'source' => 'direct'
-                ],
-                [
-                    'name' => 'QuickShip Express',
-                    'registration_date' => '1 week ago',
-                    'status' => 'active',
-                    'source' => 'territory'
-                ],
-                [
-                    'name' => 'Metro Freight Co',
-                    'registration_date' => '2 weeks ago',
-                    'status' => 'pending',
-                    'source' => 'direct'
-                ]
-            ];
-        }
-    }
-
-    /**
-     * Get shippers that are either:
-     * 1. Created by the current user, OR
-     * 2. Have buslocations in territories assigned to the current user
-     *    (which can include specific Zimbabwe cities OR entire countries)
-     */
-    private function getShippersQuery()
-    {
-        $currentUser = Auth::user();
-        
-        // Get territories assigned to the current user
-        $userTerritories = $currentUser->territories()->with(['zimbabweCities', 'countries'])->get();
-
-        // Shippers created by current user
-        $createdShippers = User::whereHas('createdBy', function($query) use ($currentUser) {
-            $query->where('creator_user_id', $currentUser->id);
-        })->whereHas('roles', function($q) {
-            $q->where('name', 'shipper');
-        });
-
-        // Shippers with buslocations in user's territories
-        $territoryShippers = User::whereHas('roles', function($q) {
-            $q->where('name', 'shipper');
-        })->whereHas('buslocation', function($query) use ($userTerritories) {
-            $query->where(function($q) use ($userTerritories) {
-                foreach ($userTerritories as $territory) {
-                    // Check for specific Zimbabwe cities in this territory
-                    if ($territory->zimbabweCities->isNotEmpty()) {
-                        $zimbabweCityNames = $territory->zimbabweCities->pluck('name')->toArray();
-                        $q->orWhere(function($subQuery) use ($zimbabweCityNames) {
-                            $subQuery->where('country', 'Zimbabwe')
-                                    ->whereIn('city', $zimbabweCityNames);
-                        });
-                    }
-                    
-                    // Check for entire countries in this territory
-                    if ($territory->countries->isNotEmpty()) {
-                        $countryNames = $territory->countries->pluck('name')->toArray();
-                        $q->orWhereIn('country', $countryNames);
-                    }
-                }
-            });
-        });
-
-        // Combine both queries
-        $shipperIds = $createdShippers->pluck('users.id')
-            ->merge($territoryShippers->pluck('users.id'))
-            ->unique();
-
-        return User::whereIn('users.id', $shipperIds);
-    }
-
-    /**
-     * Alternative method that separates the logic more clearly
-     */
-    private function getShippersQueryAlternative()
-    {
-        $currentUser = Auth::user();
-        
-        // Get territories assigned to the current user
-        $userTerritories = $currentUser->territories()->with(['zimbabweCities', 'countries'])->get();
-
-        // Collect all relevant cities and countries from territories
-        $eligibleCities = collect();
-        $eligibleCountries = collect();
-
-        foreach ($userTerritories as $territory) {
-            // Add Zimbabwe cities from this territory
-            if ($territory->zimbabweCities->isNotEmpty()) {
-                $eligibleCities = $eligibleCities->merge(
-                    $territory->zimbabweCities->pluck('name')
-                );
-            }
+        // 1. Fetch territories with eager loaded relations
+        $territoryCollection = $user->territories()
+            ->with(['countries', 'zimbabweCities', 'provinces.zimbabweCities'])
+            ->get();
             
-            // Add countries from this territory
-            if ($territory->countries->isNotEmpty()) {
-                $eligibleCountries = $eligibleCountries->merge(
-                    $territory->countries->pluck('name')
-                );
-            }
-        }
+        $this->assignedTerritories = $territoryCollection->toArray();
 
-        // Remove duplicates
-        $eligibleCities = $eligibleCities->unique();
-        $eligibleCountries = $eligibleCountries->unique();
+        // 2. Extract boundaries defensively
+        $bounds = $this->getGeographicalBounds($territoryCollection);
 
-        // Shippers created by current user
-        $createdShippers = User::whereHas('createdBy', function($query) use ($currentUser) {
-            $query->where('creator_user_id', $currentUser->id);
-        })->whereHas('roles', function($q) {
-            $q->where('name', 'shipper');
-        });
+        // 3. Define visibility boundary: (Created by me) OR (In my Territories)
+        // Grouping the OR condition inside a where() closure is critical for correct logic
+        $scopedUserIds = User::query()
+            ->where(function (Builder $mainQuery) use ($user, $bounds) {
+                // Condition A: Ownership (Created by current user)
+                $mainQuery->whereHas('createdBy', function ($q) use ($user) {
+                    $q->where('user_creations.creator_user_id', $user->id);
+                });
 
-        // Shippers with buslocations in eligible areas
-        $territoryShippers = User::whereHas('roles', function($q) {
-            $q->where('name', 'shipper');
-        })->whereHas('buslocation', function($query) use ($eligibleCities, $eligibleCountries) {
-            $query->where(function($q) use ($eligibleCities, $eligibleCountries) {
-                // Check for specific Zimbabwe cities
-                if ($eligibleCities->isNotEmpty()) {
-                    $q->orWhere(function($subQuery) use ($eligibleCities) {
-                        $subQuery->where('country', 'Zimbabwe')
-                                ->whereIn('city', $eligibleCities->toArray());
+                // Condition B: Geography (Business Location matches territories)
+                $mainQuery->orWhereHas('buslocation', function ($q) use ($bounds) {
+                    $q->where(function ($sub) use ($bounds) {
+                        $hasCountry = !empty($bounds['countries']);
+                        $hasCity = !empty($bounds['cities']);
+
+                        if ($hasCountry) {
+                            $sub->whereIn('country', $bounds['countries']);
+                        }
+
+                        if ($hasCity) {
+                            $method = $hasCountry ? 'orWhereIn' : 'whereIn';
+                            $sub->$method('city', $bounds['cities']);
+                        }
+
+                        // If no bounds exist, we force a mismatch to ensure only ownership works
+                        if (!$hasCountry && !$hasCity) {
+                            $sub->whereRaw('1 = 0');
+                        }
                     });
-                }
-                
-                // Check for entire countries
-                if ($eligibleCountries->isNotEmpty()) {
-                    $q->orWhereIn('country', $eligibleCountries->toArray());
-                }
-            });
-        });
+                });
+            })
+            ->pluck('id');
 
-        // Combine both queries
-        $shipperIds = $createdShippers->pluck('users.id')
-            ->merge($territoryShippers->pluck('users.id'))
-            ->unique();
+        // 4. Shippers Stats (Scoped by IDs AND Role)
+        $shippersQuery = User::whereIn('id', $scopedUserIds)
+            ->whereHas('roles', fn($q) => $q->where('name', 'shipper'));
 
-        return User::whereIn('users.id', $shipperIds);
+        // 5. Lanes (Shipments) Stats (Scoped by creator ownership of the lane)
+        $lanesQuery = Lane::whereIn('creator_id', $scopedUserIds);
+
+        $this->stats = [
+            'shippers_count' => $shippersQuery->count(),
+            'shippers_this_month' => (clone $shippersQuery)->whereMonth('created_at', now()->month)->count(),
+            'lanes_count' => $lanesQuery->count(),
+            'lanes_active' => (clone $lanesQuery)->where('status', 'published')->count(),
+            'territories_count' => $territoryCollection->count(),
+        ];
+
+        // 6. Recent Shippers
+        $this->recentShippers = $shippersQuery->latest()->take(3)->get()->map(fn($s) => [
+            'organisation' => $s->organisation ?? $s->contact_person ?? 'Unnamed Entity',
+            'email' => $s->email,
+            'slug' => $s->slug,
+            'status' => $s->status ?? 'active',
+            'created_at' => $s->created_at->toIso8601String(),
+        ])->toArray();
+
+        // 7. Recent Lanes (Shipments)
+        $this->recentLanes = $lanesQuery->latest()->take(3)->get()->toArray();
     }
 
-    /**
-     * More optimized version using subqueries
-     */
-    private function getShippersQueryOptimized()
+    private function getGeographicalBounds($territories): array
     {
-        $currentUser = Auth::user();
-        
-        // Get territories assigned to the current user
-        $userTerritories = $currentUser->territories()->with(['zimbabweCities', 'countries'])->get();
+        $collection = collect($territories);
 
-        // Build conditions for buslocations
-        $buslocationConditions = collect();
+        // Extract non-Zimbabwe countries
+        $countries = $collection->flatMap(function ($t) {
+            return $t->countries ?? collect();
+        })->pluck('name')
+          ->unique()
+          ->reject(fn($name) => strtolower($name) === 'zimbabwe')
+          ->values()
+          ->toArray();
 
-        foreach ($userTerritories as $territory) {
-            // Zimbabwe cities condition
-            if ($territory->zimbabweCities->isNotEmpty()) {
-                $zimbabweCityNames = $territory->zimbabweCities->pluck('name')->toArray();
-                $buslocationConditions->push([
-                    'type' => 'zimbabwe_city',
-                    'cities' => $zimbabweCityNames
-                ]);
-            }
+        // Extract cities from direct territory link AND province-based links
+        $cities = $collection->flatMap(function ($t) {
+            $direct = $t->zimbabweCities ?? collect();
+            $provinces = $t->provinces ?? collect();
+            $fromProvinces = $provinces->flatMap(fn($p) => $p->zimbabweCities ?? collect());
             
-            // Countries condition
-            if ($territory->countries->isNotEmpty()) {
-                $countryNames = $territory->countries->pluck('name')->toArray();
-                $buslocationConditions->push([
-                    'type' => 'country',
-                    'countries' => $countryNames
-                ]);
-            }
-        }
+            return $direct->concat($fromProvinces);
+        })->pluck('name')
+          ->unique()
+          ->values()
+          ->toArray();
 
-        // Shippers created by current user
-        $createdShipperIds = User::whereHas('createdBy', function($query) use ($currentUser) {
-            $query->where('creator_user_id', $currentUser->id);
-        })->whereHas('roles', function($q) {
-            $q->where('name', 'shipper');
-        })->pluck('users.id');
-
-        // Shippers with buslocations in eligible areas
-        $territoryShipperIds = User::whereHas('roles', function($q) {
-            $q->where('name', 'shipper');
-        })->whereHas('buslocation', function($query) use ($buslocationConditions) {
-            $query->where(function($q) use ($buslocationConditions) {
-                foreach ($buslocationConditions as $condition) {
-                    if ($condition['type'] === 'zimbabwe_city') {
-                        $q->orWhere(function($subQuery) use ($condition) {
-                            $subQuery->where('country', 'Zimbabwe')
-                                    ->whereIn('city', $condition['cities']);
-                        });
-                    } elseif ($condition['type'] === 'country') {
-                        $q->orWhereIn('country', $condition['countries']);
-                    }
-                }
-            });
-        })->pluck('users.id');
-
-        // Combine and get unique shipper IDs
-        $allShipperIds = $createdShipperIds->merge($territoryShipperIds)->unique();
-
-        return User::whereIn('users.id', $allShipperIds)
-            ->whereHas('roles', function($q) {
-                $q->where('name', 'shipper');
-            });
-    }
-
-    public function loadNotifications()
-    {
-        $this->notifications = [
-            [
-                'type' => 'message',
-                'title' => 'New message from Global Traders',
-                'description' => 'Inquiry about shipment tracking for TRK-8923',
-                'time' => '10 minutes ago',
-                'icon' => 'chat-bubble-left-right',
-                'color' => 'blue'
-            ],
-            [
-                'type' => 'delivery',
-                'title' => 'Shipment delivered',
-                'description' => 'TRK-7845 delivered to QuickShip Express warehouse',
-                'time' => '2 hours ago',
-                'icon' => 'check-circle',
-                'color' => 'green'
-            ],
+        return [
+            'countries' => $countries,
+            'cities' => $cities,
         ];
     }
 
-    // Action methods
-    public function registerShipper()
-    {
-        return redirect()->route('shippers.create');
-    }
-
-    public function createShipment()
-    {
-        return redirect()->route('shipments.create');
-    }
-
-    public function viewPaymentTracking()
-    {
-        return redirect()->route('payments.index');
-    }
-
-    public function uploadDocuments()
-    {
-        $this->dispatch('trigger-file-upload');
-    }
-
-    public function downloadTemplate($type)
-    {
-        match($type) {
-            'contracts' => $this->downloadContractTemplate(),
-            'agreements' => $this->downloadAgreementTemplate(),
-            'guidelines' => $this->downloadGuidelineTemplate(),
-        };
-    }
-
-    protected function downloadContractTemplate()
-    {
-        return response()->download(storage_path('templates/contract-template.pdf'));
-    }
-
-    protected function downloadAgreementTemplate()
-    {
-        return response()->download(storage_path('templates/agreement-template.pdf'));
-    }
-
-    protected function downloadGuidelineTemplate()
-    {
-        return response()->download(storage_path('templates/guideline-template.pdf'));
-    }
-
-    public function viewAllShippers()
-    {
-        return redirect()->route('shippers.index');
-    }
-
-    // Helper methods for the view
-    public function getStatusColor($status)
+    public function getStatusColor($status): string
     {
         return match($status) {
-            'active' => 'green',
+            'active', 'published' => 'green',
             'pending' => 'amber',
             'inactive' => 'red',
             default => 'gray'
         };
     }
-
-    public function formatCurrency($amount)
-    {
-        return '$' . number_format($amount);
-    }
-
-    // Helper to show source badge in the view
-    public function getSourceBadge($source)
-    {
-        return match($source) {
-            'direct' => ['color' => 'blue', 'text' => 'Direct'],
-            'territory' => ['color' => 'green', 'text' => 'Territory'],
-            default => ['color' => 'gray', 'text' => 'Unknown']
-        };
-    }
 }; ?>
 
-<div>
-    <div class="p-6 space-y-6">
-        <!-- Header Section -->
-        <div class="flex justify-between items-center">
+
+<div class="min-h-screen bg-gray-50 pb-12">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Marketing Associate Dashboard</h1>
-                <p class="text-gray-600 dark:text-gray-400">Manage your registered shippers and logistics operations</p>
+                <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <x-graphic name="chart-bar" class="w-7 h-7 text-indigo-600" />
+                    Marketing Associate Dashboard
+                </h1>
+                <p class="text-sm text-gray-500">Managing regional shippers and logistics pipelines</p>
             </div>
-            <div class="flex gap-3">
-                <flux:button  type="submit" icon="user-plus"  href="{{ route('users.create') }}" wire:navigation
-                     variant='primary' color="emerald"
-                >
+            <div class="flex items-center gap-3">
+                <flux:button href="{{ route('users.create') }}" variant="primary" color="emerald" icon="user-plus" wire:navigate>
                     Register Shipper
                 </flux:button>
-                <flux:button type="submit" icon="document-plus"  href="{{ route('freights.create') }}" wire:navigation
-                     variant='primary' color="sky"
-                >
+                <flux:button href="{{ route('lanes.create') }}" variant="primary" color="sky" icon="plus" wire:navigate>
                     New Shipment
                 </flux:button>
             </div>
         </div>
+    </div>
 
-        <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <!-- Total Registered Shippers -->
-            <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-8">
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- My Shippers -->
+            <flux:link href="{{ route('users.index') }}" wire:navigate class="block">
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:border-indigo-300 transition-all group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-indigo-50 rounded-xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                            <x-graphic name="users" class="w-6 h-6" />
+                        </div>
+                        <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">+{{ $stats['shippers_this_month'] }} new</span>
+                    </div>
+                    <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider">My Shippers</p>
+                    <p class="text-3xl font-black text-gray-900">{{ $stats['shippers_count'] }}</p>
+                </div>
+            </flux:link>
+
+            <!-- My Shipments (Lanes) -->
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">My Shippers</h3>
-                    <flux:icon name="users" class="w-6 h-6 text-blue-500" />
+                    <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600">
+                        <x-graphic name="van" class="w-6 h-6" />
+                    </div>
+                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">{{ $stats['lanes_active'] }} Active</span>
                 </div>
-                <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{{ $registeredShippers }}</div>
-                <div class="text-sm text-gray-600 dark:text-gray-400">
-                    <span class="text-green-600 font-semibold">+{{ $shippersThisMonth }}</span> this month
-                </div>
+                <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider">My Shipments</p>
+                <p class="text-3xl font-black text-gray-900">{{ $stats['lanes_count'] }}</p>
             </div>
 
-            <!-- Pending Invoices -->
-            <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700">
+            <!-- Pending Feedback (Mock) -->
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Pending Invoices</h3>
-                    <flux:icon name="document-text" class="w-6 h-6 text-amber-500" />
-                </div>
-                <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                    {{-- {{ $pendingInvoicesCount }} --}} --
-
-                </div>
-                <div class="text-sm text-gray-600 dark:text-gray-400">
-                    <span class="font-semibold">
-                        {{-- {{ $this->formatCurrency($pendingInvoicesTotal) }} --}} --
-                        </span> total pending
-                </div>
-            </div>
-
-            <!-- Overdue Invoices -->
-            <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Overdue</h3>
-                    <flux:icon name="exclamation-triangle" class="w-6 h-6 text-red-500" />
-                </div>
-                <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                    {{-- {{ $overdueInvoicesCount }} --}} --
-
-                </div>
-                <div class="text-sm text-gray-600 dark:text-gray-400">
-                    <span class="text-red-600 font-semibold">
-                        {{-- {{ $this->formatCurrency($overdueInvoicesTotal) }} --}} --
-                        </span> overdue
-                </div>
-            </div>
-
-            <!-- Recent Feedback -->
-            <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-200 dark:border-slate-700">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Avg. Rating</h3>
-                    <flux:icon name="star" class="w-6 h-6 text-yellow-500" />
-                </div>
-                <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                    {{-- {{ $averageRating }} --}} --
-
-                </div>
-                <div class="text-sm text-gray-600 dark:text-gray-400">
-                    from <span class="font-semibold">
-                        {{-- {{ $totalReviews }} --}} --
-                        </span> reviews
-                </div>
-            </div>
-        </div>
-
-        <!-- Quick Actions Grid -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button 
-                wire:click="registerShipper"
-                class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-lime-400 transition-colors group"
-            >
-                <div class="w-12 h-12 bg-lime-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-lime-200 transition-colors dark:bg-lime-900">
-                    <flux:icon name="user-plus" class="w-6 h-6 text-lime-600 dark:text-lime-400" />
-                </div>
-                <div class="text-left">
-                    <div class="font-semibold text-gray-900 dark:text-white">Register Shipper</div>
-                    <div class="text-sm text-gray-600 dark:text-gray-400">Add new client</div>
-                </div>
-            </button>
-
-            <button 
-                wire:click="createShipment"
-                class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-blue-400 transition-colors group"
-            >
-                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-blue-200 transition-colors dark:bg-blue-900">
-                    <flux:icon name="truck" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div class="text-left">
-                    <div class="font-semibold text-gray-900 dark:text-white">Create Shipment</div>
-                    <div class="text-sm text-gray-600 dark:text-gray-400">New logistics order</div>
-                </div>
-            </button>
-
-            {{-- <button 
-                wire:click="createInvoice"
-                class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-green-400 transition-colors group"
-            >
-                <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-green-200 transition-colors dark:bg-green-900">
-                    <flux:icon name="currency-dollar" class="w-6 h-6 text-green-600 dark:text-green-400" />
-                </div>
-                <div class="text-left">
-                    <div class="font-semibold text-gray-900 dark:text-white">Create Invoice</div>
-                    <div class="text-sm text-gray-600 dark:text-gray-400">Generate bill</div>
-                </div>
-            </button> --}}
-
-            <button 
-                wire:click="viewPaymentTracking"
-                class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-purple-400 transition-colors group"
-            >
-                <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-3 group-hover:bg-purple-200 transition-colors dark:bg-purple-900">
-                    <flux:icon name="chart-bar" class="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div class="text-left">
-                    <div class="font-semibold text-gray-900 dark:text-white">Payment Tracking</div>
-                    <div class="text-sm text-gray-600 dark:text-gray-400">Monitor payments</div>
-                </div>
-            </button>
-        </div>
-
-        <!-- Main Content Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Recent Shippers -->
-            <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-                <div class="p-6 border-b border-gray-200 dark:border-slate-700">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">My Recent Shippers</h3>
-                        <button 
-                            wire:click="viewAllShippers"
-                            class="text-blue-600 hover:text-blue-700 text-sm font-medium dark:text-blue-400"
-                        >
-                            View All
-                        </button>
+                    <div class="p-3 bg-amber-50 rounded-xl text-amber-600">
+                        <x-graphic name="annotation" class="w-6 h-6" />
                     </div>
                 </div>
-                <div class="p-6 space-y-4">
-                    @foreach($recentShippers as $shipper)
-                        @php
-                            $sourceBadge = $this->getSourceBadge($shipper['source'] ?? 'direct');
-                        @endphp
-                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg dark:bg-slate-700">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center dark:bg-blue-900">
-                                    <flux:icon name="building-office" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Avg. Rating</p>
+                <div class="flex items-baseline gap-2">
+                    <p class="text-3xl font-black text-gray-900">4.2</p>
+                    <span class="text-sm text-gray-400">/ 5.0</span>
+                </div>
+            </div>
+
+            <!-- Territories -->
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="p-3 bg-purple-50 rounded-xl text-purple-600">
+                        <x-graphic name="location-marker" class="w-6 h-6" />
+                    </div>
+                </div>
+                <p class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Assigned Areas</p>
+                <p class="text-3xl font-black text-gray-900">{{ $stats['territories_count'] }}</p>
+                <div class="mt-3 space-y-1 max-h-16 overflow-y-auto custom-scrollbar">
+                    @foreach($assignedTerritories as $territory)
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-1 h-1 bg-purple-400 rounded-full"></span>
+                            <span class="text-[10px] font-bold text-gray-500 truncate">{{ $territory['name'] }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <flux:link href="{{ route('users.create') }}" wire:navigate class="p-4 bg-white border border-gray-200 rounded-xl flex items-center gap-4 hover:shadow-md transition-shadow group">
+                <div class="p-3 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
+                    <x-graphic name="user-add" class="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                    <p class="font-bold text-gray-900 text-sm">Register Shipper</p>
+                    <p class="text-xs text-gray-500">Add new client</p>
+                </div>
+            </flux:link>
+
+            <flux:link href="{{ route('lanes.create') }}" wire:navigate class="p-4 bg-white border border-gray-200 rounded-xl flex items-center gap-4 hover:shadow-md transition-shadow group">
+                <div class="p-3 bg-green-50 rounded-lg group-hover:bg-green-100 transition-colors">
+                    <x-graphic name="plus-circle" class="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                    <p class="font-bold text-gray-900 text-sm">Create Shipment</p>
+                    <p class="text-xs text-gray-500">New logistics order</p>
+                </div>
+            </flux:link>
+
+            <div class="p-4 bg-white border border-gray-200 rounded-xl flex items-center gap-4 hover:shadow-md transition-shadow group cursor-pointer">
+                <div class="p-3 bg-purple-50 rounded-lg group-hover:bg-purple-100 transition-colors">
+                    <x-graphic name="chart-bar" class="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                    <p class="font-bold text-gray-900 text-sm">Payment Tracking</p>
+                    <p class="text-xs text-gray-500">Monitor collections</p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-white border border-gray-200 rounded-xl flex items-center gap-4 hover:shadow-md transition-shadow group cursor-pointer">
+                <div class="p-3 bg-amber-50 rounded-lg group-hover:bg-amber-100 transition-colors">
+                    <x-graphic name="document-download" class="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                    <p class="font-bold text-gray-900 text-sm">Download Assets</p>
+                    <p class="text-xs text-gray-500">Forms & Templates</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lists Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Recent Shippers -->
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-900 flex items-center gap-2">
+                        <x-graphic name="user-group" class="w-5 h-5 text-gray-400" />
+                        My Recent Shippers
+                    </h3>
+                    <flux:link href="{{ route('users.index', ['search' => 'shippers']) }}" variant="subtle" size="sm" wire:navigate>View All</flux:link>
+                </div>
+                <div class="p-6 space-y-4 flex-1">
+                    @forelse($recentShippers as $shipper)
+                    <flux:link href="{{ route('users.show', ['user' => $shipper['slug']]) }}" wire:navigate class="block">
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-white transition-colors">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600">
+                                    <x-graphic name="office-building" class="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <h4 class="font-medium text-gray-900 dark:text-white">{{ $shipper['name'] }}</h4>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">Registered: {{ $shipper['registration_date'] }}</p>
+                                    <h4 class="font-bold text-gray-900 text-sm">{{ $shipper['organisation'] ?? 'Unknown Org' }}</h4>
+                                    <p class="text-xs text-gray-500">{{ $shipper['email'] }}</p>
                                 </div>
                             </div>
                             <div class="flex flex-col items-end gap-1">
-                                <span class="px-2 py-1 bg-{{ $this->getStatusColor($shipper['status']) }}-100 text-{{ $this->getStatusColor($shipper['status']) }}-800 text-xs rounded-full dark:bg-{{ $this->getStatusColor($shipper['status']) }}-900 dark:text-{{ $this->getStatusColor($shipper['status']) }}-200">
-                                    {{ ucfirst($shipper['status']) }}
+                                <span class="px-2 py-0.5 bg-{{ $this->getStatusColor($shipper['status'] ?? 'active') }}-50 text-{{ $this->getStatusColor($shipper['status'] ?? 'active') }}-700 text-[10px] font-bold rounded-full uppercase tracking-tighter">
+                                    {{ $shipper['status'] ?? 'active' }}
                                 </span>
-                                <span class="px-2 py-1 bg-{{ $sourceBadge['color'] }}-100 text-{{ $sourceBadge['color'] }}-800 text-xs rounded-full dark:bg-{{ $sourceBadge['color'] }}-900 dark:text-{{ $sourceBadge['color'] }}-200">
-                                    {{ $sourceBadge['text'] }}
-                                </span>
+                                <p class="text-[10px] text-gray-400">{{ Illuminate\Support\Carbon::parse($shipper['created_at'])->diffForHumans() }}</p>
                             </div>
                         </div>
-                    @endforeach
+                    </flux:link>
+                    @empty
+                        <div class="text-center py-12">
+                            <x-graphic name="users" class="w-12 h-12 text-gray-200 mx-auto mb-2" />
+                            <p class="text-sm text-gray-400">No shippers found in your scope.</p>
+                        </div>
+                    @endforelse
                 </div>
             </div>
 
-            <!-- Pending Invoices -->
-            <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-                <div class="p-6 border-b border-gray-200 dark:border-slate-700">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Pending Invoices</h3>
-                        <button 
-                            {{-- wire:click="viewAllInvoices" --}}
-                            class="text-blue-600 hover:text-blue-700 text-sm font-medium dark:text-blue-400"
-                        >
-                            View All
-                        </button>
-                    </div>
+            <!-- Recent Shipments (Lanes) -->
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-900 flex items-center gap-2">
+                        <x-graphic name="cube" class="w-5 h-5 text-gray-400" />
+                        My Recent Shipments
+                    </h3>
+                    <flux:link href="{{ route('lanes.index') }}" variant="subtle" size="sm" wire:navigate>View All</flux:link>
                 </div>
-                <div class="p-6 space-y-4">
-                    {{-- @foreach($pendingInvoices as $invoice) --}}
-                        <div class="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200 dark:bg-red-900/20 dark:border-red-700/30">
-                            <div>
-                                <h4 class="font-medium text-gray-900 dark:text-white">
-                                    {{-- {{ $invoice['invoice_number'] }} --}} --
-
-                                </h4>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">
-                                    {{-- {{ $invoice['shipper_name'] }} --}} --
-
-                                </p>
+                <div class="p-6 space-y-4 flex-1">
+                    @forelse($recentLanes as $lane)
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-white transition-colors">
+                            <div class="flex items-center gap-4 text-sm">
+                                <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
+                                    <x-graphic name="location-marker" class="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-gray-900">{{ $lane['cityfrom'] }} → {{ $lane['cityto'] }}</h4>
+                                    <p class="text-xs text-gray-500">{{ $lane['vehicle_type'] ?? 'General Cargo' }}</p>
+                                </div>
                             </div>
                             <div class="text-right">
-                                <div class="font-semibold text-amber-600">
-                                    {{-- {{ $this->formatCurrency($invoice['amount']) }} --}} $--
-                                </div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">
-                                    {{-- @if($invoice['is_overdue']) --}}
-                                        Overdue: 
-                                        {{-- {{ $invoice['days_overdue'] }}  --}} --
-                                        days
-                                    {{-- @else
-                                        Due in {{ $invoice['due_in_days'] }} days
-                                    @endif --}}
-                                </div>
+                                <span class="px-2 py-0.5 bg-{{ $this->getStatusColor($lane['status'] ?? 'active') }}-50 text-{{ $this->getStatusColor($lane['status'] ?? 'active') }}-700 text-[10px] font-bold rounded-full uppercase tracking-tighter">
+                                    {{ $lane['status'] ?? 'published' }}
+                                </span>
+                                <p class="text-[10px] text-gray-400 mt-1">{{ Illuminate\Support\Carbon::parse($lane['created_at'])->format('M d, Y') }}</p>
                             </div>
                         </div>
-                    {{-- @endforeach --}}
+                    @empty
+                        <div class="text-center py-12">
+                            <x-graphic name="van" class="w-12 h-12 text-gray-200 mx-auto mb-2" />
+                            <p class="text-sm text-gray-400">No recent shipments recorded.</p>
+                        </div>
+                    @endforelse
                 </div>
             </div>
         </div>
 
-        <!-- Rest of the component remains the same -->
-        <!-- Notifications Section -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-            <div class="p-6 border-b border-gray-200 dark:border-slate-700">
-                <div class="flex items-center gap-2">
-                    <flux:icon name="bell-alert" class="w-5 h-5 text-lime-600 dark:text-lime-400" />
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
-                </div>
-            </div>
-            {{-- <div class="p-6">
-                <div class="space-y-4">
-                    @foreach($notifications as $notification)
-                        <div class="flex items-start gap-4 p-4 bg-{{ $notification['color'] }}-50 rounded-lg dark:bg-{{ $notification['color'] }}-900/20">
-                            <flux:icon name="{{ $notification['icon'] }}" class="w-5 h-5 text-{{ $notification['color'] }}-600 dark:text-{{ $notification['color'] }}-400 mt-0.5" />
-                            <div class="flex-1">
-                                <div class="font-medium text-gray-900 dark:text-white">{{ $notification['title'] }}</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">{{ $notification['description'] }}</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">{{ $notification['time'] }}</div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div> --}}
-        </div>
-
-        <!-- Documents Section -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-            <div class="p-6 border-b border-gray-200 dark:border-slate-700">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Documents</h3>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Upload Documents -->
-                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center dark:border-slate-600">
-                        <flux:icon name="cloud-arrow-up" class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                        <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Upload Documents</h4>
-                        <p class="text-gray-600 dark:text-gray-400 mb-4">
-                            Upload invoices, compliance documents, or client agreements
-                        </p>
-                        <button 
-                            wire:click="uploadDocuments"
-                            class="px-4 py-2 bg-lime-500 text-white rounded-lg hover:bg-lime-600 transition-colors"
-                        >
-                            Upload Files
-                        </button>
+        <!-- Documents & Tools -->
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+            <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <x-graphic name="clipboard-list" class="w-5 h-5 text-indigo-500" />
+                Asset Management
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center group hover:border-indigo-400 transition-colors">
+                    <x-graphic name="document-download" class="w-12 h-12 text-gray-300 mx-auto mb-4 group-hover:text-indigo-400 transition-colors" />
+                    <h4 class="font-bold text-gray-900 mb-2">Internal Guidelines</h4>
+                    <p class="text-sm text-gray-500 mb-6">Access policy documents and shipping rate calculators.</p>
+                    <div class="flex flex-wrap justify-center gap-2">
+                        <flux:button size="sm" variant="subtle">Contracts</flux:button>
+                        <flux:button size="sm" variant="subtle">Agreements</flux:button>
+                        <flux:button size="sm" variant="subtle">SOPs</flux:button>
                     </div>
-
-                    <!-- Download Templates -->
-                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center dark:border-slate-600">
-                        <flux:icon name="arrow-down-tray" class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                        <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Download Templates</h4>
-                        <p class="text-gray-600 dark:text-gray-400 mb-4">
-                            Get standard contracts, agreements, and guidelines
-                        </p>
-                        <div class="flex gap-2 justify-center">
-                            <button 
-                                wire:click="downloadTemplate('contracts')"
-                                class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
-                            >
-                                Contracts
-                            </button>
-                            <button 
-                                wire:click="downloadTemplate('agreements')"
-                                class="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
-                            >
-                                Agreements
-                            </button>
-                            <button 
-                                wire:click="downloadTemplate('guidelines')"
-                                class="px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm"
-                            >
-                                Guidelines
-                            </button>
-                        </div>
-                    </div>
+                </div>
+                <div class="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center group hover:border-blue-400 transition-colors">
+                    <x-graphic name="phone" class="w-12 h-12 text-gray-300 mx-auto mb-4 group-hover:text-blue-400 transition-colors" />
+                    <h4 class="font-bold text-gray-900 mb-2">Regional Support</h4>
+                    <p class="text-sm text-gray-500 mb-6">Need assistance with a regional shipper or compliance issue?</p>
+                    <flux:button size="sm" icon="chat-bubble-left-right">Open Support Desk</flux:button>
                 </div>
             </div>
         </div>
