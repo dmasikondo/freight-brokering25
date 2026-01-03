@@ -58,7 +58,6 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('lanes/create','lane.create')->name('lane.create');
     Volt::route('lanes/{lane}/edit','lane.create')->name('lanes.edit');
 
-
     });
 
 require __DIR__.'/auth.php';

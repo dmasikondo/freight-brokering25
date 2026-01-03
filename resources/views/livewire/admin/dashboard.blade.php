@@ -41,8 +41,8 @@ new class extends Component {
             'marketing_logistics_associate' => User::whereHas('roles', function ($q) {
                 $q->where('name', 'marketing logistics associate');
             })->count(),
-            'procurement_associate' => User::whereHas('roles', function ($q) {
-                $q->where('name', 'procurement associate');
+            'procurement_logistics_associate' => User::whereHas('roles', function ($q) {
+                $q->where('name', 'procurement logistics associate');
             })->count(),
             'operations_logistics_associate' => User::whereHas('roles', function ($q) {
                 $q->where('name', 'operations logistics associate');

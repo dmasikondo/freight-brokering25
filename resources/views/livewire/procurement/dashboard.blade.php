@@ -221,7 +221,7 @@ new class extends Component {
                     </svg>
                 </div>
                 <div class="ml-4">
-                    <h3 class="text-sm font-medium text-gray-500">Registered Carriers</h3>
+                    <h3 class="text-sm font-medium text-gray-500">My Registered Carriers</h3>
                     <p class="text-2xl font-semibold text-gray-900">{{ $this->registeredCarriersCount }}</p>
                 </div>
             </div>
@@ -286,7 +286,7 @@ new class extends Component {
         <!-- Registered Carriers List -->
         <div class="bg-white rounded-lg shadow">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Registered Carriers</h3>
+                <h3 class="text-lg font-medium text-gray-900">My Registered Carriers</h3>
             </div>
             <div class="p-6">
                 @if ($registeredCarriers->count() > 0)
