@@ -14,10 +14,6 @@ new class extends Component {
     // Stats properties
     public $registeredShippers = 0;
     public $shippersThisMonth = 0;
-    // public $pendingInvoicesCount = 0;
-    // public $pendingInvoicesTotal = 0;
-    // public $overdueInvoicesCount = 0;
-    // public $overdueInvoicesTotal = 0;
     public $averageRating = 0;
     public $totalReviews = 0;
 
