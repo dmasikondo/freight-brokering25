@@ -20,7 +20,7 @@ new class extends Component {
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Carrier Onboarding</h1>
             </div>
             <div class="flex gap-3">
-                <flux:button type="submit" icon="truck"  variant="primary" color="green" href="{{ route('lane.create') }}" wire:navigate >
+                <flux:button type="submit" icon="truck"  variant="primary" color="green" href="{{ route('lanes.create') }}" wire:navigate >
                     Upload Vehicles
                 </flux:button>
             </div>
