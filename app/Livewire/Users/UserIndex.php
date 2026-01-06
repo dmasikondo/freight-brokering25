@@ -91,7 +91,8 @@ class UserIndex extends Component
     {
         $user = auth()->user();
         return match (true) {
-            $user->hasAnyRole(['superadmin', 'admin', 'logistics operations executive']) => ['shipper', 'carrier', 'marketing logistics associate', 'procurement logistics associate', 'operations logistics associate'],
+            $user->hasAnyRole(['superadmin', 'admin']) => ['shipper', 'carrier', 'marketing logistics associate', 'procurement logistics associate', 'operations logistics associate','logistics operations executive','admin'],
+            $user->hasRole('logistics operations executive') => ['shipper', 'carrier', 'marketing logistics associate', 'procurement logistics associate', 'operations logistics associate'],            
             $user->hasRole('operations logistics associate') => ['shipper', 'carrier', 'marketing logistics associate', 'procurement logistics associate'],
             $user->hasRole('marketing logistics associate') => ['shipper'],
             $user->hasRole('procurement logistics associate') => ['carrier'],

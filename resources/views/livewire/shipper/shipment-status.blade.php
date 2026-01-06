@@ -14,7 +14,7 @@ new class extends Component {
 
     public function loadStats()
     {
-        $user = Auth::user();
+        $user = $this->user;
 
         // Method 1: Using raw SQL with proper string quoting
         $counts = $user

@@ -14,7 +14,7 @@ new class extends Component {
     #[Computed]
     public function freightStatusCount()
     { 
-        $user = Auth::user();
+        $user = $this->user;
         $counts = $user->freights()
             ->selectRaw('status, COUNT(*) as count')
             ->groupBy('status')

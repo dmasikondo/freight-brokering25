@@ -62,11 +62,13 @@
                                     'marketing logistics associate' => ['bg' => 'bg-purple-100', 'text' => 'text-purple-600', 'icon' => 'megaphone'],
                                     'procurement logistics associate' => ['bg' => 'bg-orange-100', 'text' => 'text-orange-600', 'icon' => 'clipboard-document-list'],
                                     'operations logistics associate' => ['bg' => 'bg-sky-100', 'text' => 'text-sky-600', 'icon' => 'cursor-arrow-ripple'],
+                                    'logistics operations executive' => ['bg' => 'bg-teal-100', 'text' => 'text-teal-600', 'icon' => 'archive-box'],    
+                                    'admin' => ['bg' => 'green-teal-100', 'text' => 'green-teal-600', 'icon' => 'shield-check'],                                                                    
                                     default => ['bg' => 'bg-slate-100', 'text' => 'text-slate-600', 'icon' => 'user']
                                 };
                             @endphp
                             <div class="w-16 h-16 {{ $theme['bg'] }} {{ $theme['text'] }} rounded-[1.5rem] flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300">
-                                <x-graphic :name="$theme['icon']" class="w-8 h-8" />
+                                <flux:icon :name="$theme['icon']" class="w-8 h-8" />
                             </div>
                         </div>
 
