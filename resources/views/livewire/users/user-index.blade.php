@@ -1,227 +1,189 @@
-<div>
-    <div class="mb-1 w-full">
-        <div class="mb-4">
-            <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">All users</h1>
+<div class="space-y-6">
+    <!-- Action Header -->
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-4">
+                    <flux:icon.user-group class="size-10 text-indigo-600" />
+                    Member Intelligence Hub
+                </h1>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 ml-14">
+                    Managing {{ $this->users->total() }} Scoped Jurisdictional Profiles
+                </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4">
+                <flux:button href="{{ route('users.create') }}" variant="primary" color="indigo" icon="user-plus" wire:navigate class="px-6">Register New Member</flux:button>
+            </div>
         </div>
-        <div class="sm:flex">
-            <div class="hidden sm:flex items-center sm:divide-x sm:divide-gray-100 mb-3 sm:mb-0">
-                <form class="lg:pr-3" wire:submit.prevent>
-                    <label for="users-search" class="sr-only">Search</label>
-                    <div class="mt-1 relative lg:w-64 xl:w-96">
-                        <input type="text" wire:model.live="search" id="users-search"
-                            class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-cyan-600 focus:border-cyan-600 block w-full p-2.5"
-                            placeholder="Search for users">
-                    </div>
-                </form>
-                <div class="flex space-x-1 pl-0 sm:pl-2 mt-3 sm:mt-0">
-                    <a href="#"
-                        class="text-gray-500 hover:text-gray-900 cursor-pointer p-1 hover:bg-gray-100 rounded inline-flex justify-center">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                            <path fill-rule="evenodd"
-                                d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                                clip-rule="evenodd"></path>
-                        </svg>
-                    </a>
-                    <a href="#"
-                        class="text-gray-500 hover:text-gray-900 cursor-pointer p-1 hover:bg-gray-100 rounded inline-flex justify-center">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                            <path fill-rule="evenodd"
-                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                clip-rule="evenodd"></path>
-                        </svg>
-                    </a>
-                    <a href="#"
-                        class="text-gray-500 hover:text-gray-900 cursor-pointer p-1 hover:bg-gray-100 rounded inline-flex justify-center">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                            <path fill-rule="evenodd"
-                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                                clip-rule="evenodd"></path>
-                        </svg>
-                    </a>
-                    <a href="#"
-                        class="text-gray-500 hover:text-gray-900 cursor-pointer p-1 hover:bg-gray-100 rounded inline-flex justify-center">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z">
-                            </path>
-                        </svg>
-                    </a>
-                </div>
-            </div>
-            <div class="flex items-center space-x-2 sm:space-x-3 ml-auto">
-                <a href="{{ route('users.create') }}" class="cursor-hand">
-                    <button type="button" data-modal-toggle="add-user-modal"
-                        class="w-1/2 text-white bg-cyan-600 hover:bg-cyan-700 focus:ring-4 focus:ring-cyan-200 font-medium inline-flex items-center justify-center rounded-lg text-sm px-3 py-2 text-center sm:w-auto">
-                        <svg class="-ml-1 mr-2 h-6 w-6" fill="currentColor" viewBox="0 0 20 20"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path fill-rule="evenodd"
-                                d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                                clip-rule="evenodd"></path>
-                        </svg>
-                        Add user
-                    </button>
-                </a>
-                <a href="#"
-                    class="w-1/2 text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:ring-cyan-200 font-medium inline-flex items-center justify-center rounded-lg text-sm px-3 py-2 text-center sm:w-auto">
-                    <svg class="-ml-1 mr-2 h-6 w-6" fill="currentColor" viewBox="0 0 20 20"
-                        xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd"
-                            d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z"
-                            clip-rule="evenodd"></path>
-                    </svg>
-                    Export
-                </a>
-            </div>
+
+        <!-- Filter Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2  gap-6 mt-10 pt-8 border-t border-slate-100">
+            <flux:input wire:model.live.debounce.300ms="search" placeholder="Search by name, org, email, or ID..." icon="magnifying-glass" clearable class="shadow-sm" />
+
+            <flux:select wire:model.live="filterRole" placeholder="Filter Role"  icon="user-circle">
+                <flux:select.option value="">All Viewable Roles</flux:select.option>
+                @foreach($this->viewableRoles as $role)
+                    <flux:select.option value="{{ $role }}">{{ ucwords($role) }}</flux:select.option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="statusFilter"  icon="shield-check" label="Carrier Compliance">
+                <flux:select.option value="all">Any Compliance</flux:select.option>
+                <flux:select.option value="fully_registered">Fully Compliant</flux:select.option>
+                <flux:select.option value="partial_scoped">Incomplete Registration</flux:select.option>
+                <flux:select.option value="unmapped_global">Global (Unmapped)</flux:select.option>
+            </flux:select>
+
+            <flux:select wire:model.live="sortBy"  icon="bars-arrow-down" label="Sorting">
+                <flux:select.option value="latest">Recently Joined</flux:select.option>
+                <flux:select.option value="name_asc">Name (A-Z)</flux:select.option>
+                <flux:select.option value="name_desc">Name (Z-A)</flux:select.option>
+                <flux:select.option value="org_asc">Organisation (A-Z)</flux:select.option>
+                <flux:select.option value="org_desc">Organisation (Z-A)</flux:select.option>
+            </flux:select>
         </div>
     </div>
-    @foreach ($this->users as $user)
-        <div class="mt-4">
-            <div
-                class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border-t hover:bg-gray-200 w-full">
-                <div class="flex items-center">
-                    {{-- Dynamically render icon based on user roles only --}}
-                    <div
-                        class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
-                @foreach ($user->roles as $role)
-                    @if ($role->name == 'carrier')
-                        bg-orange-500
-                    @elseif($role->name == 'shipper')
-                        bg-blue-500
-                    @elseif($role->name == 'logistics_associate')
-                        bg-purple-500
-                    @else
-                        bg-yellow-400
-                    @endif @endforeach
-                ">
-                        {{-- Use x-graphic for Flux icons based on role name --}}
-                        @foreach ($user->roles as $role)
+
+    <!-- Results List -->
+    <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden min-h-[500px]">
+        <div wire:loading.remove wire:target="search, filterRole, statusFilter, sortBy" class="divide-y divide-slate-100">
+            @forelse($this->users as $user)
+                <div class="group px-10 py-8 hover:bg-slate-50 transition-all flex flex-col xl:flex-row xl:items-center justify-between gap-8">
+                    <div class="flex items-center gap-8 min-w-0 flex-1">
+                        <!-- Role Icon -->
+                        <div class="relative shrink-0">
                             @php
-                                $icon = match ($role->name) {
-                                    'marketing logistics associate' => 'megaphone',
-                                    'procurement logistics associate' => 'clipboard-document-list',
-                                    'operations logistics associate' => 'cursor-arrow-ripple',
-                                    'admin' => 'cog-6-tooth',
-                                    'superadmin' => 'lock-closed',
-                                    'carrier' => 'truck',
-                                    'shipper' => 'cube',
-                                    default => 'user-circle', // Default icon
+                                $roleName = $user->roles->first()?->name;
+                                $classification = $user->roles->first()?->pivot?->classification;
+                                $theme = match($roleName) {
+                                    'shipper' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-600', 'icon' => 'cube'],
+                                    'carrier' => ['bg' => 'bg-emerald-100', 'text' => 'text-emerald-600', 'icon' => 'truck'],
+                                    'marketing logistics associate' => ['bg' => 'bg-purple-100', 'text' => 'text-purple-600', 'icon' => 'megaphone'],
+                                    'procurement logistics associate' => ['bg' => 'bg-orange-100', 'text' => 'text-orange-600', 'icon' => 'clipboard-document-list'],
+                                    'operations logistics associate' => ['bg' => 'bg-sky-100', 'text' => 'text-sky-600', 'icon' => 'cursor-arrow-ripple'],
+                                    default => ['bg' => 'bg-slate-100', 'text' => 'text-slate-600', 'icon' => 'user']
                                 };
                             @endphp
-                            <flux:icon. :name="$icon" class="size-6 text-white" />
-                        @break
-                    @endforeach
-                </div>
-                <div class="flex flex-col ml-2">
-                    <div class="flex items-center gap-2">
-                        <div class="text-sm font-bold leading-snug text-gray-900">
-                            <a href="{{ route('users.show', ['user' => $user]) }}">
-                                {!! $this->highlight($user->contact_person, $this->search) !!}
-                            </a>
+                            <div class="w-16 h-16 {{ $theme['bg'] }} {{ $theme['text'] }} rounded-[1.5rem] flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300">
+                                <x-graphic :name="$theme['icon']" class="w-8 h-8" />
+                            </div>
                         </div>
-                        @if (auth()->user()->slug == $user->slug)
-                            <span
-                                class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white">Me</span>
-                        @endif
 
-                        @foreach ($user->roles as $role)
-                            @if ($role->name)
-                                <div class="flex items-center gap-1 text-sm text-gray-600">
-                                    {!! $this->highlight(ucwords(str_replace('_', ' ', $role->name)), $this->search) !!}
-                                    @if ($role->pivot?->classification)
-                                        <span class="mx-1">•</span>
-                                        <x-graphic :name="match ($role->pivot->classification) {
-                                            'real_owner' => 'shield-check',
-                                            'broker_agent' => 'exchange',
-                                            default => '',
-                                        }"
-                                            class="size-4 {{ $role->pivot->classification === 'real_owner' ? 'text-yellow-400' : 'text-blue-400' }}" />
-                                        <span>{{ $role->pivot->classification === 'real_owner' ? 'Real Owner' : 'Broker / Agent' }}</span>
+                        <!-- User Info -->
+                        <div class="min-w-0 space-y-1">
+                            <div class="flex items-center gap-4 flex-wrap">
+                                <flux:link href="{{ route('users.show', $user) }}" wire:navigate class="text-xl font-black text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors">
+                                    {!! $this->highlight($user->contact_person, $this->search) !!}
+                                </flux:link>
+                                @if($user->organisation)
+                                    <span class="text-sm font-bold text-slate-400">@ {!! $this->highlight($user->organisation, $this->search) !!}</span>
+                                @endif
+                                @if(auth()->id() === $user->id)
+                                    <span class="bg-indigo-600 text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-indigo-200">Me</span>
+                                @endif
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-bold text-slate-500 uppercase tracking-tighter">
+                                <span class="flex items-center gap-2 group/email">
+                                    <flux:icon.envelope class="size-4 text-slate-300 group-hover/email:text-indigo-400 transition-colors" />
+                                    {!! $this->highlight($user->email, $this->search) !!}
+                                </span>
+                                <span class="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100 flex items-center gap-2">
+                                    {{ ucwords(str_replace('_', ' ', $roleName ?? 'Member')) }}
+                                    @if(in_array($roleName, ['shipper', 'carrier']))
+                                        <flux:icon. :name="$classification === 'real_owner' ? 'shield-check' : 'user-group'" class="size-3.5 {{ $classification === 'real_owner' ? 'text-amber-500' : 'text-blue-500' }}" />
+                                        <span class="text-[9px]">{{ $classification === 'real_owner' ? 'Real Owner' : 'Broker / Agent' }}</span>
                                     @endif
+                                </span>
+                                @if($user->identification_number)
+                                    <span class="bg-slate-900 text-white px-3 py-1 rounded-lg flex items-center gap-2 shadow-lg shadow-slate-200">
+                                        <flux:icon.finger-print class="size-3.5 text-slate-400" />
+                                        ID: {!! $this->highlight($user->identification_number, $this->search) !!}
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Meta & Actions -->
+                    <div class="flex flex-col sm:flex-row items-center justify-between xl:justify-end gap-12 shrink-0">
+                        <div class="text-right">
+                            @if($user->createdBy)
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Registered By</p>
+                                <flux:link href="{{ route('users.show', $user->createdBy) }}" wire:navigate class="flex items-center justify-end gap-2.5 text-sm font-black text-slate-800 hover:text-indigo-600 transition-colors group/creator">
+                                    <div class="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center group-hover/creator:bg-indigo-50 transition-colors">
+                                        <flux:icon.user-plus class="size-4 text-slate-400 group-hover/creator:text-indigo-500" />
+                                    </div>
+                                    {{ $user->createdBy->contact_person }}
+                                </flux:link>
+                            @else
+                                <div class="flex flex-col items-end">
+                                    <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                                        <flux:icon.bolt class="size-3.5" /> Direct Entry
+                                    </p>
+                                    <p class="text-sm font-bold text-slate-700 italic bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100">Self Registered</p>
                                 </div>
-                                @break
                             @endif
-                        @endforeach
-                    </div>
-                    <div class="text-xs leading-snug text-gray-600 mt-1">
-                        {!! $this->highlight($user->email, $this->search) !!}
-                    </div>
-                    {{-- The following content is placed below the email on smaller screens --}}
-                    <div class="flex flex-col ml-0 sm:hidden mt-2">
-                        @if ($user->createdBy)
-                            <div class="flex items-center text-sm font-bold leading-snug text-gray-900">
-                                <flux:icon.user-plus class="size-4 mr-1 text-gray-500" />
-                                <span>Registered by {!! $this->highlight($user->createdBy?->contact_person, $this->search) !!}</span>
-                            </div>
-                        @else
-                            <div class="flex items-center text-sm font-bold leading-snug text-gray-900">
-                                <span>Self Registered</span>
-                            </div>
-                        @endif
-                        <div class="text-xs leading-snug text-gray-600">
-                            {{ $user->created_at->diffForHumans() }}
+                            <p class="text-[10px] text-slate-300 font-bold mt-2 uppercase tracking-wide">Joined {{ $user->created_at->format('M Y') }}</p>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <flux:dropdown>
+                                <flux:button variant="subtle" icon="ellipsis-horizontal" size="sm" class="!bg-slate-100 !border-slate-200 !rounded-xl" />
+                                <flux:menu>
+                                    <flux:menu.item icon="pencil-square" wire:click="userEdit('{{ $user->slug }}')">Edit Member</flux:menu.item>
+                                    <flux:menu.item icon="key" wire:click="userActivation('{{ $user->slug }}')">
+                                        {{ $user->must_reset ? 'Activate' : 'Suspend' }}
+                                    </flux:menu.item>
+                                    <flux:menu.separator />
+                                    <flux:menu.item variant="danger" icon="trash">Archive User</flux:menu.item>
+                                </flux:menu>
+                            </flux:dropdown>
                         </div>
                     </div>
                 </div>
-            </div>
-            {{-- This content is hidden on smaller screens and only appears on sm: and above --}}
-            <div class="hidden sm:flex flex-col ml-0 sm:ml-2 mt-2 sm:mt-0">
-                @if ($user->createdBy)
-                    <div class="flex items-center text-sm font-bold leading-snug text-gray-900">
-                        <x-graphic name="user-plus" class="size-4 mr-1 text-gray-500" />
-                        <span>Registered by {!! $this->highlight($user->createdBy?->contact_person, $this->search) !!}</span>
+            @empty
+                <div class="flex flex-col items-center justify-center py-32 space-y-6">
+                    <div class="w-28 h-28 bg-slate-50 rounded-[2.5rem] flex items-center justify-center text-slate-200 border-2 border-dashed border-slate-100 rotate-12">
+                        <flux:icon.user-group class="size-14" />
                     </div>
-                @else
-                    <div class="flex items-center text-sm font-bold leading-snug text-gray-900">
-                        <span>Self Registered</span>
+                    <div class="text-center">
+                        <p class="text-xl font-black text-slate-900">Zero matches found</p>
+                        <p class="text-sm text-slate-400 mt-1 max-w-xs mx-auto">Try refining your search terms or expanding your jurisdictional filters.</p>
                     </div>
-                @endif
-                <div class="text-xs leading-snug text-gray-600">
-                    {{ $user->created_at->diffForHumans() }}
+                    <flux:button variant="subtle" wire:click="$set('search', '')" class="font-black">Clear Filters</flux:button>
                 </div>
-            </div>
-            {{-- Sticky action dots horizontal --}}
-            <div class="sm:sticky sm:top-0 z-40 py-4 sm:pr-6 text-right w-full sm:w-auto">
-                <x-dropdown>
-                    <x-slot name="trigger">
-                        <button
-                            class="flex items-center justify-center p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full transition-colors duration-150 ease-in-out">
-                            <x-graphic name="dots-horizontal" class="size-6" />
-                            <span class="sr-only">Open options</span>
-                        </button>
-                    </x-slot>
-
-                    <x-dropdown-item wire:loading.class="animate-pulse"
-                        wire:click="userEdit('{{ $user->slug }}')">
-                        <x-graphic name="edit" class="size-4" />
-                        <span>Edit</span>
-                    </x-dropdown-item>
-
-                    <x-dropdown-item wire:loading.class="animate-pulse"
-                        wire:click="userActivation('{{ $user->slug }}')">
-                        <x-graphic name="arrow-path" class="size-4" />
-                        <span>
-                            {{ $user->must_reset ? 'Activate' : 'Deactivate' }}
-                        </span>
-                    </x-dropdown-item>
-
-                    <x-dropdown-item wire:click="userDelete('{{ $user->slug }}')"
-                        wire:confirm.prompt="Are you sure you want to delete the user {{ strtoupper($user->contact_person) }}? You will not be able to retrieve the details back. \n\nType DELETE to confirm your deleting action|DELETE">
-                        <x-graphic name="trash" class="size-4 text-red-600 group-hover:text-red-800" />
-                        <span class="text-red-600 group-hover:text-red-800">Delete</span>
-                    </x-dropdown-item>
-
-                    <div wire:loading>
-                        <x-dropdown-item class="animate-pulse">
-                            <div class="flex items-center space-x-2">
-                                <x-graphic name="arrow-path" class="size-4 animate-spin text-gray-400" />
-                                <span class="text-gray-400">Loading...</span>
-                            </div>
-                        </x-dropdown-item>
-                    </div>
-                </x-dropdown>
-            </div>
-            {{-- ./ Sticky action dots horizontal --}}
+            @endforelse
         </div>
+
+        <!-- Skeleton Template -->
+        <div wire:loading wire:target="search, filterRole, statusFilter, sortBy" class="divide-y divide-slate-50">
+            @for($i = 0; $i < 6; $i++)
+                <div class="px-10 py-8 animate-pulse flex items-center justify-between">
+                    <div class="flex items-center gap-8">
+                        <div class="w-16 h-16 bg-slate-100 rounded-[1.5rem]"></div>
+                        <div class="space-y-4">
+                            <div class="h-5 bg-slate-100 rounded w-64"></div>
+                            <div class="h-3 bg-slate-50 rounded w-80"></div>
+                        </div>
+                    </div>
+                    <div class="h-12 w-40 bg-slate-50 rounded-2xl"></div>
+                </div>
+            @endfor
+        </div>
+
+        <!-- Infinite Scroll Trigger -->
+        @if($this->users->hasMorePages())
+            <div x-intersect="$wire.loadMore()" class="p-16 flex flex-col items-center justify-center bg-slate-50/30 gap-6 border-t border-slate-100">
+                <flux:button variant="subtle" wire:click="loadMore" wire:loading.attr="disabled" class="!rounded-full !px-8 !py-3 !font-black !text-indigo-600">
+                    <span wire:loading.remove wire:target="loadMore">Scroll for More Members</span>
+                    <span wire:loading wire:target="loadMore" class="flex items-center gap-3">
+                        <flux:icon.arrow-path class="size-5 animate-spin" />
+                        Fetching Directory...
+                    </span>
+                </flux:button>
+            </div>
+        @endif
     </div>
-@endforeach
 </div>

@@ -8,80 +8,101 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use App\Models\User;
 use App\Policies\UserPolicy;
+use Illuminate\Support\Str;
+use Livewire\WithPagination;
 
 class UserIndex extends Component
 {
-    // The public property to hold the search term from the input field.
-    // #[Url] makes the search term appear in the URL.
-    #[Url]
+    use WithPagination;
+
+    #[Url(history: true)]
     public string $search = '';
 
-    /**
-     * This method is re-evaluated whenever a dependency changes,
-     * such as the search property.
-     * @return \Illuminate\Support\Collection
-     */
+    #[Url(history: true)]
+    public string $sortBy = 'latest'; // latest, name_asc, name_desc, org_asc, org_desc
+
+    #[Url(history: true)]
+    public string $filterRole = '';
+
+    #[Url(history: true)]
+    public string $statusFilter = 'all'; 
+
+    public int $perPage = 25;
+    public int $limit = 25;
+
+    public function updatedSearch() { $this->resetPage(); $this->limit = $this->perPage; }
+    public function updatedSortBy() { $this->resetPage(); }
+    public function updatedFilterRole() { $this->resetPage(); }
+    public function updatedStatusFilter() { $this->resetPage(); }
+
+    public function loadMore()
+    {
+        $this->limit += $this->perPage;
+    }
+
     #[Computed]
-    #[On('updated')]
     public function users()
     {
-        // Get the authorized query builder from the policy.
         $authenticatedUser = auth()->user();
         $query = (new UserPolicy())->viewAny($authenticatedUser);
 
-        // Apply search filters if a search term is present.
+        // 1. Search Logic (Search by Name, Org, Email, ID, Role)
         if ($this->search) {
-            $query->whereAny([
-                'contact_person',
-                'email',
-                'contact_phone'
-            ], 'LIKE', '%' . $this->search . '%')
-            // Add a search clause for the user who created the record.
-            ->orWhereHas('createdBy', function ($query) {
-                $query->where('contact_person', 'LIKE', '%' . $this->search . '%');
-            })
-            // Add a search clause for the user's roles.
-            ->orWhereHas('roles', function ($query) {
-                $query->where('name', 'LIKE', '%' . $this->search . '%');
+            $query->where(function ($q) {
+                $q->where('contact_person', 'LIKE', '%' . $this->search . '%')
+                  ->orWhere('organisation', 'LIKE', '%' . $this->search . '%')
+                  ->orWhere('email', 'LIKE', '%' . $this->search . '%')
+                  ->orWhere('id', 'LIKE', '%' . $this->search . '%') 
+                  ->orWhereHas('roles', fn($sub) => $sub->where('name', 'LIKE', '%' . $this->search . '%'));                  
             });
         }
-        
-        // Eager load the relationships to prevent N+1 query problems.
-        $query->with('roles', 'createdBy');
 
-        // Execute the query and return the results.
-        return $query->get();
-    }
-
-    /**
-     * Navigates to the user edit page.
-     * @param string $slug
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function userEdit($slug)
-    {
-        return redirect()->route('users.edit', ['user' => $slug]);
-    }
-
-
-    /**
-     * A helper method to highlight the search term in a given string.
-     * @param string $text The text to be highlighted.
-     * @param string $search The search term.
-     * @return \Illuminate\Support\Stringable
-     */
-    private function highlight(string $text, string $search)
-    {
-        // If the search term is empty, return the original text.
-        if (empty($search)) {
-            return $text;
+        // 2. Scoped Filter
+        if ($this->filterRole) {
+            $query->whereHas('roles', fn($q) => $q->where('name', $this->filterRole));
         }
 
-        // Use preg_replace for a case-insensitive search and replace.
-        // The '$1' in the replacement string refers to the captured search term.
-        $highlighted = preg_replace("/($search)/i", '<span class="bg-yellow-200 font-bold text-black">$1</span>', $text);
-        
-        // The result is an HTML string, so return it as a Stringable to be rendered.
-        return \Illuminate\Support\Str::of($highlighted);
+        // 3. Status/Compliance Logic (Applied ONLY to Carriers)
+        if ($this->statusFilter !== 'all') {
+            $query->whereHas('roles', fn($q) => $q->where('name', 'carrier'));
+            
+            match ($this->statusFilter) {
+                'fully_registered' => $query->whereHas('buslocation')->whereHas('fleets')->whereHas('directors', null, '>=', 2)->whereHas('traderefs', null, '>=', 2),
+                'partial_scoped' => $query->where(fn($sub) => $sub->whereDoesntHave('buslocation')->orWhereDoesntHave('fleets')),
+                'unmapped_global' => $query->whereDoesntHave('buslocation'),
+                default => null
+            };
+        }
+
+        // 4. Robust Sorting (Corrected table name to role_user)
+        match ($this->sortBy) {
+            'name_asc' => $query->orderBy('contact_person', 'asc'),
+            'name_desc' => $query->orderBy('contact_person', 'desc'),
+            'org_asc' => $query->orderBy('organisation', 'asc'),
+            'org_desc' => $query->orderBy('organisation', 'desc'),
+            default => $query->latest()
+        };
+
+        return $query->with(['roles', 'createdBy', 'buslocation'])->paginate($this->limit);
+    }
+
+    #[Computed]
+    public function viewableRoles()
+    {
+        $user = auth()->user();
+        return match (true) {
+            $user->hasAnyRole(['superadmin', 'admin', 'logistics operations executive']) => ['shipper', 'carrier', 'marketing logistics associate', 'procurement logistics associate', 'operations logistics associate'],
+            $user->hasRole('operations logistics associate') => ['shipper', 'carrier', 'marketing logistics associate', 'procurement logistics associate'],
+            $user->hasRole('marketing logistics associate') => ['shipper'],
+            $user->hasRole('procurement logistics associate') => ['carrier'],
+            default => []
+        };
+    }
+
+    public function highlight(string $text, string $search)
+    {
+        if (empty($search)) return $text;
+        $highlighted = preg_replace("/($search)/i", '<span class="bg-yellow-100 font-black text-slate-900 px-0.5 rounded shadow-sm">$1</span>', $text);
+        return Str::of($highlighted);
     }
 }
