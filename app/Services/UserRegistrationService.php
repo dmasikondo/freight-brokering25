@@ -60,7 +60,7 @@ class UserRegistrationService
 
             // Remove existing relationships to replace them
             $user->roles()->detach();
-            $user->buslocation()->delete();
+            // $user->buslocation()->delete();
         }
 
         if (!$user) {
@@ -72,7 +72,9 @@ class UserRegistrationService
         $targetRole = $data['customer_type'];
         if (in_array($targetRole, ['shipper', 'carrier'])) {
             $user->update(['organisation'=>$data['company_name']]);
-            $user->buslocation()->create([
+            $user->buslocation()->updateOrCreate(
+                ['user_id'=>$user->id],
+            [
                 'country' => $data['country'],
                 'city' => $data['city'],
                 'address' => $data['address'],

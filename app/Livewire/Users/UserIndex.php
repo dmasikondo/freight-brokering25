@@ -106,4 +106,14 @@ class UserIndex extends Component
         $highlighted = preg_replace("/($search)/i", '<span class="bg-yellow-100 font-black text-slate-900 px-0.5 rounded shadow-sm">$1</span>', $text);
         return Str::of($highlighted);
     }
+
+    /**
+     * Navigates to the user edit page.
+     * @param string $slug
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function userEdit($slug)
+    {
+        return redirect()->route('users.edit', ['user' => $slug]);
+    }    
 }
