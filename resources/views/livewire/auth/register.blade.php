@@ -239,9 +239,20 @@ new #[Layout('components.layouts.auth')] class extends Component {
     class="min-h-screen p-4 flex flex-col items-center pb-8">
 
     <div class="w-full max-w-7xl mt-8">
-        <h1 class="text-5xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text mb-4">
-            Ship Smarter!!
-        </h1>
+                <div class="flex flex-col items-center justify-center">
+                    <div class="mt-4 space-y-6">
+                        <a href="{{ route('home') }}" class="flex flex-col items-center gap-2 font-medium" wire:navigate>
+                            <span class="flex md:max-w-lg  mb-1 items-center justify-center rounded-md">
+                                <x-app-logo-icon class="size-16 fill-current text-black dark:text-white" />
+                            </span>
+                            <span class="sr-only">{{ config('app.name', 'Transpartner Logistics') }}</span>
+                        </a>
+                        <h1
+                            class="md:text-5xl font-bold text-center bg-gradient-to-r from-blue-400 to-emerald-500 text-transparent bg-clip-text mb-4">
+                            Ship Smarter!!
+                        </h1>
+                    </div>
+                </div> 
         <p class="text-center text-gray-400 text-xl mb-12">
             <span x-show="!isStaffRegistration && !isEditing">Register as a Shipper or a Carrier to get started.</span>
             <span x-show="isStaffRegistration && !isEditing">Add a new user.</span>
@@ -566,22 +577,14 @@ new #[Layout('components.layouts.auth')] class extends Component {
 
                     <!-- Navigation Buttons -->
                     <div class="flex justify-between mt-8">
-                        <button wire:click="previousStep" x-show="currentStep > 1"
-                            class="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl transition duration-300">
-                            Back
-                        </button>
+                        <flux:button wire:click="previousStep" x-show="currentStep > 1" variant="primary" icon="backward" color="sky">Back</flux:button>
 
-                        <button wire:click="nextStep" x-show="currentStep < maxStep"
-                            class="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl transition duration-300 ml-auto">
-                            Next
-                        </button>
+                        <flux:button wire:click="nextStep" x-show="currentStep < maxStep" variant="primary" icon="forward" color="teal">Next</flux:button>
 
-                        <button wire:click="register" x-show="currentStep === maxStep"
-                            class="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-xl transition duration-300 flex items-center gap-2">
-                            <x-graphic name="paper-airplane" class="size-5" />
+                        <flux:button  wire:click="register" x-show="currentStep === maxStep" variant="primary" icon="paper-airplane" color="lime">
                             <span x-show="isEditing">Update</span>
                             <span x-show="!isEditing">Submit</span>
-                        </button>
+                        </flux:button>
                     </div>
 
                     <!-- Progress Indicators -->
