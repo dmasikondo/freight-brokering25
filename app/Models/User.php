@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -34,7 +35,12 @@ class User extends Authenticatable
         'contact_phone',
         'whatsapp',
         'organisation',
-        'slug'
+        'slug',         
+        'suspended_at', 
+        'suspension_reason', 
+        'suspended_by_id',
+        'approved_at', 
+        'approved_by_id'
     ];
 
     /**
@@ -56,9 +62,28 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password' => 'hashed',             
+            'suspended_at' => 'datetime',
+            'approved_at' => 'datetime',
         ];
     }
+
+    // --- State Helpers ---
+
+    public function isSuspended(): bool 
+    { 
+        return !is_null($this->suspended_at); 
+    }
+
+    public function isApproved(): bool 
+    { 
+        return !is_null($this->approved_at); 
+    }
+    
+    public function needsApproval(): bool 
+    {
+        return $this->hasAnyRole(['shipper', 'carrier']) && !$this->isApproved();
+    }    
 
     /**
      * Get the user's initials
@@ -137,6 +162,16 @@ class User extends Authenticatable
 
         return $this->roles()->whereIn('name', $roles)->exists();
     }    
+
+    public function suspendedBy(): BelongsTo 
+    {
+         return $this->belongsTo(User::class, 'suspended_by_id'); 
+    }
+
+    public function approvedBy(): BelongsTo 
+    { 
+        return $this->belongsTo(User::class, 'approved_by_id'); 
+    }  
 
     public function buslocation(): hasMany
     {
@@ -233,15 +268,11 @@ class User extends Authenticatable
     // This accessor generates the identification number based on your new format
     protected function identificationNumber(): Attribute
     {
+        
         return Attribute::make(
             get: function () {
                 // Ensure all relationships are loaded to prevent errors
-                if ($this->roles->isEmpty()|| $this->buslocation->isEmpty()) {
-                    return null;
-                }
-                if(!$this->hasAnyRole(['shipper', 'carrier'])){
-                    return null;
-                }
+                if ($this->roles->isEmpty() || $this->buslocation->isEmpty() || !$this->hasAnyRole(['shipper', 'carrier'])) return null;
 
                 // 1. Get the country code (assuming 'ZW' for Zimbabwe)
                 $countryCode = ($this->buslocation->first()->country === 'Zimbabwe') ? 'ZW' : 'SA';
@@ -254,24 +285,24 @@ class User extends Authenticatable
                     $cityAbbreviation = 'ZA'; // Or a more specific code for South African cities
                 }
                 
-                // 3. Get the carrier class code from the pivot table
-                $ownershipType = $this->roles->first()->pivot->classification;
-                $classCode = ($ownershipType === 'real_owner') ? '01' : '02';
+                // 3. Get the carrier / shipper class code from the pivot table
+                $class = ($this->roles->first()->pivot->classification === 'real_owner') ? '01' : '02';
 
-                // 4. Get the year and month (YYMM format)
-                $yearMonth = $this->created_at->format('ymd');
+                // 4. Get the year month and date
+                $date = $this->created_at->format('ymd');
 
                 // 5. Get the user ID, padded to three digits
-                $paddedId = str_pad($this->id, 3, '0', STR_PAD_LEFT);
+                $paddedId =str_pad($this->id, 5, '0', STR_PAD_LEFT);
 
                 // 6. Get the customer type suffix (C for Carrier, S for Shipper)
-                $customerSuffix = ($this->roles->first()->name === 'carrier') ? 'C' : 'S';
+                $suffix = ($this->roles->first()->name === 'carrier') ? 'C' : 'S';
 
                 // 7. Combine all parts into the final identification number
-                return "{$countryCode}{$cityAbbreviation}{$classCode}{$yearMonth}{$paddedId}{$customerSuffix}";
+                return "{$countryCode}{$cityAbbreviation}{$class}{$date}{$paddedId}{$suffix}";
             },
         );
     }
+
     public function activityLogs(): MorphMany
     {
         return $this->morphMany(ActivityLog::class, 'auditable');

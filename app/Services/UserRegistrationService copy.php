@@ -44,28 +44,22 @@ class UserRegistrationService
         if (!$user) {
             // New User Creation Logic
             $userData['slug'] = Str::slug($data['first_name'] . ' ' . $data['surname']) . '-' . uniqid();
-            
-            // Generate password based on whether it's staff-assisted or self-registration
-            if ($creator) {
-                // Staff-assisted registration: generate random password
-                $userData['password'] = Hash::make(Str::random(16));
-            } else {
-                // Self-registration: use provided password
-                $userData['password'] = Hash::make($data['password']);
-            }
-            
+            $userData['password'] = Hash::make($data['password']);
             $user = User::create($userData);
-
         } else {
+
             // Existing User Update Logic
             $user->update($userData);
 
-            // Password is not updated during user editing
-            // Staff should use password reset functionality if needed
+            // Handle password update if provided
+            if (!empty($data['password'])) {
+                $user->password = Hash::make($data['password']);
+                $user->save();
+            }
 
             // Remove existing relationships to replace them
             $user->roles()->detach();
-            $user->buslocation()->delete();
+            // $user->buslocation()->delete();
         }
 
         if (!$user) {
@@ -77,11 +71,14 @@ class UserRegistrationService
         $targetRole = $data['customer_type'];
         if (in_array($targetRole, ['shipper', 'carrier'])) {
             $user->update(['organisation' => $data['company_name']]);
-            $user->buslocation()->create([
-                'country' => $data['country'],
-                'city' => $data['city'],
-                'address' => $data['address'],
-            ]);
+            $user->buslocation()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'country' => $data['country'],
+                    'city' => $data['city'],
+                    'address' => $data['address'],
+                ]
+            );
             $rolesToAssign = "{$data['customer_type']}:{$data['ownership_type']}";
             $user->assignRole($rolesToAssign);
         } else {
@@ -115,7 +112,7 @@ class UserRegistrationService
     public function getAllowedRolesForUser(User $user): \Illuminate\Support\Collection
     {
         $allRoles = Role::pluck('name', 'name');
-        
+
         if ($user->hasRole('superadmin')) {
             // Superadmin can register all users
             return $allRoles;
@@ -139,7 +136,7 @@ class UserRegistrationService
         if ($user->hasRole('operations logistics associate')) {
             // operations logistics associate can register shippers and carriers only
             return $allRoles->only(['shipper', 'carrier']);
-        }        
+        }
 
         // Default: If no specific role is matched, the user can't register others.
         return collect([]);
