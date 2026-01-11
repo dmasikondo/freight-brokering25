@@ -27,8 +27,11 @@ class UserIndex extends Component
     #[Url(history: true)]
     public string $statusFilter = 'all'; 
 
-    public int $perPage = 25;
-    public int $limit = 25;
+#[Url(history: true)]
+public string $complianceStatus = 'all'; // all, suspended, email_unverified, email_verified, pending_approval, approved    
+
+    public int $perPage = 50;
+    public int $limit = 50;
 
     public function updatedSearch() { $this->resetPage(); $this->limit = $this->perPage; }
     public function updatedSortBy() { $this->resetPage(); }
@@ -61,8 +64,19 @@ class UserIndex extends Component
         if ($this->filterRole) {
             $query->whereHas('roles', fn($q) => $q->where('name', $this->filterRole));
         }
-
-        // 3. Status/Compliance Logic (Applied ONLY to Carriers)
+// 3. Compliance & Status Logic
+    if ($this->complianceStatus !== 'all') {
+        match ($this->complianceStatus) {
+            'suspended' => $query->whereNotNull('suspended_at'),
+            'email_unverified' => $query->whereNull('email_verified_at'),
+            'email_verified' => $query->whereNotNull('email_verified_at'),
+            'pending_approval' => $query->whereHas('roles', fn($q) => $q->whereIn('name', ['shipper', 'carrier']))
+                                        ->whereNull('approved_at'),
+            'approved' => $query->whereNotNull('approved_at'),
+            default => null
+        };
+    }
+        // 4. Status/Compliance Logic (Applied ONLY to Carriers)
         if ($this->statusFilter !== 'all') {
             $query->whereHas('roles', fn($q) => $q->where('name', 'carrier'));
             
@@ -83,7 +97,7 @@ class UserIndex extends Component
             default => $query->latest()
         };
 
-        return $query->with(['roles', 'createdBy', 'buslocation'])->paginate($this->limit);
+        return $query->with(['roles', 'createdBy', 'buslocation','suspendedBy'])->paginate($this->limit);
     }
 
     #[Computed]

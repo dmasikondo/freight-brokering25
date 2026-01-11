@@ -84,4 +84,34 @@ class UserController extends Controller
             'activityLogs'
         ));
     }
+
+   
+    public function suspend(Request $request, User $user)
+    {
+       Gate::authorize('suspend', $user); 
+
+        $request->validate([
+            'suspension_reason' => 'required|string|max:255',
+        ]);
+
+        $user->update([
+            'suspended_at' => now(),
+            'suspension_reason' => $request->suspension_reason,
+            'suspended_by_id' =>auth()->id(),
+        ]);
+
+        return back()->with('status', 'User account has been suspended.');
+    }
+
+    public function unsuspend(User $user)
+    {
+        Gate::authorize('update', $user);
+
+        $user->update([
+            'suspended_at' => null,
+            'suspension_reason' => null,
+        ]);
+
+        return back()->with('status', 'User account access has been restored.');
+    }    
 }

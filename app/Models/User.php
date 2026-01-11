@@ -35,11 +35,11 @@ class User extends Authenticatable
         'contact_phone',
         'whatsapp',
         'organisation',
-        'slug',         
-        'suspended_at', 
-        'suspension_reason', 
+        'slug',
+        'suspended_at',
+        'suspension_reason',
         'suspended_by_id',
-        'approved_at', 
+        'approved_at',
         'approved_by_id'
     ];
 
@@ -62,7 +62,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',             
+            'password' => 'hashed',
             'suspended_at' => 'datetime',
             'approved_at' => 'datetime',
         ];
@@ -70,20 +70,20 @@ class User extends Authenticatable
 
     // --- State Helpers ---
 
-    public function isSuspended(): bool 
-    { 
-        return !is_null($this->suspended_at); 
+    public function isSuspended(): bool
+    {
+        return !is_null($this->suspended_at);
     }
 
-    public function isApproved(): bool 
-    { 
-        return !is_null($this->approved_at); 
+    public function isApproved(): bool
+    {
+        return !is_null($this->approved_at);
     }
-    
-    public function needsApproval(): bool 
+
+    public function needsApproval(): bool
     {
         return $this->hasAnyRole(['shipper', 'carrier']) && !$this->isApproved();
-    }    
+    }
 
     /**
      * Get the user's initials
@@ -93,15 +93,15 @@ class User extends Authenticatable
         return Str::of($this->username)
             ->explode(' ')
             ->take(2)
-            ->map(fn ($word) => Str::substr($word, 0, 1))
+            ->map(fn($word) => Str::substr($word, 0, 1))
             ->implode('');
     }
 
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class)
-                    ->withPivot('classification', 'created_at')
-                    ->withTimestamps();
+            ->withPivot('classification', 'created_at')
+            ->withTimestamps();
     }
 
     public function assignRole(string $rolesWithOwnership): void
@@ -137,19 +137,19 @@ class User extends Authenticatable
         }
 
         // Sync the roles with the user, detaching any previously assigned roles
-        $this->roles()->sync($data);    
+        $this->roles()->sync($data);
     }
 
 
 
     /**
-      * Check if the user has role of
-    */
+     * Check if the user has role of
+     */
     public function hasRole($role)
     {
-        return  (bool) $this->roles()->where('name',$role)->count();
+        return  (bool) $this->roles()->where('name', $role)->count();
     }
-    
+
     /**
      * Determine if the user has any of the given roles.
      *
@@ -161,23 +161,23 @@ class User extends Authenticatable
         $roles = is_array($roles) ? $roles : func_get_args();
 
         return $this->roles()->whereIn('name', $roles)->exists();
-    }    
-
-    public function suspendedBy(): BelongsTo 
-    {
-         return $this->belongsTo(User::class, 'suspended_by_id'); 
     }
 
-    public function approvedBy(): BelongsTo 
-    { 
-        return $this->belongsTo(User::class, 'approved_by_id'); 
-    }  
+    public function suspendedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'suspended_by_id');
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by_id');
+    }
 
     public function buslocation(): hasMany
     {
         return $this->hasMany(Buslocation::class);
-    } 
-    
+    }
+
     public function creationAudit()
     {
         return $this->hasOne(UserCreation::class, 'created_user_id');
@@ -185,24 +185,24 @@ class User extends Authenticatable
     public function createdBy()
     {
         return $this->hasOneThrough(
-            User::class, 
+            User::class,
             UserCreation::class,
             'created_user_id', // Foreign key on the user_creations table
             'id',              // Foreign key on the users table
             'id',              // Local key on the users table
             'creator_user_id'  // Local key on the user_creations table
         );
-    } 
-    
+    }
+
     public function createdUsers(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(
-            Usercreation::class, 
-            'creator_user_id', 
+            Usercreation::class,
+            'creator_user_id',
             'id'
         );
-    } 
-    
+    }
+
     /**
      * Get the territories assigned to the user.
      */
@@ -219,8 +219,8 @@ class User extends Authenticatable
     public function assignedUsers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'territory_user', 'assigned_by_user_id', 'user_id');
-    } 
-    
+    }
+
     public function userTerritoryAssignmentStatus($territoryName)
     {
         if ($this->territories()->where('name', $territoryName)->exists()) {
@@ -228,8 +228,8 @@ class User extends Authenticatable
         }
 
         return false;
-    } 
-    
+    }
+
     public function freights()
     {
         return $this->hasMany(Freight::class, 'creator_id');
@@ -238,37 +238,37 @@ class User extends Authenticatable
     public function lanes()
     {
         return $this->hasMany(Lane::class, 'creator_id');
-    }  
-    
+    }
+
     // A company has many directors (through contacts)
     public function directors()
     {
         return $this->morphMany(Contact::class, 'contactable')->where('type', 'director');
-    }  
+    }
 
     // A company has many trade references (through contacts)
     public function traderefs()
     {
         return $this->morphMany(Contact::class, 'contactable')->where('type', 'traderef');
-    }    
-    
-	 public function fleets()
-	 {
-		 return $this->hasMany(Fleet::class);
-	 }    
+    }
 
-    
+    public function fleets()
+    {
+        return $this->hasMany(Fleet::class);
+    }
+
+
     public function profileDocuments()
     {
         return $this->morphMany(Document::class, 'documentable')->where('document_type', 'company profile');
-    }  
-    
+    }
 
-    
+
+
     // This accessor generates the identification number based on your new format
     protected function identificationNumber(): Attribute
     {
-        
+
         return Attribute::make(
             get: function () {
                 // Ensure all relationships are loaded to prevent errors
@@ -284,7 +284,7 @@ class User extends Authenticatable
                 } else {
                     $cityAbbreviation = 'ZA'; // Or a more specific code for South African cities
                 }
-                
+
                 // 3. Get the carrier / shipper class code from the pivot table
                 $class = ($this->roles->first()->pivot->classification === 'real_owner') ? '01' : '02';
 
@@ -292,7 +292,7 @@ class User extends Authenticatable
                 $date = $this->created_at->format('ymd');
 
                 // 5. Get the user ID, padded to three digits
-                $paddedId =str_pad($this->id, 5, '0', STR_PAD_LEFT);
+                $paddedId = str_pad($this->id, 5, '0', STR_PAD_LEFT);
 
                 // 6. Get the customer type suffix (C for Carrier, S for Shipper)
                 $suffix = ($this->roles->first()->name === 'carrier') ? 'C' : 'S';
@@ -307,5 +307,4 @@ class User extends Authenticatable
     {
         return $this->morphMany(ActivityLog::class, 'auditable');
     }
-    
 }
