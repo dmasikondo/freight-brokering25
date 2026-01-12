@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -357,5 +358,43 @@ class User extends Authenticatable implements MustVerifyEmail
             return compact('countries', 'cities');
         });
     }
+
+/**
+ * The "Master Filter": Limits a query to users this staff member is allowed to see.
+ */
+public function scopeVisibleTo(Builder $query, User $staff): Builder
+{
+    // 1. Superadmins/Admins see everyone
+    if ($staff->hasAnyRole(['superadmin', 'admin'])) {
+        return $query;
+    }
+
+    $bounds = $staff->getGeographicalBounds();
+    $territoryIds = $staff->territories()->pluck('territories.id');
+
+    return $query->where(function ($q) use ($staff, $bounds, $territoryIds) {
+        // Logic A: Find Clients (Shippers/Carriers) in my territory
+        $q->where(function ($clientQuery) use ($staff, $bounds) {
+            $clientQuery->whereHas('roles', fn($r) => $r->whereIn('name', ['shipper', 'carrier']))
+                ->where(function ($sub) use ($staff, $bounds) {
+                    $sub->whereHas('createdBy', fn($cb) => $cb->where('user_creations.creator_user_id', $staff->id))
+                        ->orWhereHas('buslocation', fn($bl) => 
+                            $bl->whereIn('country', $bounds['countries'])
+                               ->orWhereIn('city', $bounds['cities'])
+                        );
+                });
+        });
+
+        // Logic B: Find other Staff in my shared Territories
+        $q->orWhere(function ($staffQuery) use ($territoryIds) {
+            $staffQuery->whereHas('roles', fn($r) => $r->whereIn('name', [
+                'marketing logistics associate', 
+                'procurement logistics associate', 
+                'operations logistics associate'
+            ]))
+            ->whereHas('territories', fn($t) => $t->whereIn('territories.id', $territoryIds));
+        });
+    });
+}    
 
 }

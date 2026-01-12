@@ -14,7 +14,7 @@ class UserController extends Controller
 {
     public function index()
     {  
-       Gate::authorize('create', auth()->user());          
+      Gate::authorize('viewAny', auth()->user());          
         return view('users.index');
     }
 
