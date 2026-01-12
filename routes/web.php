@@ -25,14 +25,14 @@ Route::get('/', function () {
 Volt::route('freights','freight.index')->name('freights.index');
 Volt::route('lanes','lane.index')->name('lanes.index');
 
-Route::view('register','users.register')->name('register');
+Route::view('register','users.register')->name('register')->middleware('guest');
 Route::view('about-us','pages.about')->name('about-us');
 Route::view('faq','pages.faq')->name('faq');
 Route::view('consultancy','pages.consultancy')->name('consultancy');
 Route::view('terms','pages.terms')->name('terms');
 
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth','verified'])->group(function () {
     Route::redirect('settings', 'settings/profile');
 
     Route::get('dashboard',[DashboardController::class, 'dashboard'])->name('dashboard');

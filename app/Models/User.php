@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use App\Traits\Auditable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, SoftDeletes, Auditable;
@@ -299,6 +299,35 @@ class User extends Authenticatable
 
                 // 7. Combine all parts into the final identification number
                 return "{$countryCode}{$cityAbbreviation}{$class}{$date}{$paddedId}{$suffix}";
+            },
+        );
+    }
+
+    /**
+     * Get the user's email masked with asterisks.
+     */
+    protected function maskedEmail(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                $email = $this->email;
+                if (!$email) return '';
+
+                [$name, $domain] = explode('@', $email);
+
+                // Show first  chars, then mask, then show the last char of the name
+                $length = strlen($name);
+                $visible = 4;
+
+                if ($length <= 3) {
+                    $maskedName = substr($name, 0, 1) . str_repeat('*', $length - 1);
+                } else {
+                    $maskedName = substr($name, 0, $visible) .
+                        str_repeat('*', max(1, $length - ($visible + 1))) .
+                        substr($name, -1);
+                }
+
+                return $maskedName . '@' . $domain;
             },
         );
     }
