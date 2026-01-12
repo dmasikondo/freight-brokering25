@@ -263,6 +263,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->morphMany(Document::class, 'documentable')->where('document_type', 'company profile');
     }
 
+    public function activityLogs(): MorphMany
+    {
+        return $this->morphMany(ActivityLog::class, 'auditable');
+    }    
+
 
 
     // This accessor generates the identification number based on your new format
@@ -332,8 +337,25 @@ class User extends Authenticatable implements MustVerifyEmail
         );
     }
 
-    public function activityLogs(): MorphMany
+    /**
+     * Shared logic for Policy, Notification, and Listener
+     */
+    public function getGeographicalBounds(): array
     {
-        return $this->morphMany(ActivityLog::class, 'auditable');
+        return cache()->remember("user_{$this->id}_bounds", 3600, function () {
+            $territories = $this->territories()
+                ->with(['countries', 'zimbabweCities', 'provinces.zimbabweCities'])
+                ->get();
+
+            $countries = $territories->flatMap->countries->pluck('name')->unique()
+                ->reject(fn($n) => strtolower($n) === 'zimbabwe')->values()->toArray();
+
+            $cities = $territories->flatMap->zimbabweCities->pluck('name')
+                ->concat($territories->flatMap->provinces->flatMap->zimbabweCities->pluck('name'))
+                ->unique()->values()->toArray();
+
+            return compact('countries', 'cities');
+        });
     }
+
 }

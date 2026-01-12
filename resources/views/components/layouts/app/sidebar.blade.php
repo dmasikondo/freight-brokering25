@@ -6,18 +6,31 @@
 </head>
 
 <body class="min-h-screen bg-white dark:bg-zinc-800">
-    
-    <flux:sidebar sticky collapsible class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">        
+
+    <flux:sidebar sticky collapsible class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
         <flux:sidebar.toggle class="lg:hidden" icon="x-mark" />
 
-        <a href="{{ route('home') }}" class="me-5 flex items-center space-x-2 rtl:space-x-reverse" title="Transpartner Logistics Home"  wire:navigate >
-            <x-app-logo  />
+        <a href="{{ route('home') }}" class="me-5 flex items-center space-x-2 rtl:space-x-reverse"
+            title="Transpartner Logistics Home" wire:navigate>
+            <x-app-logo />
         </a>
 
         <flux:navlist variant="outline">
             <flux:navlist.group :heading="__('Platform')" class="grid">
                 <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')"
                     wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
+                <flux:spacer />
+                
+                <flux:navlist.item icon="bell" :href="route('notifications.index')"
+                    :current="request()->routeIs('notifications.*')" wire:navigate>
+                    {{ __('Notifications') }}
+
+                    @if ($count = auth()->user()->unreadNotifications->count())
+                        <flux:badge size="sm" color="red" inset="top bottom" class="ml-auto">
+                            {{ $count }}
+                        </flux:badge>
+                    @endif
+                </flux:navlist.item>
             </flux:navlist.group>
         </flux:navlist>
 
@@ -28,7 +41,7 @@
             </flux:navlist.item>
         </flux:navlist>
 
-        <flux:navlist.group variant="outline"  heading="SERVICES"
+        <flux:navlist.group variant="outline" heading="SERVICES"
             :current="request()->routeIs('consultancy') || request()->routeIs('lanes.index') || request()->routeIs('freights.index')"
             expandable>
             <flux:navlist.item icon="truck" :href="route('lanes.index')" :current="request()->routeIs('lanes.index')"
