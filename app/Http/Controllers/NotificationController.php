@@ -31,4 +31,22 @@ class NotificationController extends Controller
 
         return back()->with('status', 'All notifications marked as read.');
     }
+
+    public function readAndView($id)
+    {
+        $notification = auth()->user()->notifications()->findOrFail($id);
+
+        // 1. Mark as read
+        $notification->markAsRead();
+
+        // 2. Get the destination from the notification data
+        $clientId = $notification->data['client_id'] ?? null;
+
+        if ($clientId) {
+            // 3. Go to the users.show route as requested
+            return redirect()->route('users.show', $clientId);
+        }
+
+        return redirect()->route('notifications.index');
+    }
 }

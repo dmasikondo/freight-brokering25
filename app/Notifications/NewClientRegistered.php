@@ -38,7 +38,7 @@ class NewClientRegistered extends Notification
     public function toArray($notifiable): array
     {
         return [
-            'client_id' => $this->client->id,
+            'client_id' => $this->client->slug,
             'client_name' => $this->client->organisation,
             'client_role' => $this->client->roles->first()->name ?? 'client',
             'message' => "New " . ($this->client->roles->first()->name ?? 'client') . " registered in your territory."
