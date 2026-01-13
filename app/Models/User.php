@@ -272,7 +272,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
 
 
-    // This accessor generates the identification number based on your new format
+    // This accessor generates the identification number based on location and user type
     protected function identificationNumber(): Attribute
     {
 
@@ -364,72 +364,74 @@ class User extends Authenticatable implements MustVerifyEmail
      * The "Smart" Filter: Limits a query to users this staff member is allowed to see
      * based on their specific role permissions and territory boundaries.
      */
-public function scopeVisibleTo($query, User $staff)
-{
-    if ($staff->hasAnyRole(['superadmin', 'admin'])) {
-        return $query;
-    }
+    public function scopeVisibleTo($query, User $staff)
+    {
+        if ($staff->hasAnyRole(['superadmin', 'admin'])) {
+            return $query;
+        }
 
-    $bounds = $staff->getGeographicalBounds();
-    $territoryIds = $staff->territories()->pluck('territories.id');
+        $bounds = $staff->getGeographicalBounds();
+        $territoryIds = $staff->territories()->pluck('territories.id');
 
-    return $query->where(function ($q) use ($staff, $bounds, $territoryIds) {
-        match (true) {
-            $staff->hasRole('marketing logistics associate') 
+        return $query->where(function ($q) use ($staff, $bounds, $territoryIds) {
+            match (true) {
+                $staff->hasRole('marketing logistics associate')
                 => $q->where($this->getClientLogic($staff, $bounds, ['shipper'])),
 
-            $staff->hasRole('procurement logistics associate') 
+                $staff->hasRole('procurement logistics associate')
                 => $q->where($this->getClientLogic($staff, $bounds, ['carrier'])),
 
-            $staff->hasRole('operations logistics associate') 
+                $staff->hasRole('operations logistics associate')
                 => $q->where(function ($sub) use ($staff, $bounds, $territoryIds) {
                     $sub->where($this->getClientLogic($staff, $bounds, ['shipper', 'carrier']))
                         ->orWhere($this->getAssociateLogic($territoryIds, [
-                            'marketing logistics associate', 
+                            'marketing logistics associate',
                             'procurement logistics associate'
                         ]));
                 }),
 
-            $staff->hasRole('logistics operations executive') 
+                $staff->hasRole('logistics operations executive')
                 => $q->where(function ($sub) use ($staff, $bounds, $territoryIds) {
                     $sub->where($this->getClientLogic($staff, $bounds, ['shipper', 'carrier']))
                         ->orWhere($this->getAssociateLogic($territoryIds, [
-                            'marketing logistics associate', 
+                            'marketing logistics associate',
                             'procurement logistics associate',
                             'operations logistics associate'
                         ]));
                 }),
 
-            default => $q->where('users.id', $staff->id),
+                default => $q->where('users.id', $staff->id),
+            };
+        });
+    }
+
+    /**
+     * Logic for Shippers/Carriers.
+     */
+    private function getClientLogic(User $staff, array $bounds, array $roles): \Closure
+    {
+        return function ($query) use ($staff, $bounds, $roles) {
+            $query->whereHas('roles', fn($q) => $q->whereIn('name', $roles))
+                ->where(function ($q) use ($staff, $bounds) {
+                    $q->whereHas('createdBy', fn($cb) => $cb->where('user_creations.creator_user_id', $staff->id))
+                        ->orWhereHas(
+                            'buslocation',
+                            fn($bl) =>
+                            $bl->whereIn('country', $bounds['countries'])
+                                ->orWhereIn('city', $bounds['cities'])
+                        );
+                });
         };
-    });
-}
+    }
 
-/**
- * Logic for Shippers/Carriers.
- */
-private function getClientLogic(User $staff, array $bounds, array $roles): \Closure
-{
-    return function ($query) use ($staff, $bounds, $roles) {
-        $query->whereHas('roles', fn($q) => $q->whereIn('name', $roles))
-            ->where(function ($q) use ($staff, $bounds) {
-                $q->whereHas('createdBy', fn($cb) => $cb->where('user_creations.creator_user_id', $staff->id))
-                    ->orWhereHas('buslocation', fn($bl) => 
-                        $bl->whereIn('country', $bounds['countries'])
-                           ->orWhereIn('city', $bounds['cities'])
-                    );
-            });
-    };
-}
-
-/**
- * Logic for Staff/Associates.
- */
-private function getAssociateLogic($territoryIds, array $roles): \Closure
-{
-    return function ($query) use ($territoryIds, $roles) {
-        $query->whereHas('roles', fn($q) => $q->whereIn('name', $roles))
-            ->whereHas('territories', fn($t) => $t->whereIn('territories.id', $territoryIds));
-    };
-}
+    /**
+     * Logic for Staff/Associates.
+     */
+    private function getAssociateLogic($territoryIds, array $roles): \Closure
+    {
+        return function ($query) use ($territoryIds, $roles) {
+            $query->whereHas('roles', fn($q) => $q->whereIn('name', $roles))
+                ->whereHas('territories', fn($t) => $t->whereIn('territories.id', $territoryIds));
+        };
+    }
 }

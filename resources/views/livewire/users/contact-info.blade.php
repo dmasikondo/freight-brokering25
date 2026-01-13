@@ -7,7 +7,7 @@ new class extends Component {
     public $user;
     public $buslocation = [];
 
-    protected $listeners = ['location-updated' => 'mount', 'show-locationFlashMessage'=>'flashMessage'];
+    protected $listeners = ['location-updated' => 'mount', 'show-locationFlashMessage' => 'flashMessage'];
 
     public function getBusinessContacts()
     {
@@ -19,12 +19,17 @@ new class extends Component {
         session()->flash('message', 'Business Location successfully updated!');
     }
 
+    public function isUnapproved()
+    {
+        return is_null($this->user->approved_at);
+    }
+
     public function mount(User $user = null)
     {
         $this->user = $user;
         if ($this->user) {
-                $this->user->load('roles', 'buslocation');
-            }        
+            $this->user->load('roles', 'buslocation');
+        }
         $this->getBusinessContacts();
     }
 }; ?>
@@ -38,7 +43,10 @@ new class extends Component {
             <div>
                 <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
                     {{ $user->organisation }}
-                    <span class=" font-extralight"> | {{ $user->roles?->first()?->name }}: {{$user->identificationNumber}}</span>
+                    <span class=" font-extralight"> | {{ $user->roles?->first()?->name }}:
+                    @if(!$this->isUnapproved())
+                        {{ $user->identificationNumber }}</span>
+                    @endif
                 </h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400 flex items-center mt-1">
                     <flux:icon name="user-circle" class="size-4 mr-1" />
@@ -78,7 +86,7 @@ new class extends Component {
             {{-- ADDRESS DETAILS --}}
 
             <div class="lg:col-span-2 space-y-3">
-                    <x-form.flash-message-success />
+                <x-form.flash-message-success />
                 <h4
                     class="text-lg font-semibold text-lime-600 dark:text-lime-400 border-b border-lime-100 dark:border-lime-900/50 pb-1 mb-2">
                     Location</h4>

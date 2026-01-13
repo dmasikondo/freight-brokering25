@@ -37,6 +37,7 @@ Route::middleware(['auth',])->group(function () {
     Route::get('users/{user:slug}/edit', [UserController::class, 'edit'])->name('users.edit');
     Route::post('users/{user:slug}/suspend', [UserController::class, 'suspend'])->name('users.suspend');
     Route::post('users/{user:slug}/unsuspend', [UserController::class, 'unsuspend'])->name('users.unsuspend');
+    Route::patch('/users/{user:slug}/approve', [UserController::class, 'approve'])->name('users.approve');
 
     Volt::route('territories/create', 'territory.create')->name('territories.create');
     Volt::route('territories', 'territory.index')->name('territories.index');

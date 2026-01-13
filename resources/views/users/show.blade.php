@@ -1,293 +1,251 @@
 <x-layouts.app :title="$user->contact_person . ' - Profile'">
     <div class="flex h-full w-full flex-1 flex-col gap-6 p-4 md:p-8" x-data="{
         activeTab: 'activity',
-        isShipper: {{ $isShipper ? 'true' : 'false' }},
-        isCarrier: {{ $isCarrier ? 'true' : 'false' }},
-        isLeadRole: {{ $isLeadRole ? 'true' : 'false' }},
-        isAdmin: {{ $isAdmin ? 'true' : 'false' }}
+        isShipper: {{ $user->hasRole('shipper') ? 'true' : 'false' }},
+        isCarrier: {{ $user->hasRole('carrier') ? 'true' : 'false' }},
     }">
 
-        <!-- Profile Intelligence Hub -->
         <div
             class="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 flex flex-col lg:flex-row min-h-[750px]">
 
-            <!-- Sidebar: Identity & Provenance (Themed by Controller) -->
             <div
                 class="lg:w-96 bg-zinc-50 dark:bg-zinc-950 p-10 border-r border-zinc-100 dark:border-zinc-800 flex flex-col items-center text-center">
+
                 <div class="relative group">
                     <div
-                        class="w-48 h-48 rounded-[3.5rem] {{ $theme['bg'] }} {{ $theme['text'] }} flex items-center justify-center shadow-2xl transition-all duration-700 group-hover:scale-105 group-hover:-rotate-3 overflow-hidden border-4 border-white dark:border-zinc-800">
-                        <flux:icon :name="$theme['icon']" class="size-28 opacity-90" />
+                        class="w-48 h-48 rounded-[3.5rem] {{ $theme['bg'] ?? 'bg-zinc-200' }} {{ $theme['text'] ?? 'text-zinc-500' }} flex items-center justify-center shadow-2xl transition-all duration-700 group-hover:scale-105 group-hover:-rotate-3 overflow-hidden border-4 border-white dark:border-zinc-800">
+                        <flux:icon :name="$theme['icon'] ?? 'user'" class="size-28 opacity-90" />
+                    </div>
+                </div>
+
+                <div class="mt-8 space-y-3 w-full">
+                    <h1 class="text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">
+                        {{ $user->contact_person }}
+                    </h1>
+
+                    {{-- Roles and Classifications --}}
+                    <div class="flex flex-wrap justify-center gap-2">
+                        @foreach ($user->roles as $role)
+                            <div class="flex flex-col items-center">
+                                <span
+                                    class="px-3 py-1 rounded-lg bg-zinc-900 text-white text-[9px] font-black uppercase tracking-widest shadow-md">
+                                    {{ $role->name }}
+                                </span>
+                                @if (in_array(strtolower($role->name), ['carrier', 'shipper']) && $role->pivot->classification)
+                                    <span
+                                        class="mt-1 text-[8px] font-bold uppercase tracking-tighter {{ $role->pivot->classification === 'real_owner' ? 'text-amber-600' : 'text-sky-600' }}">
+                                        {{ str_replace('_', ' ', $role->pivot->classification) }}
+                                    </span>
+                                @endif
+                            </div>
+                        @endforeach
                     </div>
 
-                    @if ($user->roles->first()?->pivot?->classification === 'real_owner')
+                    {{-- Suspension Banner --}}
+                    @if ($user->isSuspended())
                         <div
-                            class="absolute -bottom-2 -right-2 bg-white dark:bg-zinc-900 p-2.5 rounded-2xl shadow-xl border border-zinc-100 dark:border-zinc-800">
-                            <flux:icon.shield-check class="size-7 text-amber-500" />
+                            class="mt-4 w-full p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900 flex items-center justify-center gap-2">
+                            <flux:icon.no-symbol variant="mini" class="size-4 text-rose-600" />
+                            <span class="text-[10px] font-black text-rose-600 uppercase tracking-widest">Account
+                                Suspended</span>
+                        </div>
+                    @endif
+
+                    {{-- Approval Status & ID --}}
+                    @if ($user->isApproved())
+                        <div class="mt-4 flex flex-col items-center gap-2">
+                            <div
+                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900">
+                                <flux:icon.check-badge variant="mini" class="size-3.5 text-emerald-500" />
+                                <span
+                                    class="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Verified
+                                    Account</span>
+                            </div>
+
+                            <div class="mt-4 w-full p-4 bg-zinc-900 rounded-2xl shadow-xl border border-zinc-700">
+                                <span class="text-[8px] font-black text-zinc-500 uppercase tracking-[0.3em]">Official
+                                    Identity</span>
+                                <div class="font-mono text-sm text-white mt-1 tracking-[0.2em]">
+                                    {{ $user->identification_number }}
+                                </div>
+                            </div>
+
+                            @if ($user->approvedBy)
+                                <div class="mt-2 flex flex-col items-center">
+                                    <span class="text-[8px] font-bold text-zinc-400 uppercase">Verified By</span>
+                                    <flux:link href="{{ route('users.show', $user->approvedBy) }}" wire:navigate
+                                        class="text-[11px] font-black text-zinc-700 dark:text-zinc-300 hover:text-emerald-500">
+                                        {{ $user->approvedBy->contact_person }}
+                                    </flux:link>
+                                </div>
+                            @endif
                         </div>
                     @endif
                 </div>
 
-                <div class="mt-8 space-y-3">
-                    <div class="flex items-center justify-center gap-3">
-                        <h1 class="text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">
-                            {{ $user->contact_person }}
-                        </h1>
-                        @if (auth()->id() === $user->id)
-                            <span
-                                class="bg-indigo-600 text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-indigo-200">Me</span>
+                {{-- Quick Actions --}}
+                <div class="mt-auto pt-10 w-full space-y-4">
+                    {{-- Quick Actions Sidebar Area --}}
+                    <div class="mt-auto pt-10 w-full space-y-4">
+                        @if ($user->needsApproval())
+
+                            {{-- Check specifically for the 'approval' key from your Action --}}
+                            @if ($errors->has('approval'))
+                                <div
+                                    class="mb-6 p-4 text-left bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 rounded-2xl shadow-sm">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <flux:icon.exclamation-circle variant="mini" class="text-rose-600 size-4" />
+                                        <span
+                                            class="text-[10px] font-black text-rose-600 uppercase tracking-widest">Requirements
+                                            Missing</span>
+                                    </div>
+
+                                    <ul class="space-y-2">
+                                        @foreach ($errors->get('approval') as $message)
+                                            {{-- Handle case where $message might be an array or string --}}
+                                            @if (is_array($message))
+                                                @foreach ($message as $subMessage)
+                                                    <li
+                                                        class="text-[10px] font-bold text-rose-700 dark:text-rose-400 flex items-start gap-2 leading-tight">
+                                                        <span
+                                                            class="mt-1 size-1.5 bg-rose-500 rounded-full shrink-0"></span>
+                                                        {{ $subMessage }}
+                                                    </li>
+                                                @endforeach
+                                            @else
+                                                <li
+                                                    class="text-[10px] font-bold text-rose-700 dark:text-rose-400 flex items-start gap-2 leading-tight">
+                                                    <span
+                                                        class="mt-1 size-1.5 bg-rose-500 rounded-full shrink-0"></span>
+                                                    {{ $message }}
+                                                </li>
+                                            @endif
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+
+                            <form action="{{ route('users.approve', $user) }}" method="POST">
+                                @csrf
+                                @method('PATCH')
+                                <flux:button type="submit" variant="primary" color="emerald"
+                                    class="w-full !rounded-[1.5rem] !py-4 font-black uppercase text-xs shadow-lg">
+                                    Approve Profile
+                                </flux:button>
+                            </form>
                         @endif
                     </div>
 
-                    @if ($user->isSuspended())
-                        <div
-                            class="mt-6 w-full p-5 rounded-[2rem] bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900">
-                            <div class="flex flex-col items-center">
-                                <span
-                                    class="text-[9px] font-black text-rose-500 uppercase tracking-[0.3em] mb-4">Account
-                                    Suspended</span>
+                    @can('suspend', $user)
+                        @if ($user->isSuspended())
+                            <form action="{{ route('users.unsuspend', $user) }}" method="POST">
+                                @csrf
+                                <flux:button type="submit" variant="primary" color="emerald"
+                                    class="w-full !rounded-[1.5rem] !py-4 font-black uppercase text-xs shadow-lg">
+                                    Lift Suspension
+                                </flux:button>
+                            </form>
+                        @else
+                            <flux:modal.trigger name="suspend_user_modal">
+                                <flux:button variant="primary" color="rose"
+                                    class="w-full !rounded-[1.5rem] !py-4 font-black uppercase text-xs shadow-lg">
+                                    Suspend Account
+                                </flux:button>
+                            </flux:modal.trigger>
+                        @endif
+                    @endcan
 
-                                @if ($user->suspendedBy)
-                                    <flux:link href="{{ route('users.show', $user->suspendedBy) }}" wire:navigate
-                                        class="flex items-center gap-3 group/actor">
-                                        <div
-                                            class="size-10 rounded-xl bg-white dark:bg-zinc-800 shadow-sm flex items-center justify-center border border-rose-200 group-hover/actor:border-rose-400 transition-all">
-                                            <flux:icon.no-symbol class="size-5 text-rose-500" />
-                                        </div>
-                                        <div class="text-left">
-                                            <p
-                                                class="text-sm font-black text-zinc-800 dark:text-white leading-tight truncate max-w-[140px]">
-                                                {{ $user->suspendedBy->contact_person }}</p>
-                                            <p class="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">
-                                                Suspension Officer</p>
-                                        </div>
-                                    </flux:link>
-                                @endif
-
-                                <p
-                                    class="mt-4 text-xs font-medium text-rose-700 dark:text-rose-400 italic text-center px-2">
-                                    "{{ $user->suspension_reason }}"
-                                </p>
-                            </div>
-                        </div>
-                    @endif
-
-                    @if ($user->organisation)
-                        <div
-                            class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-                            <flux:icon.building-office-2 class="size-3.5 text-zinc-400" />
-                            <span
-                                class="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">{{ $user->organisation }}</span>
-                        </div>
-                    @endif
-
-                    <div class="mt-4 flex flex-col items-center gap-2">
-                        <div
-                            class="font-mono text-sm bg-zinc-900 text-white px-6 py-2.5 rounded-2xl shadow-xl border border-zinc-700 tracking-[0.2em]">
-                            {{ $user->identification_number }}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Registration Provenance -->
-                <div
-                    class="mt-10 w-full p-5 rounded-[2rem] bg-zinc-100/50 dark:bg-zinc-900/50 border border-dashed border-zinc-200 dark:border-zinc-800">
-                    @if ($user->createdBy)
-                        <div class="flex flex-col items-center">
-                            <span
-                                class="text-[9px] font-black text-zinc-400 uppercase tracking-[0.3em] mb-4">Registration
-                                Lifecycle</span>
-                            <flux:link href="{{ route('users.show', $user->createdBy) }}" wire:navigate
-                                class="flex items-center gap-3 group/creator">
-                                <div
-                                    class="size-10 rounded-xl bg-white dark:bg-zinc-800 shadow-sm flex items-center justify-center border border-zinc-100 dark:border-zinc-700 group-hover/creator:border-indigo-300 transition-all">
-                                    <flux:icon.user-plus class="size-5 text-zinc-400" />
-                                </div>
-                                <div class="text-left">
-                                    <p
-                                        class="text-sm font-black text-zinc-800 dark:text-white leading-tight truncate max-w-[140px]">
-                                        {{ $user->createdBy->contact_person }}</p>
-                                    <p class="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Verified
-                                        Creator</p>
-                                </div>
-                            </flux:link>
-                        </div>
-                    @else
-                        <div class="flex flex-col items-center gap-2">
-                            <div
-                                class="size-12 rounded-full bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center border border-emerald-100 dark:emerald-900">
-                                <flux:icon.bolt class="size-6 text-emerald-600" />
-                            </div>
-                            <div class="text-center">
-                                <p class="text-xs font-black text-emerald-600 uppercase tracking-widest">Self-Registered
-                                </p>
-                                <p class="text-[9px] text-zinc-400 font-bold mt-1 uppercase">Direct Enrollment</p>
-                            </div>
-                        </div>
-                    @endif
-                </div>
-
-                <div class="mt-auto pt-8 w-full">
                     @can('update', $user)
-                        <flux:button variant="primary" color="indigo"
-                            class="w-full !rounded-[1.5rem] !py-4 font-black shadow-lg shadow-indigo-100 transition-all hover:scale-[1.02]">
-                            Modify Identity Hub
-                        </flux:button>
-                        @can('suspend', $user)
-                            @if ($user->isSuspended())
-                                <form action="{{ route('users.unsuspend', $user) }}" method="POST">
-                                    @csrf
-                                    <flux:button type="submit" variant="subtle" color="emerald"
-                                        class="w-full !rounded-[1.2rem] font-black uppercase text-[10px] tracking-widest">
-                                        Restore Access
-                                    </flux:button>
-                                </form>
-                            @else
-                                <flux:modal.trigger name="suspend_user_modal">
-                                    <flux:button variant="subtle" color="rose"
-                                        class="w-full !rounded-[1.2rem] font-black uppercase text-[10px] tracking-widest">
-                                        Suspend Account
-                                    </flux:button>
-                                </flux:modal.trigger>
-                            @endif
-                        @endcan
-
+                        <flux:button variant="primary" color="indigo" class="w-full !rounded-[1.5rem] !py-4 font-black">
+                            Modify Identity Hub</flux:button>
                     @endcan
                 </div>
             </div>
 
-            @include('includes.suspend-user-modal')
-
-            <!-- Content Area -->
             <div class="flex-1 p-8 lg:p-12 flex flex-col">
                 <div
-                    class="flex items-center gap-3 mb-12 bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-[2rem] w-fit border border-zinc-200 dark:border-zinc-700 overflow-x-auto custom-scrollbar">
+                    class="flex items-center gap-3 mb-12 bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-[2rem] w-fit border border-zinc-200 dark:border-zinc-700 overflow-x-auto">
                     <button @click="activeTab = 'activity'"
                         :class="activeTab === 'activity' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-lg' :
-                            'text-zinc-500 hover:text-zinc-700'"
-                        class="px-8 py-3 rounded-[1.6rem] text-sm font-black transition-all whitespace-nowrap">Activity
-                        Hub</button>
+                            'text-zinc-500'"
+                        class="px-8 py-3 rounded-[1.6rem] text-sm font-black transition-all">Activity Hub</button>
                     <button @click="activeTab = 'contact'"
                         :class="activeTab === 'contact' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-lg' :
-                            'text-zinc-500 hover:text-zinc-700'"
-                        class="px-8 py-3 rounded-[1.6rem] text-sm font-black transition-all whitespace-nowrap">Profile
-                        Metadata</button>
-                    <template x-if="isLeadRole">
-                        <button @click="activeTab = 'territory'"
-                            :class="activeTab === 'territory' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-lg' :
-                                'text-zinc-500 hover:text-zinc-700'"
-                            class="px-8 py-3 rounded-[1.6rem] text-sm font-black transition-all whitespace-nowrap">Territories</button>
-                    </template>
-                    <template x-if="isAdmin">
-                        <button @click="activeTab = 'audit'"
-                            :class="activeTab === 'audit' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-lg' :
-                                'text-zinc-500 hover:text-zinc-700'"
-                            class="px-8 py-3 rounded-[1.6rem] text-sm font-black transition-all whitespace-nowrap">Audit
-                            Ledger</button>
-                    </template>
+                            'text-zinc-500'"
+                        class="px-8 py-3 rounded-[1.6rem] text-sm font-black transition-all">Profile Metadata</button>
+                    <button @click="activeTab = 'audit'"
+                        :class="activeTab === 'audit' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-lg' :
+                            'text-zinc-500'"
+                        class="px-8 py-3 rounded-[1.6rem] text-sm font-black transition-all">Audit Ledger</button>
+
+                    @if ($user->isSuspended() || $user->suspension_reason)
+                        <button @click="activeTab = 'suspension'"
+                            :class="activeTab === 'suspension' ? 'bg-rose-600 text-white shadow-lg' : 'text-rose-500'"
+                            class="px-8 py-3 rounded-[1.6rem] text-sm font-black transition-all">Suspension
+                            details</button>
+                    @endif
                 </div>
 
-                <!-- Tab: Activity Hub -->
-                <div x-show="activeTab === 'activity'" class="space-y-12 animate-fade-in" x-transition>
-                    <template x-if="isShipper">
-                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                            <div class="lg:col-span-8 space-y-10">
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                    <livewire:shipper.shipment-status :user="$user" />
-                                    <livewire:shipper.freight-status :user="$user" />
-                                </div>
-
-                                <div
-                                    class="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] p-10 shadow-sm">
-                                    <div class="flex items-center justify-between mb-8">
-                                        <div class="flex items-center gap-4">
-                                            <div
-                                                class="size-12 bg-indigo-50 dark:bg-indigo-950 rounded-2xl flex items-center justify-center">
-                                                <flux:icon.archive-box class="size-6 text-indigo-600" />
-                                            </div>
-                                            <h3 class="text-xl font-black text-zinc-900 dark:text-white">Freight
-                                                Registry</h3>
-                                        </div>
-                                        <flux:button href="{{ route('freights.create') }}" variant="subtle"
-                                            size="sm" icon="plus" class="!rounded-xl font-black text-[10px]">New
-                                            Order</flux:button>
-                                    </div>
-
-                                    <div class="grid grid-cols-1 gap-4">
-                                        @forelse($user->freights->take(5) as $freight)
-                                            <flux:link href="#"
-                                                class="group flex items-center justify-between p-5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-[2rem] hover:border-indigo-200">
-                                                <div class="flex items-center gap-5">
-                                                    <div
-                                                        class="size-12 rounded-[1.2rem] bg-white dark:bg-zinc-800 flex items-center justify-center group-hover:bg-indigo-50 border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                                        <flux:icon.truck
-                                                            class="size-6 text-zinc-300 group-hover:text-indigo-500" />
-                                                    </div>
-                                                    <p
-                                                        class="text-sm font-black text-zinc-800 dark:text-white truncate">
-                                                        REF: {{ $freight->ref_number ?? '#' . $freight->id }}</p>
-                                                </div>
-                                                <span
-                                                    class="px-3 py-1 bg-zinc-100 text-zinc-600 text-[9px] font-black rounded-full uppercase tracking-widest border">{{ $freight->status->label() }}</span>
-                                            </flux:link>
-                                        @empty
-                                            <div class="py-20 text-center text-xs text-zinc-400 font-black uppercase">
-                                                Registry Empty</div>
-                                        @endforelse
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="lg:col-span-4 space-y-6">
-                                <div
-                                    class="bg-indigo-600 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden">
-                                    <flux:icon.cursor-arrow-ripple
-                                        class="absolute -bottom-10 -right-10 size-40 opacity-10" />
-                                    <h3 class="text-xs font-black uppercase tracking-[0.3em] opacity-80 mb-8">Rapid
-                                        Execution</h3>
-                                    <div class="space-y-4 relative z-10">
-                                        <flux:button href="{{ route('freights.create') }}" variant="primary"
-                                            color="white" icon="plus"
-                                            class="w-full !text-indigo-600 !font-black !rounded-2xl !py-4 shadow-xl">
-                                            Post Shipment</flux:button>
-                                    </div>
-                                </div>
-                            </div>
+                {{-- Activity Hub Tab --}}
+                <div x-show="activeTab === 'activity'" x-transition class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div
+                            class="p-8 bg-zinc-50 dark:bg-zinc-950 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800">
+                            <h3 class="text-lg font-black mb-4">Registry Overview</h3>
+                            <p class="text-sm text-zinc-500">Member since {{ $user->created_at->format('M Y') }}</p>
                         </div>
-                    </template>
+                    </div>
                 </div>
 
-                <!-- Tab: Profile Metadata (Restored) -->
-                <div x-show="activeTab === 'contact'" class="animate-fade-in grid grid-cols-1 xl:grid-cols-2 gap-10"
-                    x-transition>
+                {{-- Profile Metadata Tab --}}
+                <div x-show="activeTab === 'contact'" x-transition class="grid grid-cols-1 xl:grid-cols-2 gap-10">
                     <div
-                        class="bg-zinc-50 dark:bg-zinc-950 p-12 rounded-[3.5rem] border border-zinc-100 dark:border-zinc-800 space-y-12">
+                        class="bg-zinc-50 dark:bg-zinc-950 p-12 rounded-[3.5rem] border border-zinc-100 dark:border-zinc-800 space-y-10">
                         <h3 class="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em]">Node Connectivity
                         </h3>
-                        <div class="space-y-10">
-                            <div class="flex items-start gap-8 group">
+                        <div class="space-y-8">
+                            <a href="mailto:{{ $user->email }}" class="flex items-start gap-8 group">
                                 <div
-                                    class="size-14 bg-white dark:bg-zinc-800 rounded-3xl flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700">
+                                    class="size-14 bg-white dark:bg-zinc-800 rounded-3xl flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700 group-hover:border-indigo-500 transition-all">
                                     <flux:icon.envelope class="size-7 text-indigo-500" />
                                 </div>
                                 <div>
-                                    <p class="text-[10px] font-black text-indigo-500 uppercase tracking-widest">
-                                        Protocol Email</p>
-                                    <p class="text-xl font-bold text-zinc-900 dark:text-white mt-1 leading-none">
+                                    <p class="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Protocol
+                                        Email</p>
+                                    <p
+                                        class="text-xl font-bold text-zinc-900 dark:text-white mt-1 leading-none group-hover:text-indigo-600">
                                         {{ $user->email }}</p>
                                 </div>
-                            </div>
-                            <div class="flex items-start gap-8 group">
+                            </a>
+
+                            <a href="tel:{{ $user->contact_phone }}" class="flex items-start gap-8 group">
                                 <div
-                                    class="size-14 bg-white dark:bg-zinc-800 rounded-3xl flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700">
+                                    class="size-14 bg-white dark:bg-zinc-800 rounded-3xl flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700 group-hover:border-indigo-500 transition-all">
                                     <flux:icon.phone class="size-7 text-indigo-500" />
                                 </div>
                                 <div>
                                     <p class="text-[10px] font-black text-indigo-500 uppercase tracking-widest">
                                         {{ $user->phone_type ?? 'Terminal Link' }}</p>
-                                    <p class="text-xl font-bold text-zinc-900 dark:text-white mt-1 leading-none">
+                                    <p
+                                        class="text-xl font-bold text-zinc-900 dark:text-white mt-1 leading-none group-hover:text-indigo-600">
                                         {{ $user->contact_phone }}</p>
                                 </div>
-                            </div>
+                            </a>
+
+                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $user->contact_phone) }}"
+                                target="_blank" class="flex items-start gap-8 group">
+                                <div
+                                    class="size-14 bg-white dark:bg-zinc-800 rounded-3xl flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700 group-hover:border-emerald-500 transition-all">
+                                    <flux:icon.chat-bubble-left-right class="size-7 text-emerald-500" />
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest">
+                                        WhatsApp Direct</p>
+                                    <p
+                                        class="text-xl font-bold text-zinc-900 dark:text-white mt-1 leading-none group-hover:text-emerald-600">
+                                        Open Chat</p>
+                                </div>
+                            </a>
                         </div>
                     </div>
 
@@ -295,51 +253,28 @@
                         class="bg-zinc-50 dark:bg-zinc-950 p-12 rounded-[3.5rem] border border-zinc-100 dark:border-zinc-800">
                         <h3 class="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-12">Verified
                             Presence</h3>
-                        <div class="space-y-12">
-                            <div class="flex items-start gap-8 group">
-                                <div
-                                    class="size-14 bg-white dark:bg-zinc-800 rounded-3xl flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700">
-                                    <flux:icon.map-pin class="size-7 text-rose-500" />
-                                </div>
-                                <div class="space-y-4">
-                                    <p class="text-[10px] font-black text-rose-500 uppercase tracking-widest">Physical
-                                        Headquarters</p>
-                                    <p class="text-lg font-black text-zinc-900 dark:text-white leading-snug">
-                                        {{ $user->buslocation->first()?->address ?? 'Address not localized' }}
-                                    </p>
-                                    <div class="flex flex-wrap gap-2">
-                                        <span
-                                            class="px-4 py-1.5 bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-xl text-[9px] font-black uppercase tracking-widest">{{ $user->buslocation->first()?->city }}</span>
-                                        <span
-                                            class="px-4 py-1.5 bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-xl text-[9px] font-black uppercase tracking-widest">{{ $user->buslocation->first()?->country }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab: Territories (Restored) -->
-                <div x-show="activeTab === 'territory'" class="animate-fade-in" x-transition>
-                    <div
-                        class="bg-zinc-50 dark:bg-zinc-950 rounded-[4rem] border border-zinc-100 dark:border-zinc-800 p-14">
-                        <div class="flex items-center gap-6 mb-10">
+                        <div class="flex items-start gap-8">
                             <div
-                                class="size-14 bg-sky-100 dark:bg-sky-950 rounded-2xl flex items-center justify-center">
-                                <flux:icon.globe-alt class="size-8 text-sky-600" />
+                                class="size-14 bg-white dark:bg-zinc-800 rounded-3xl flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700">
+                                <flux:icon.map-pin class="size-7 text-rose-500" />
                             </div>
                             <div>
-                                <h3 class="text-xl font-black text-zinc-900 dark:text-white">Geospatial Scope</h3>
-                                <p class="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Authorized
-                                    Regional Domain</p>
+                                <p class="text-[10px] font-black text-rose-500 uppercase tracking-widest">Headquarters
+                                </p>
+                                <p class="text-lg font-black text-zinc-900 dark:text-white leading-snug">
+                                    {{ $user->buslocation->first()?->address ?? 'Location not localized' }}
+                                </p>
+                                <p class="text-sm text-zinc-500 mt-2 font-bold uppercase tracking-tighter">
+                                    {{ $user->buslocation->first()?->city }},
+                                    {{ $user->buslocation->first()?->country }}
+                                </p>
                             </div>
                         </div>
-                        @livewire('territory.user-territory', ['createdUser' => $user->slug])
                     </div>
                 </div>
 
-                <!-- Tab: Audit Ledger -->
-                <div x-show="activeTab === 'audit'" class="animate-fade-in space-y-10" x-transition>
+                {{-- Audit Ledger Tab --}}
+                <div x-show="activeTab === 'audit'" x-transition class="animate-fade-in space-y-10">
                     <div class="relative border-l-2 border-zinc-100 dark:border-zinc-800 ml-4 space-y-10 pb-10">
                         @forelse($activityLogs as $log)
                             <div class="relative pl-12">
@@ -352,37 +287,24 @@
                                         <div class="flex items-center gap-4">
                                             <span
                                                 class="px-3 py-1 bg-indigo-100 text-indigo-600 text-[9px] font-black rounded-full uppercase tracking-widest">{{ $log->event }}</span>
-                                            <span class="text-[9px] font-bold text-zinc-400">
-                                                {{ class_basename($log->auditable_type) }}
-                                                @if ($log->auditable_type === 'App\Models\BusLocation')
-                                                    (Geo State)
-                                                @endif
-                                            </span>
                                             <span
                                                 class="text-[10px] font-bold text-zinc-400 tracking-tighter">{{ $log->created_at->format('M d, Y @ H:i') }}</span>
                                         </div>
                                         <flux:link href="{{ $log->actor ? route('users.show', $log->actor) : '#' }}"
                                             wire:navigate class="text-right group/actor">
-                                            <p
-                                                class="text-[9px] font-black text-zinc-400 uppercase leading-none group-hover/actor:text-indigo-500 transition-colors">
-                                                Perpetrated By</p>
-                                            <p
-                                                class="text-xs font-black text-zinc-800 dark:text-white group-hover/actor:text-indigo-600 transition-colors">
-                                                {{ $log->actor->contact_person ?? 'System Engine' }}</p>
+                                            <p class="text-[9px] font-black text-zinc-400 uppercase leading-none">By:
+                                                {{ $log->actor->contact_person ?? 'System' }}</p>
                                         </flux:link>
                                     </div>
                                     <div class="grid grid-cols-1 gap-3">
                                         @foreach ($log->payload as $field => $changes)
                                             <div
                                                 class="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                                                <div class="flex items-center gap-3">
-                                                    <flux:icon.variable class="size-3.5 text-zinc-300" />
+                                                <span
+                                                    class="text-[10px] font-mono font-black text-zinc-500 uppercase">{{ str_replace('_', ' ', $field) }}</span>
+                                                <div class="flex items-center gap-4">
                                                     <span
-                                                        class="text-[10px] font-mono font-black text-zinc-500 uppercase">{{ str_replace('_', ' ', $field) }}</span>
-                                                </div>
-                                                <div class="flex items-center gap-6">
-                                                    <span
-                                                        class="text-[11px] font-bold text-zinc-400 line-through">{{ $changes['old'] ?? 'EMPTY' }}</span>
+                                                        class="text-[11px] font-bold text-zinc-400 line-through">{{ $changes['old'] ?? '...' }}</span>
                                                     <flux:icon.arrow-long-right class="size-4 text-zinc-200" />
                                                     <span
                                                         class="text-[11px] font-black text-emerald-600">{{ $changes['new'] }}</span>
@@ -394,12 +316,66 @@
                             </div>
                         @empty
                             <div class="py-20 text-center opacity-40">
-                                <p class="text-xs font-black uppercase tracking-widest">Temporal Ledger Empty</p>
+                                <p class="text-xs font-black uppercase tracking-widest">No audit history found</p>
                             </div>
                         @endforelse
                     </div>
                 </div>
+
+                {{-- Suspension Details Tab --}}
+                <div x-show="activeTab === 'suspension'" x-transition>
+                    <div
+                        class="bg-rose-50 dark:bg-rose-950/20 p-12 rounded-[3.5rem] border border-rose-100 dark:border-rose-900/50">
+                        <div class="flex items-center gap-6 mb-8">
+                            <div class="size-16 bg-rose-600 rounded-[2rem] flex items-center justify-center shadow-lg">
+                                <flux:icon.no-symbol class="size-8 text-white" />
+                            </div>
+                            <div>
+                                <h3 class="text-2xl font-black text-rose-600 tracking-tight">Access Restriction</h3>
+                                <p class="text-[10px] font-bold text-rose-500 uppercase tracking-[0.2em]">Enforcement
+                                    Protocol Log</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-8">
+                            <div
+                                class="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] border border-rose-200 dark:border-rose-800 shadow-sm">
+                                <p class="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Official
+                                    Reason</p>
+                                <p class="text-lg font-bold text-zinc-900 dark:text-white italic">
+                                    "{{ $user->suspension_reason ?? 'No formal reason provided.' }}"</p>
+                            </div>
+
+                            @if ($user->suspendedBy)
+                                <div
+                                    class="flex items-center gap-4 p-6 bg-zinc-900 rounded-2xl border border-zinc-800 shadow-xl">
+                                    <div
+                                        class="size-12 rounded-xl bg-zinc-800 flex items-center justify-center border border-zinc-700">
+                                        <flux:icon.shield-exclamation class="size-6 text-rose-500" />
+                                    </div>
+                                    <div>
+                                        <p class="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
+                                            Issuing Officer</p>
+                                        <flux:link href="{{ route('users.show', $user->suspendedBy) }}"
+                                            class="text-sm font-black text-white hover:text-rose-400">
+                                            {{ $user->suspendedBy->contact_person }}</flux:link>
+                                    </div>
+                                    <div class="ml-auto text-right">
+                                        <p class="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
+                                            Timestamp</p>
+                                        <p class="text-[10px] font-bold text-white uppercase tracking-tighter">
+                                            {{ $user->suspended_at?->format('d M Y @ H:i') ?? 'N/A' }}</p>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
+
+    {{-- Suspension Modal --}}
+    @include('includes.suspend-user-modal')
 </x-layouts.app>
