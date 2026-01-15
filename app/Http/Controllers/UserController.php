@@ -77,6 +77,14 @@ class UserController extends Controller
             ->get();
 
         $approvalStatus =   $approveAction->validate($user);
+        $user->load([
+        'roles', 
+        'buslocation', 
+        'directors', 
+        'fleets.trailers', 
+        'traderefs', 
+        'profileDocuments'
+    ]);
         return view('users.show', compact(
             'user',
             'isShipper',

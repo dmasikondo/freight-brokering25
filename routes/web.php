@@ -36,7 +36,7 @@ Route::middleware(['auth',])->group(function () {
     //Volt::route('users/{slug}/edit', 'auth.register')->name('users.edit');
     Route::get('users/{user:slug}/edit', [UserController::class, 'edit'])->name('users.edit');
     Route::post('users/{user:slug}/suspend', [UserController::class, 'suspend'])->name('users.suspend');
-    Route::post('users/{user:slug}/unsuspend', [UserController::class, 'unsuspend'])->name('users.unsuspend');
+    Route::patch('users/{user:slug}/unsuspend', [UserController::class, 'unsuspend'])->name('users.unsuspend');
     Route::patch('/users/{user:slug}/approve', [UserController::class, 'approve'])->name('users.approve');
 
     Volt::route('territories/create', 'territory.create')->name('territories.create');
@@ -49,6 +49,9 @@ Route::middleware(['auth',])->group(function () {
 
     Volt::route('lanes/create', 'lane.create')->name('lanes.create');
     Volt::route('lanes/{lane}/edit', 'lane.create')->name('lanes.edit');
+    Volt::route('lanes/{lane}', 'lane.show')->name('lanes.show');
+
+
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
