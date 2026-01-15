@@ -173,6 +173,7 @@ class UserController extends Controller
             // 2. Delegate the heavy lifting to the Action
             // We pass the user and the ID of the person doing the approving
             $approveUserAction->execute($user, auth()->id());
+            
             $user->notify(new AccountVerifiedNotification(auth()->user()->contact_person));
             // 3. Return success response
             return back()->with('status', 'User authorized and notified.');

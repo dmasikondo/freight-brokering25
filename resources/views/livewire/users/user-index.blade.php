@@ -144,12 +144,12 @@
                                             class="text-[9px]">{{ $classification === 'real_owner' ? 'Real Owner' : 'Broker / Agent' }}</span>
                                     @endif
                                 </span>
-                                @if ($user->identification_number)
-                                    <span
-                                        class="bg-slate-900 text-white px-3 py-1 rounded-lg flex items-center gap-2 shadow-lg shadow-slate-200">
-                                        <flux:icon.finger-print class="size-3.5 text-slate-400" />
-                                        ID: {!! $this->highlight($user->identification_number, $this->search) !!}
-                                    </span>
+                                @if ($user->isApproved() && $user->getRawOriginal('identification_number'))
+                                        <span
+                                            class="bg-slate-900 text-white px-3 py-1 rounded-lg flex items-center gap-2 shadow-lg shadow-slate-200">
+                                            <flux:icon.finger-print class="size-3.5 text-slate-400" />
+                                            ID: {!! $this->highlight($user->getRawOriginal('identification_number'), $this->search) !!}
+                                        </span>
                                 @endif
                             </div>
                         </div>

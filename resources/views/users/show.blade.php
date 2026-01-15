@@ -48,6 +48,17 @@
                     <div>
                         <h1 class="text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">
                             {{ $user->contact_person }}</h1>
+                        {{-- IDENTIFICATION NUMBER BADGE: Only visible if approved and exists in DB --}}
+                        @if ($user->isApproved() && $user->getRawOriginal('identification_number'))
+                            <div
+                                class="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-sm">
+                                <flux:icon.finger-print variant="mini" class="size-3 text-indigo-500" />
+                                <span
+                                    class="text-[10px] font-mono font-black text-zinc-600 dark:text-zinc-400 tracking-tighter">
+                                    {{ $user->getRawOriginal('identification_number') }}
+                                </span>
+                            </div>
+                        @endif
                         <p class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
                             {{ $user->organisation }}</p>
                     </div>

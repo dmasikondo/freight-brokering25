@@ -25,18 +25,31 @@ class UserIndex extends Component
     public string $filterRole = '';
 
     #[Url(history: true)]
-    public string $statusFilter = 'all'; 
+    public string $statusFilter = 'all';
 
-#[Url(history: true)]
-public string $complianceStatus = 'all'; // all, suspended, email_unverified, email_verified, pending_approval, approved    
+    #[Url(history: true)]
+    public string $complianceStatus = 'all'; // all, suspended, email_unverified, email_verified, pending_approval, approved    
 
     public int $perPage = 50;
     public int $limit = 50;
 
-    public function updatedSearch() { $this->resetPage(); $this->limit = $this->perPage; }
-    public function updatedSortBy() { $this->resetPage(); }
-    public function updatedFilterRole() { $this->resetPage(); }
-    public function updatedStatusFilter() { $this->resetPage(); }
+    public function updatedSearch()
+    {
+        $this->resetPage();
+        $this->limit = $this->perPage;
+    }
+    public function updatedSortBy()
+    {
+        $this->resetPage();
+    }
+    public function updatedFilterRole()
+    {
+        $this->resetPage();
+    }
+    public function updatedStatusFilter()
+    {
+        $this->resetPage();
+    }
 
     public function loadMore()
     {
@@ -47,57 +60,79 @@ public string $complianceStatus = 'all'; // all, suspended, email_unverified, em
     public function users()
     {
         $authenticatedUser = auth()->user();
+
+        // Initialize query via Policy (assuming it returns a Builder instance)
         $query = (new UserPolicy())->viewAny($authenticatedUser);
 
-        // 1. Search Logic (Search by Name, Org, Email, ID, Role)
+        // 1. Unified Search Logic using whereAny (Laravel 11+)
         if ($this->search) {
             $query->where(function ($q) {
-                $q->where('contact_person', 'LIKE', '%' . $this->search . '%')
-                  ->orWhere('organisation', 'LIKE', '%' . $this->search . '%')
-                  ->orWhere('email', 'LIKE', '%' . $this->search . '%')
-                  ->orWhere('id', 'LIKE', '%' . $this->search . '%') 
-                  ->orWhereHas('roles', fn($sub) => $sub->where('name', 'LIKE', '%' . $this->search . '%'));                  
+                $q->whereAny([
+                    'contact_person',
+                    'organisation',
+                    'email',
+                    'identification_number',
+                ], 'LIKE', '%' . $this->search . '%')
+                    ->orWhereHas(
+                        'roles',
+                        fn($sub) =>
+                        $sub->where('name', 'LIKE', '%' . $this->search . '%')
+                    );
             });
         }
 
-        // 2. Scoped Filter
+        // 2. Role-Based Filter
         if ($this->filterRole) {
             $query->whereHas('roles', fn($q) => $q->where('name', $this->filterRole));
         }
-// 3. Compliance & Status Logic
-    if ($this->complianceStatus !== 'all') {
-        match ($this->complianceStatus) {
-            'suspended' => $query->whereNotNull('suspended_at'),
-            'email_unverified' => $query->whereNull('email_verified_at'),
-            'email_verified' => $query->whereNotNull('email_verified_at'),
-            'pending_approval' => $query->whereHas('roles', fn($q) => $q->whereIn('name', ['shipper', 'carrier']))
-                                        ->whereNull('approved_at'),
-            'approved' => $query->whereNotNull('approved_at'),
-            default => null
-        };
-    }
-        // 4. Status/Compliance Logic (Applied ONLY to Carriers)
+
+        // 3. Compliance & Status Logic
+        if ($this->complianceStatus !== 'all') {
+            match ($this->complianceStatus) {
+                'suspended' => $query->whereNotNull('suspended_at'),
+                'email_unverified' => $query->whereNull('email_verified_at'),
+                'email_verified' => $query->whereNotNull('email_verified_at'),
+                'pending_approval' => $query->whereHas('roles', fn($q) => $q->whereIn('name', ['shipper', 'carrier']))
+                    ->whereNull('approved_at'),
+                'approved' => $query->whereNotNull('approved_at'),
+                default => null
+            };
+        }
+
+        // 4. Logistics Verification Logic (Carrier Specific)
         if ($this->statusFilter !== 'all') {
             $query->whereHas('roles', fn($q) => $q->where('name', 'carrier'));
-            
+
             match ($this->statusFilter) {
-                'fully_registered' => $query->whereHas('buslocation')->whereHas('fleets')->whereHas('directors', null, '>=', 2)->whereHas('traderefs', null, '>=', 2),
-                'partial_scoped' => $query->where(fn($sub) => $sub->whereDoesntHave('buslocation')->orWhereDoesntHave('fleets')),
+                'fully_registered' => $query->whereHas('buslocation')
+                    ->whereHas('fleets')
+                    ->whereHas('directors', null, '>=', 2)
+                    ->whereHas('traderefs', null, '>=', 2),
+                'partial_scoped' => $query->where(
+                    fn($sub) =>
+                    $sub->whereDoesntHave('buslocation')->orWhereDoesntHave('fleets')
+                ),
                 'unmapped_global' => $query->whereDoesntHave('buslocation'),
                 default => null
             };
         }
 
-        // 4. Robust Sorting (Corrected table name to role_user)
-        match ($this->sortBy) {
-            'name_asc' => $query->orderBy('contact_person', 'asc'),
+        // 5. Robust Sorting
+        $query = match ($this->sortBy) {
+            'name_asc'  => $query->orderBy('contact_person', 'asc'),
             'name_desc' => $query->orderBy('contact_person', 'desc'),
-            'org_asc' => $query->orderBy('organisation', 'asc'),
-            'org_desc' => $query->orderBy('organisation', 'desc'),
-            default => $query->latest()
+            'org_asc'   => $query->orderBy('organisation', 'asc'),
+            'org_desc'  => $query->orderBy('organisation', 'desc'),
+            default     => $query->latest()
         };
 
-        return $query->with(['roles', 'createdBy', 'buslocation','suspendedBy'])->paginate($this->limit);
+        // 6. Eager Loading & Pagination
+        return $query->with([
+            'roles',
+            'createdBy',
+            'buslocation',
+            'suspendedBy'
+        ])->paginate($this->limit);
     }
 
     #[Computed]
@@ -105,8 +140,8 @@ public string $complianceStatus = 'all'; // all, suspended, email_unverified, em
     {
         $user = auth()->user();
         return match (true) {
-            $user->hasAnyRole(['superadmin', 'admin']) => ['shipper', 'carrier', 'marketing logistics associate', 'procurement logistics associate', 'operations logistics associate','logistics operations executive','admin'],
-            $user->hasRole('logistics operations executive') => ['shipper', 'carrier', 'marketing logistics associate', 'procurement logistics associate', 'operations logistics associate'],            
+            $user->hasAnyRole(['superadmin', 'admin']) => ['shipper', 'carrier', 'marketing logistics associate', 'procurement logistics associate', 'operations logistics associate', 'logistics operations executive', 'admin'],
+            $user->hasRole('logistics operations executive') => ['shipper', 'carrier', 'marketing logistics associate', 'procurement logistics associate', 'operations logistics associate'],
             $user->hasRole('operations logistics associate') => ['shipper', 'carrier', 'marketing logistics associate', 'procurement logistics associate'],
             $user->hasRole('marketing logistics associate') => ['shipper'],
             $user->hasRole('procurement logistics associate') => ['carrier'],
@@ -129,5 +164,5 @@ public string $complianceStatus = 'all'; // all, suspended, email_unverified, em
     public function userEdit($slug)
     {
         return redirect()->route('users.edit', ['user' => $slug]);
-    }    
+    }
 }

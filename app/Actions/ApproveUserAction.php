@@ -59,6 +59,7 @@ class ApproveUserAction
                 'approved_at' => now(),
                 'approved_by_id' => $approverId,
                 'approved_by_id' => $approverId,
+                'identification_number' => $generatedId,
             ]);
 
             // Optional: Log activity or send notification here
