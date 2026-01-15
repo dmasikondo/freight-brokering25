@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class ActivityLog extends Model
 {
@@ -20,6 +21,11 @@ class ActivityLog extends Model
     protected $casts = [
         'payload' => 'array', 
     ];
+
+    public function auditable(): MorphTo
+    {
+        return $this->morphTo();
+    }
 
     public function actor(): BelongsTo
     {

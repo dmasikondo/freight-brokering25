@@ -50,41 +50,71 @@ class UserController extends Controller
             'logistics operations executive'
         ]);
 
-        // 2. Resolve Profile Theme (Identity Hub Design)
+        // 2. Resolve Profile Theme
         $role = $user->roles->first();
         $roleName = $role?->name;
         $theme = match ($roleName) {
             'shipper' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-600', 'icon' => 'cube'],
             'carrier' => ['bg' => 'bg-emerald-100', 'text' => 'text-emerald-600', 'icon' => 'truck'],
-            'marketing logistics associate' => ['bg' => 'bg-purple-100', 'text' => 'text-purple-600', 'icon' => 'megaphone'],
-            'procurement logistics associate' => ['bg' => 'bg-orange-100', 'text' => 'text-orange-600', 'icon' => 'clipboard-document-list'],
-            'operations logistics associate' => ['bg' => 'bg-sky-100', 'text' => 'text-sky-600', 'icon' => 'cursor-arrow-ripple'],
-            'logistics operations executive' => ['bg' => 'bg-teal-100', 'text' => 'text-teal-600', 'icon' => 'archive-box'],
             'admin' => ['bg' => 'bg-emerald-50', 'text' => 'text-emerald-600', 'icon' => 'shield-check'],
             default => ['bg' => 'bg-zinc-100', 'text' => 'text-zinc-600', 'icon' => 'user']
         };
 
-        // 3. Aggregate Temporal Trace (Audit Logs for User + Geospatial Links)
-        $busLocationIds = $user->buslocation->pluck('id');
-        $activityLogs = ActivityLog::where(function ($q) use ($user) {
-            $q->where('auditable_type', User::class)->where('auditable_id', $user->id);
+        // 3. Aggregate Temporal Trace (Unified Audit Logs)
+        $contactIds = collect()
+            ->merge($user->directors->pluck('id'))
+            ->merge($user->traderefs->pluck('id'))
+            ->unique()
+            ->toArray();
+
+        $auditableMap = [
+            \App\Models\User::class        => [$user->id],
+            \App\Models\BusLocation::class => $user->buslocation->pluck('id')->toArray(),
+            \App\Models\Contact::class     => $contactIds,
+            \App\Models\Fleet::class       => $user->fleets->pluck('id')->toArray(),
+        ];
+
+        $activityLogs = ActivityLog::where(function ($query) use ($auditableMap) {
+            foreach ($auditableMap as $type => $ids) {
+                if (!empty($ids)) {
+                    $query->orWhere(function ($q) use ($type, $ids) {
+                        $q->where('auditable_type', $type)
+                            ->whereIn('auditable_id', $ids);
+                    });
+                }
+            }
         })
-            ->orWhere(function ($q) use ($busLocationIds) {
-                $q->where('auditable_type', BusLocation::class)->whereIn('auditable_id', $busLocationIds);
-            })
-            ->with('actor')
+            ->with(['actor', 'auditable']) // Now 'auditable' will work!
             ->latest()
             ->get();
 
-        $approvalStatus =   $approveAction->validate($user);
+        $activityLogs = ActivityLog::where(function ($query) use ($auditableMap) {
+            foreach ($auditableMap as $type => $ids) {
+                if (!empty($ids)) {
+                    $query->orWhere(function ($q) use ($type, $ids) {
+                        $q->where('auditable_type', $type)
+                            ->whereIn('auditable_id', $ids);
+                    });
+                }
+            }
+        })
+            ->with(['actor', 'auditable']) // Eager load auditable to check 'type' in Blade
+            ->latest()
+            ->get();
+
+        // 4. Verification & Eager Loading
+        $approvalStatus = $approveAction->validate($user);
+
         $user->load([
-        'roles', 
-        'buslocation', 
-        'directors', 
-        'fleets.trailers', 
-        'traderefs', 
-        'profileDocuments'
-    ]);
+            'roles',
+            'buslocation',
+            'directors',
+            'fleets.trailers',
+            'traderefs',
+            'profileDocuments',
+            'lanes'
+        ]);
+
         return view('users.show', compact(
             'user',
             'isShipper',
@@ -93,7 +123,7 @@ class UserController extends Controller
             'isLeadRole',
             'theme',
             'activityLogs',
-            'approvalStatus',
+            'approvalStatus'
         ));
     }
 

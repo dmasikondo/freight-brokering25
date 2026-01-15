@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Contact extends Model
 {
     /** @use HasFactory<\Database\Factories\FreightFactory> */
-    use HasFactory;
+    use HasFactory, Auditable;
 
     protected $fillable = [
         'full_name',
@@ -25,4 +27,9 @@ class Contact extends Model
     {
         return $this->morphTo();
     }
+
+    public function activityLogs(): MorphMany
+    {
+        return $this->morphMany(ActivityLog::class, 'auditable');
+    }    
 }
