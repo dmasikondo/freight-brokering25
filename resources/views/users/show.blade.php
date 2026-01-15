@@ -96,6 +96,20 @@
 
                 <div class="mt-auto pt-10 w-full space-y-4">
                     @if ($user->needsApproval())
+                        {{-- Validation Error Feedback --}}
+                        @if ($errors->any())
+                            <div
+                                class="p-4 mb-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800">
+                                <ul class="list-disc list-inside">
+                                    @foreach ($errors->all() as $error)
+                                        <li
+                                            class="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-tighter">
+                                            {{ $error }}
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
                         <form action="{{ route('users.approve', $user) }}" method="POST">
                             @csrf @method('PATCH')
                             <flux:button type="submit" variant="primary" color="emerald"
@@ -150,18 +164,46 @@
                                 <p class="text-4xl font-black mt-2">{{ $user->freights()->count() }}</p>
                             </div>
                         @endif
+
                         @if ($isCarrier)
                             <div class="p-8 bg-emerald-600 text-white rounded-[2.5rem] shadow-xl">
                                 <p class="text-[10px] font-black uppercase tracking-widest opacity-70">Active Lanes</p>
                                 <p class="text-4xl font-black mt-2">{{ $user->lanes()->count() }}</p>
                             </div>
                         @endif
-                        <div class="p-8 bg-white dark:bg-zinc-800 border border-zinc-200 rounded-[2.5rem]">
-                            <p class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Verification</p>
-                            <p
-                                class="text-2xl font-black mt-2 {{ $user->isApproved() ? 'text-emerald-500' : 'text-amber-500' }}">
-                                {{ $user->isApproved() ? 'Authorized' : 'Pending Review' }}
-                            </p>
+
+                        {{-- ENHANCED VERIFICATION CARD --}}
+                        <div
+                            class="p-8 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-[2.5rem] flex flex-col justify-between">
+                            <div>
+                                <p class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Verification
+                                    Status</p>
+                                <p
+                                    class="text-2xl font-black mt-2 {{ $user->isApproved() ? 'text-emerald-500' : 'text-amber-500' }}">
+                                    {{ $user->isApproved() ? 'Authorized' : 'Pending Review' }}
+                                </p>
+                            </div>
+
+                            @if ($user->isApproved() && $user->approvedBy)
+                                <div class="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-700">
+                                    <p class="text-[9px] font-black text-zinc-400 uppercase tracking-tighter">Authorized
+                                        By</p>
+                                    <div class="flex items-center justify-between mt-1">
+                                        <a href="{{ route('users.show', $user->approvedBy) }}"
+                                            class="text-xs font-bold text-indigo-600 hover:underline">
+                                            {{ $user->approvedBy->contact_person }}
+                                        </a>
+                                        <span class="text-[10px] font-medium text-zinc-400">
+                                            {{ $user->approved_at ? $user->approved_at->diffForHumans() : 'Date missing' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            @elseif(!$user->isApproved())
+                                <div class="mt-4 flex items-center gap-2">
+                                    <div class="size-2 bg-amber-500 rounded-full animate-pulse"></div>
+                                    <p class="text-[10px] font-bold text-amber-600 uppercase">Waiting for Clearance</p>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -220,7 +262,8 @@
 
                     <div
                         class="bg-zinc-50 dark:bg-zinc-950 p-8 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 space-y-6">
-                        <h3 class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Physical Address</h3>
+                        <h3 class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Physical Address
+                        </h3>
                         @forelse($user->buslocation as $location)
                             <div class="flex gap-4">
                                 <flux:icon.map-pin class="size-5 text-rose-500" />
@@ -236,92 +279,107 @@
                     </div>
                 </div>
 
-{{-- TAB: AUDIT TRAIL --}}
-<div x-show="activeTab === 'audit'" x-transition class="space-y-6">
-    @forelse($activityLogs as $log)
-        <div class="p-6 bg-zinc-50 dark:bg-zinc-950 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm transition-all hover:shadow-md">
-            
-            {{-- HEADER: Event Type, Time, and Actor --}}
-            <div class="flex justify-between items-start">
-                <div class="space-y-2">
-                    <div class="flex items-center gap-2">
-                        <span class="px-2 py-0.5 rounded-md bg-zinc-900 text-white text-[9px] font-black uppercase tracking-tighter">
-                            {{ $log->event }}
-                        </span>
-                        <span class="text-[10px] font-bold text-zinc-400">
-                            {{ $log->created_at->diffForHumans() }}
-                        </span>
-                    </div>
-                    
-                    <p class="text-xs font-bold text-zinc-900 dark:text-white">
-                        @if($log->actor)
-                            <a href="{{ route('users.show', $log->actor) }}" class="text-indigo-600 hover:underline">
-                                {{ $log->actor->contact_person }}
-                            </a>
-                        @else
-                            <span class="text-zinc-500 italic font-medium">System Automated</span>
-                        @endif
-                        
-                        <span class="text-zinc-400 font-medium ml-1">
-                            modified 
-                            @if(class_basename($log->auditable_type) === 'Contact')
-                                <span class="text-zinc-900 dark:text-white font-black uppercase text-[10px]">
-                                    {{-- Distinguish between Director and TradeRef via the auditable relationship --}}
-                                    {{ optional($log->auditable)->type === 'director' ? 'Director Profile' : 'Trade Reference' }}
-                                </span>
+                {{-- TAB: AUDIT TRAIL --}}
+                <div x-show="activeTab === 'audit'" x-transition class="space-y-6">
+                    @forelse($activityLogs as $log)
+                        <div
+                            class="p-6 bg-zinc-50 dark:bg-zinc-950 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm transition-all hover:shadow-md">
+
+                            {{-- HEADER: Event Type, Time, and Actor --}}
+                            <div class="flex justify-between items-start">
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-2">
+                                        <span
+                                            class="px-2 py-0.5 rounded-md bg-zinc-900 text-white text-[9px] font-black uppercase tracking-tighter">
+                                            {{ $log->event }}
+                                        </span>
+                                        <span class="text-[10px] font-bold text-zinc-400">
+                                            {{ $log->created_at->diffForHumans() }}
+                                        </span>
+                                    </div>
+
+                                    <p class="text-xs font-bold text-zinc-900 dark:text-white">
+                                        @if ($log->actor)
+                                            <a href="{{ route('users.show', $log->actor) }}"
+                                                class="text-indigo-600 hover:underline">
+                                                {{ $log->actor->contact_person }}
+                                            </a>
+                                        @else
+                                            <span class="text-zinc-500 italic font-medium">System Automated</span>
+                                        @endif
+
+                                        <span class="text-zinc-400 font-medium ml-1">
+                                            modified
+                                            @if (class_basename($log->auditable_type) === 'Contact')
+                                                <span
+                                                    class="text-zinc-900 dark:text-white font-black uppercase text-[10px]">
+                                                    {{-- Distinguish between Director and TradeRef via the auditable relationship --}}
+                                                    {{ optional($log->auditable)->type === 'director' ? 'Director Profile' : 'Trade Reference' }}
+                                                </span>
+                                            @else
+                                                the <span
+                                                    class="text-zinc-600 dark:text-zinc-300">{{ strtolower(class_basename($log->auditable_type)) }}</span>
+                                                record
+                                            @endif
+                                        </span>
+                                    </p>
+                                </div>
+                                <div class="flex flex-col items-end gap-1">
+                                    <flux:icon.finger-print class="size-5 text-zinc-200" />
+                                    <span class="text-[9px] font-mono text-zinc-400">{{ $log->ip_address }}</span>
+                                </div>
+                            </div>
+
+                            {{-- BODY: Field Comparison logic for  custom $changes[$key] structure --}}
+                            @if (is_array($log->payload) && count($log->payload) > 0)
+                                <div class="mt-5 space-y-2">
+                                    @foreach ($log->payload as $field => $values)
+                                        <div
+                                            class="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-center p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
+
+                                            {{-- Field Name: Cleaned up --}}
+                                            <div
+                                                class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                                {{ str_replace('_', ' ', $field) }}
+                                            </div>
+
+                                            {{-- Old Value: Strikethrough Red --}}
+                                            <div
+                                                class="text-[11px] font-medium text-rose-500 line-through truncate px-2 py-1 bg-rose-50/50 dark:bg-rose-950/20 rounded border border-rose-100/50">
+                                                {{ is_array($values['old'] ?? '') ? 'Data Object' : $values['old'] ?? '—' }}
+                                            </div>
+
+                                            {{-- New Value: Bold Emerald --}}
+                                            <div
+                                                class="text-[11px] font-bold text-emerald-600 truncate px-2 py-1 bg-emerald-50/50 dark:bg-emerald-950/20 rounded border border-emerald-100/50">
+                                                {{ is_array($values['new'] ?? '') ? 'Data Object' : $values['new'] ?? '—' }}
+                                            </div>
+
+                                        </div>
+                                    @endforeach
+                                </div>
                             @else
-                                the <span class="text-zinc-600 dark:text-zinc-300">{{ strtolower(class_basename($log->auditable_type)) }}</span> record
+                                {{-- Fallback for entries with no payload (e.g. simple delete or custom events) --}}
+                                <div
+                                    class="mt-4 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
+                                    <p class="text-[10px] italic text-zinc-400 uppercase font-black">Record update
+                                        detected with no attribute data</p>
+                                </div>
                             @endif
-                        </span>
-                    </p>
-                </div>
-                <div class="flex flex-col items-end gap-1">
-                    <flux:icon.finger-print class="size-5 text-zinc-200" />
-                    <span class="text-[9px] font-mono text-zinc-400">{{ $log->ip_address }}</span>
-                </div>
-            </div>
 
-            {{-- BODY: Field Comparison logic for  custom $changes[$key] structure --}}
-            @if(is_array($log->payload) && count($log->payload) > 0)
-                <div class="mt-5 space-y-2">
-                    @foreach($log->payload as $field => $values)
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-center p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                            
-                            {{-- Field Name: Cleaned up --}}
-                            <div class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                {{ str_replace('_', ' ', $field) }}
-                            </div>
-                            
-                            {{-- Old Value: Strikethrough Red --}}
-                            <div class="text-[11px] font-medium text-rose-500 line-through truncate px-2 py-1 bg-rose-50/50 dark:bg-rose-950/20 rounded border border-rose-100/50">
-                                {{ is_array($values['old'] ?? '') ? 'Data Object' : ($values['old'] ?? '—') }}
-                            </div>
-                            
-                            {{-- New Value: Bold Emerald --}}
-                            <div class="text-[11px] font-bold text-emerald-600 truncate px-2 py-1 bg-emerald-50/50 dark:bg-emerald-950/20 rounded border border-emerald-100/50">
-                                {{ is_array($values['new'] ?? '') ? 'Data Object' : ($values['new'] ?? '—') }}
-                            </div>
-                            
                         </div>
-                    @endforeach
+                    @empty
+                        {{-- Empty State: No logs found --}}
+                        <div
+                            class="flex flex-col items-center justify-center py-20 bg-zinc-50 dark:bg-zinc-950 rounded-[2.5rem] border-2 border-dashed border-zinc-100 dark:border-zinc-900">
+                            <flux:icon.finger-print class="size-12 text-zinc-200 mb-4" />
+                            <h3 class="text-xs font-black text-zinc-400 uppercase tracking-widest">No Forensic History
+                            </h3>
+                            <p class="text-[10px] text-zinc-400 mt-1">This node has no recorded administrative
+                                modifications.</p>
+                        </div>
+                    @endforelse
                 </div>
-            @else
-                {{-- Fallback for entries with no payload (e.g. simple delete or custom events) --}}
-                <div class="mt-4 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
-                    <p class="text-[10px] italic text-zinc-400 uppercase font-black">Record update detected with no attribute data</p>
-                </div>
-            @endif
-
-        </div>
-    @empty
-        {{-- Empty State: No logs found --}}
-        <div class="flex flex-col items-center justify-center py-20 bg-zinc-50 dark:bg-zinc-950 rounded-[2.5rem] border-2 border-dashed border-zinc-100 dark:border-zinc-900">
-            <flux:icon.finger-print class="size-12 text-zinc-200 mb-4" />
-            <h3 class="text-xs font-black text-zinc-400 uppercase tracking-widest">No Forensic History</h3>
-            <p class="text-[10px] text-zinc-400 mt-1">This node has no recorded administrative modifications.</p>
-        </div>
-    @endforelse
-</div>
             </div>
         </div>
     </div>

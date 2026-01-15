@@ -9,6 +9,7 @@ use App\Models\ActivityLog;
 use App\Models\Buslocation;
 use App\Policies\UserPolicy;
 use App\Actions\ApproveUserAction;
+use App\Notifications\AccountVerifiedNotification;
 
 
 
@@ -172,9 +173,9 @@ class UserController extends Controller
             // 2. Delegate the heavy lifting to the Action
             // We pass the user and the ID of the person doing the approving
             $approveUserAction->execute($user, auth()->id());
-
+            $user->notify(new AccountVerifiedNotification(auth()->user()->contact_person));
             // 3. Return success response
-            return back()->with('success', 'User has been approved and notified.');
+            return back()->with('status', 'User authorized and notified.');
         } catch (\Illuminate\Validation\ValidationException $e) {
             // 4. Catch validation errors (like missing fleet info) and send them back to the UI
             return back()->withErrors($e->validator->getMessageBag())->withInput();

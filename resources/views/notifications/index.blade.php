@@ -2,8 +2,7 @@
     <div class="flex items-center justify-between mb-6">
         <div>
             <flux:heading size="xl" level="1">{{ __('Notifications') }}</flux:heading>
-            <flux:subheading>{{ __('Manage alerts and registration activity in your territory.') }}
-            </flux:subheading>
+            <flux:subheading>{{ __('Manage alerts and registration activity in your territory.') }}</flux:subheading>
         </div>
 
         @if (auth()->user()->unreadNotifications->isNotEmpty())
@@ -20,39 +19,54 @@
 
     <div class="grid grid-cols-1 gap-3">
         @forelse ($notifications as $notification)
-            {{-- Standard Tailwind Div instead of flux:card --}}
+            @php
+                $isVerification = $notification->type === 'App\Notifications\AccountVerifiedNotification';
+                $isRegistration = $notification->type === 'App\Notifications\NewClientRegistered';
+                $data = $notification->data;
+            @endphp
+
             <div @class([
-                'relative flex items-center gap-4 p-4 rounded-xl border transition-colors',
-                'bg-blue-50/30 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 border-l-4 border-l-blue-500' => $notification->unread(),
-                'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 opacity-75' => $notification->read(),
+                'relative flex items-center gap-4 p-4 rounded-xl border transition-all',
+                'bg-blue-50/40 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 border-l-4 border-l-blue-500 shadow-sm' => $notification->unread() && $isRegistration,
+                'bg-emerald-50/40 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 border-l-4 border-l-emerald-500 shadow-sm' => $notification->unread() && $isVerification,
+                'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 opacity-80' => $notification->read(),
             ])>
+                
                 {{-- Status Icon --}}
                 <div @class([
-                    'flex items-center justify-center w-10 h-10 rounded-full shrink-0',
-                    'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400' => $notification->unread(),
-                    'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' => $notification->read(),
+                    'flex items-center justify-center w-12 h-12 rounded-xl shrink-0',
+                    'bg-blue-100 text-blue-600' => $isRegistration,
+                    'bg-emerald-100 text-emerald-600' => $isVerification,
+                    'bg-zinc-100 text-zinc-500' => $notification->read(),
                 ])>
-                    <flux:icon.bell variant="mini" class="w-5 h-5" />
+                    @if($isVerification)
+                        <flux:icon.check-badge variant="mini" class="w-6 h-6" />
+                    @else
+                        <flux:icon.user-plus variant="mini" class="w-6 h-6" />
+                    @endif
                 </div>
 
                 {{-- Content --}}
                 <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between">
-                        <flux:text font="semibold" @class([
-                            'text-blue-900 dark:text-blue-100' => $notification->unread(),
-                        ])>
-                            {{ $notification->data['message'] ?? __('New Activity') }}
+                    <div class="flex items-center justify-between mb-1">
+                        <flux:text font="semibold" class="text-zinc-900 dark:text-white">
+                            @if($isVerification)
+                                {{ $data['title'] ?? __('Account Verified') }}
+                            @else
+                                {{ __('New :role Registered', ['role' => ucfirst($data['client_role'] ?? 'Client')]) }}
+                            @endif
                         </flux:text>
-                        <flux:text size="xs" class="text-zinc-500">
+                        <flux:text size="xs" class="text-zinc-400">
                             {{ $notification->created_at->diffForHumans() }}
                         </flux:text>
                     </div>
 
-                    <flux:text size="sm" class="truncate text-zinc-600 dark:text-zinc-400">
-                        {{ __('A new :role, :name, has registered.', [
-                            'role' => $notification->data['client_role'] ?? 'client',
-                            'name' => $notification->data['client_name'] ?? 'User',
-                        ]) }}
+                    <flux:text size="sm" class="text-zinc-600 dark:text-zinc-400">
+                        @if($isVerification)
+                            {{ $data['message'] }}
+                        @else
+                            {{ __('Organization: :name has joined the network.', ['name' => $data['client_name'] ?? 'Unknown']) }}
+                        @endif
                     </flux:text>
                 </div>
 
@@ -61,22 +75,24 @@
                     @if ($notification->unread())
                         <form action="{{ route('notifications.markAsRead', $notification->id) }}" method="POST">
                             @csrf
-                            <flux:button size="xs" type="submit" variant="ghost" title="Mark as read"
-                                icon="check" />
+                            <flux:button size="xs" type="submit" variant="ghost" icon="check" />
                         </form>
                     @endif
 
-                    @if (isset($notification->data['client_id']))
-                        <flux:button size="sm" variant="primary"
-                            :href="route('notifications.readAndView', $notification->id)" wire:navigate>
-                            {{ __('View') }}
-                        </flux:button>
-                    @endif
+                    @php
+                        // Determine the redirect URL based on type
+                        $viewUrl = $isRegistration 
+                            ? route('notifications.readAndView', $notification->id) 
+                            : ($data['action_url'] ?? '#');
+                    @endphp
+
+                    <flux:button size="sm" variant="filled" :href="$viewUrl" wire:navigate>
+                        {{ __('Open') }}
+                    </flux:button>
                 </div>
             </div>
         @empty
-            <div
-                class="flex flex-col items-center justify-center py-20 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700">
+            <div class="flex flex-col items-center justify-center py-20 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700">
                 <flux:icon.bell-slash class="w-12 h-12 text-zinc-300 dark:text-zinc-600 mb-4" />
                 <flux:heading size="lg">{{ __('All caught up!') }}</flux:heading>
                 <flux:subheading>{{ __('You have no new notifications.') }}</flux:subheading>

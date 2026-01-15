@@ -77,11 +77,21 @@ class User extends Authenticatable implements MustVerifyEmail
         return !is_null($this->suspended_at);
     }
 
+    public function suspendedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'suspended_by_id');
+    }    
+
     public function isApproved(): bool
     {
         return !is_null($this->approved_at);
     }
 
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by_id');
+    }
+    
     public function needsApproval(): bool
     {
         return $this->hasAnyRole(['shipper', 'carrier']) && !$this->isApproved();
@@ -163,16 +173,6 @@ class User extends Authenticatable implements MustVerifyEmail
         $roles = is_array($roles) ? $roles : func_get_args();
 
         return $this->roles()->whereIn('name', $roles)->exists();
-    }
-
-    public function suspendedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'suspended_by_id');
-    }
-
-    public function approvedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'approved_by_id');
     }
 
     public function buslocation(): hasMany
