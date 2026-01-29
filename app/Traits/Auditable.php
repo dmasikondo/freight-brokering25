@@ -22,8 +22,8 @@ trait Auditable
             if (!empty($changes)) {
                 ActivityLog::create([
                     'auditable_type' => get_class($model),
-                    'auditable_id'   => $model->id,
-                    'actor_id'       => Auth::id(),
+                    'auditable_id'   => $model->id ?? 0, // Fallback if ID is missing,
+                    'actor_id'       => Auth::id() ?? 66, //superadmin
                     'event'          => 'updated',
                     'payload'        => $changes,
                     'ip_address'     => request()->ip(),
