@@ -13,418 +13,560 @@ use Livewire\WithPagination;
 
 new class extends Component {
     use WithPagination;
-    // The public property to hold the search term from the input field.
-    // #[Url] makes the search term appear in the URL.
+
+    #[Url(history: true)]
+    public $search = '';
+
+    #[Url(history: true)]
+    public $carrier_search = '';
+
     #[Url]
-    public string $search = '';
+    public $perPage = 12;
 
-    public $statusFilters = [];
+    #[Url]
+    public $status = '';
+
+    #[Url]
+    public $vehicle_status = '';
+
+    #[Url]
+    public $available_date = '';
+
+    #[Url]
+    public $min_rate = '';
+
+    #[Url]
+    public $max_rate = '';
+
+    #[Url]
+    public $rate_type = '';
+
     public $trailerFilters = [];
-    public $routeFilters = [];
-    public $trailertype = [];
 
-    #[Locked]
-    public $laneId;
-
-    #[Computed]
-    // public function getLanes()
-    // {
-    //     return Lane::orderBy('updated_at')
-    //         ->with(['contacts', 'createdBy'])
-    //         ->get();
-    // }
-    protected LaneService $laneService;
-    #[Computed]
-    public function lanes()
+    public function setFilter($property, $value)
     {
-        return Lane::query()
-            ->where(function ($query) {
-                $query->whereIn('vehicle_status', [VehiclePositionStatus::NOT_CONTRACTED, VehiclePositionStatus::INAPPLICABLE])->whereIn('status', [LaneStatus::PUBLISHED, LaneStatus::EXPIRED]);
-            })
-            ->when($this->search, function ($query, $search) {
-                $query->whereAny(['destination', 'location', 'cityfrom', 'cityto', 'countryfrom', 'countryto', 'trailer', 'capacity'], 'LIKE', "%{$search}%");
-            })
-            ->when(!empty($this->trailerFilters), function ($query) {
-                $query->whereIn('trailer', $this->trailerFilters);
-            })
-            ->latest()
-            ->paginate(20);
-    }
-
-    #[Comupted]
-    public function availableTrailers()
-    {
-        // Get distinct trailers from the Lane model
-        return Lane::distinct()->pluck('trailer')->toArray();
+        $this->{$property} = $this->{$property} === $value ? null : $value;
+        $this->resetPage();
     }
 
     /**
-     * A helper method to highlight the search term in a given string.
-     * @param string $text The text to be highlighted.
-     * @param string $search The search term.
-     * @return \Illuminate\Support\Stringable
+     * Gets trailers currently in the DB for the filter dropdown
      */
-    private function highlight(string $text = null, string $search = null)
+    public function availableTrailers()
     {
-        // If the search term is empty, return the original text.
-        if (empty($search)) {
+        // Note: Using the Trailer Enum if available, otherwise raw pluck
+        return Lane::distinct()->pluck('trailer')->filter()->values()->all();
+    }
+
+    public function toggleTrailer($value)
+    {
+        // Ensure it's an array before processing
+        if (!is_array($this->trailerFilters)) {
+            $this->trailerFilters = [];
+        }
+
+        if (in_array($value, $this->trailerFilters)) {
+            // Remove the value
+            $this->trailerFilters = array_diff($this->trailerFilters, [$value]);
+        } else {
+            // Add the value
+            $this->trailerFilters[] = $value;
+        }
+
+        // Reset keys to prevent potential JSON object vs array issues
+        $this->trailerFilters = array_values($this->trailerFilters);
+    }
+
+    /**
+     * Generates stats for the Fleet Control Center (User's own lanes)
+     */
+    #[Computed]
+    public function myStats()
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return null;
+        }
+
+        // Use the exact same query logic defined in the Service
+        // We pass empty filters [] because stats should represent the total available
+        $base = app(LaneService::class)->getVisibleLanesQuery($user, []);
+
+        return [
+            'total_capacity' => (clone $base)->count(),
+
+            'by_lane_status' => (clone $base)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->toArray(),
+
+            'by_vehicle_status' => (clone $base)->selectRaw('vehicle_status, count(*) as total')->groupBy('vehicle_status')->pluck('total', 'vehicle_status')->toArray(),
+        ];
+    }
+
+    /**
+     * The Main Query - Now using our updated Service
+     */
+    #[Computed]
+    public function lanes()
+    {
+        return app(LaneService::class)->getVisibleLanes(
+            auth()->user(),
+            [
+                'search' => $this->search,
+                'carrier_search' => $this->carrier_search,
+                'status' => $this->status,
+                'vehicle_status' => $this->vehicle_status,
+                'available_date' => $this->available_date,
+                'min_rate' => $this->min_rate,
+                'max_rate' => $this->max_rate,
+                'rate_type' => $this->rate_type,
+                'trailerFilters' => $this->trailerFilters,
+            ],
+            (int) $this->perPage,
+        );
+    }
+
+    public function highlight($text, $search)
+    {
+        if (!$search || empty($text)) {
             return $text;
         }
 
-        // Use preg_replace for a case-insensitive search and replace.
-        // The '$1' in the replacement string refers to the captured search term.
-        $highlighted = preg_replace("/($search)/i", '<span class="bg-yellow-200 font-bold text-black">$1</span>', $text);
-
-        // The result is an HTML string, so return it as a Stringable to be rendered.
-        return \Illuminate\Support\Str::of($highlighted);
+        return preg_replace('/(' . preg_quote($search, '/') . ')/i', '<span class="bg-lime-100 dark:bg-lime-900/50 text-lime-900 dark:text-lime-200 px-0.5 rounded">$1</span>', $text);
     }
 
     public function clearFilters()
     {
-        $this->search = '';
-        $this->statusFilters = [];
+        $this->reset(['search', 'carrier_search', 'status', 'vehicle_status', 'available_date', 'min_rate', 'max_rate', 'rate_type', 'trailerFilters']);
+        // Explicitly re-initialize to be safe
         $this->trailerFilters = [];
-        $this->routeFilters = [];
         $this->resetPage();
     }
-
-    public function updated($property)
+    public function removeFilter($key, $value = null)
     {
-        if (in_array($property, ['search', 'statusFilters', 'trailerFilters', 'routeFilters'])) {
-            $this->resetPage();
+        if ($key === 'trailerFilters') {
+            // Remove just this specific trailer from the array
+            $this->trailerFilters = array_diff($this->trailerFilters, [$value]);
+        } else {
+            // Reset specific property
+            $this->reset($key);
         }
-    }
-    public function deleteLane($laneId)
-    {
-        $this->laneId = $laneId;
-        $lane = Lane::findOrFail($this->laneId);
-        $lane->delete();
-        session()->flash('message', 'The VEHICLE was successfully deleted');
-    }
-
-    public function mount()
-    {
-        $this->laneService = app(LaneService::class);
     }
 }; ?>
 
-
 <div class="space-y-6">
-    <!-- Header Section -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Available Lanes</h1>
-            <p class="text-gray-600 dark:text-gray-400">Browse and bid on available shipping lanes (vehicles)</p>
-        </div>
+    {{-- 1. DASHBOARD / METRICS SECTION --}}
+    @auth
+        @if ($this->myStats)
+            <div class="bg-white dark:bg-slate-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Fleet Control Center</h2>
+                        <p class="text-sm text-zinc-500">Total Visible Capacity:
+                            <strong>{{ $this->myStats['total_capacity'] }}</strong>
+                        </p>
+                    </div>
+                </div>
 
-        <div class="flex flex-wrap gap-3">
-
-            <div>
-                <flux:dropdown>
-                    <flux:button icon:trailing="chevron-down">Vehicle Type</flux:button>
-                    <flux:menu>
-
-                        <flux:menu.radio.group wire:model.live="search">
-                            @foreach($this->availableTrailers() as $trailer)
-                                <flux:menu.radio>{{ $trailer->label() }}</flux:menu.radio>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {{-- Status Filter Buttons --}}
+                    <div class="space-y-3">
+                        <p class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Listing Status</p>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach (App\Enums\LaneStatus::cases() as $lStatus)
+                                @php $count = $this->myStats['by_lane_status'][$lStatus->value] ?? 0; @endphp
+                                <button wire:click="setFilter('status', '{{ $lStatus->value }}')"
+                                    class="flex items-center gap-2 px-3 py-2 rounded-xl border transition-all {{ $status === $lStatus->value ? 'bg-zinc-900 text-white border-zinc-900 ring-2 ring-zinc-900/20' : 'bg-white hover:bg-zinc-50 border-zinc-200' }}">
+                                    <span class="size-2 rounded-full"
+                                        style="background-color: {{ $lStatus->color() }}"></span>
+                                    <span class="text-sm font-bold">{{ $lStatus->label() }}</span>
+                                    <span
+                                        class="px-2 py-0.5 text-xs rounded-lg {{ $status === $lStatus->value ? 'bg-white/20' : 'bg-zinc-100 text-zinc-600' }}">
+                                        {{ $count }}
+                                    </span>
+                                </button>
                             @endforeach
-                        </flux:menu.radio.group>
-                    </flux:menu>
-                </flux:dropdown>
+                        </div>
+                    </div>
 
-
-
+                    {{-- Activity Filter Buttons --}}
+                    <div class="space-y-3">
+                        <p class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Vehicle Activity</p>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach (App\Enums\VehiclePositionStatus::cases() as $vStatus)
+                                @php $count = $this->myStats['by_vehicle_status'][$vStatus->value] ?? 0; @endphp
+                                <button wire:click="setFilter('vehicle_status', '{{ $vStatus->value }}')"
+                                    class="flex items-center gap-2 px-3 py-2 rounded-xl border transition-all {{ $vehicle_status === $vStatus->value ? 'bg-lime-600 text-white border-lime-600 ring-2 ring-lime-600/20' : 'bg-white hover:bg-zinc-50 border-zinc-200' }}">
+                                    <span class="text-sm font-bold">{{ $vStatus->label() }}</span>
+                                    <span
+                                        class="px-2 py-0.5 text-xs rounded-lg {{ $vehicle_status === $vStatus->value ? 'bg-black/10' : 'bg-lime-50 text-lime-700' }}">
+                                        {{ $count }}
+                                    </span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
             </div>
-
-            <!-- Vehicle Type Filter Dropdown -->
-            <div>
-                <flux:text class="mt-2">
-                Search Vehicles by location, destination, capacity, type
-                </flux:text>
-            </div>
-
-           
-
-            <!-- Search Input -->
-            <div class="relative flex-grow w-full">
-                <flux:icon name="magnifying-glass"
-                    class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                <input type="text" placeholder="Search lanes..." wire:model.live.debounce.300ms="search"
-                    class="pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:focus:ring-lime-600 dark:focus:border-lime-600 w-full " />
-            </div>
-        </div>
-    </div>
-
-    <!-- Stats Overview -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
-            <div class="flex items-center justify-between">
+        @endif
+    @else
+        {{-- Guest Section: Public Aggregate Stats --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-6 bg-zinc-900 rounded-2xl text-white flex items-center justify-between shadow-lg">
                 <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Lanes</p>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $this->lanes->total() }}</p>
+                    <p class="text-zinc-400 text-xs font-bold uppercase tracking-widest mb-1">Live Market Vehicles</p>
+                    <h3 class="text-4xl font-black">{{ $this->lanes->total() }}</h3>
                 </div>
-                <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                    <flux:icon name="map" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <div class="p-3 bg-zinc-800 rounded-xl">
+                    <flux:icon name="truck" class="size-8 text-lime-500" />
                 </div>
             </div>
-        </div>
-
-        <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
-            <div class="flex items-center justify-between">
+            <div class="p-6 bg-white border border-zinc-200 rounded-2xl flex items-center justify-between shadow-sm">
                 <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Published</p>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                        {{ $this->lanes->where('status', App\Enums\LaneStatus::PUBLISHED)->count() }}
-                    </p>
+                    <p class="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1">Active Trailer Types</p>
+                    <h3 class="text-4xl font-black text-zinc-900">{{ count($this->availableTrailers()) }}</h3>
                 </div>
-                <div class="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                    <flux:icon name="eye" class="w-5 h-5 text-green-600 dark:text-green-400" />
+                <div class="p-3 bg-zinc-50 rounded-xl text-zinc-400">
+                    <flux:icon name="adjustments-horizontal" class="size-8" />
                 </div>
             </div>
         </div>
+    @endauth
 
-        <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Expired</p>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                        {{ $this->lanes->where('status', App\Enums\LaneStatus::EXPIRED)->count() }}
-                    </p>
-                </div>
-                <div class="w-10 h-10 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
-                    <flux:icon name="clock" class="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                </div>
+    {{-- 2. ENHANCED SEARCH & FILTER BAR --}}
+    <div
+        class="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm border border-zinc-200 dark:border-zinc-800 space-y-4">
+        {{-- ROW 1: PRIMARY SEARCH --}}
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {{-- General Search --}}
+            <div class="lg:col-span-4">
+                <flux:input icon="magnifying-glass" wire:model.live.debounce.300ms="search"
+                    placeholder="City, Country, Capacity..." />
             </div>
-        </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Available Types</p>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                        {{ $this->lanes->pluck('trailer')->unique()->count() }}
-                    </p>
-                </div>
-                <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                    <flux:icon name="truck" class="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Active Filters Bar -->
-    @if ($search || !empty($statusFilters) || !empty($trailerFilters) || !empty($routeFilters))
-        <div class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg">
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Active filters:</span>
-            <div class="flex flex-wrap gap-2">
-                @if ($search)
-                    <flux:badge color="blue" size="sm" class="flex items-center gap-1">
-                        Search: "{{ $search }}"
-                        <button wire:click="$set('search', '')" class="hover:text-blue-800">
-                            <flux:icon name="x-mark" class="w-3 h-3" />
-                        </button>
-                    </flux:badge>
+            {{-- Carrier Search (Staff Only) --}}
+            <div class="lg:col-span-4">
+                @if (auth()->user()
+                        ?->hasAnyRole(['admin', 'superadmin', 'operations logistics associate', 'procurement executive associate']))
+                    <flux:input icon="user-group" wire:model.live.debounce.300ms="carrier_search"
+                        placeholder="Search Carrier/Staff..." />
+                @else
+                    <flux:input icon="user-group" disabled placeholder="Staff search restricted" />
                 @endif
+            </div>
 
-                @foreach ($statusFilters as $filter)
-                    <flux:badge color="green" size="sm" class="flex items-center gap-1">
-                        {{ ucfirst($filter) }}
-                        <button wire:click="$remove('statusFilters', '{{ $filter }}')"
-                            class="hover:text-green-800">
-                            <flux:icon name="x-mark" class="w-3 h-3" />
-                        </button>
-                    </flux:badge>
-                @endforeach
+            {{-- Pagination & Date --}}
+            <div class="lg:col-span-4 flex gap-2 items-center lg:justify-end">
+                <flux:input type="date" wire:model.live="available_date" class="flex-1 lg:max-w-[160px]" />
 
-
-
-                @foreach ($routeFilters as $filter)
-                    <flux:badge color="purple" size="sm" class="flex items-center gap-1">
-                        {{ ucfirst($filter) }}
-                        <button wire:click="$remove('routeFilters', '{{ $filter }}')"
-                            class="hover:text-purple-800">
-                            <flux:icon name="x-mark" class="w-3 h-3" />
-                        </button>
-                    </flux:badge>
-                @endforeach
-
-                <button wire:click="clearFilters"
-                    class="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium">
-                    Clear all
-                </button>
+                <flux:select wire:model.live="perPage" class="w-[100px]">
+                    <option value="12">12 / page</option>
+                    <option value="24">24 / page</option>
+                    <option value="48">48 / page</option>
+                </flux:select>
             </div>
         </div>
-    @endif
 
-    <!-- Lanes Grid -->
+        {{-- ROW 2: TECHNICAL FILTERS --}}
+        <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+
+            {{-- Rate Range Group --}}
+            <div
+                class="flex items-center gap-1 bg-zinc-50 dark:bg-white/5 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                <flux:input type="number" step="0.01" placeholder="Min $" wire:model.live.debounce.400ms="min_rate"
+                    class="w-[90px] border-none shadow-none !bg-transparent focus:ring-0" />
+
+                <span class="text-zinc-300 text-xs">-</span>
+
+                <flux:input type="number" step="0.01" placeholder="Max $" wire:model.live.debounce.400ms="max_rate"
+                    class="w-[90px] border-none shadow-none !bg-transparent focus:ring-0" />
+
+                <div class="w-[1px] h-4 bg-zinc-200 dark:bg-zinc-700 mx-2"></div>
+
+                <flux:select wire:model.live="rate_type" class="w-[120px] !border-none !shadow-none !bg-transparent">
+                    <option value="">All Rates</option>
+                    @foreach (App\Enums\RateType::cases() as $type)
+                        <option value="{{ $type->value }}">{{ $type->label() }}</option>
+                    @endforeach
+                </flux:select>
+            </div>
+
+            {{-- Trailer Dropdown --}}
+            <flux:dropdown>
+                <flux:button icon:trailing="chevron-down" variant="subtle">
+                    Trailers
+                    {{-- Use is_array check to be bulletproof --}}
+                    @if (is_array($trailerFilters) && count($trailerFilters) > 0)
+                        <span class="ml-1 px-1.5 py-0.5 rounded-full bg-lime-100 text-lime-700 text-[10px] font-bold">
+                            {{ count($trailerFilters) }}
+                        </span>
+                    @endif
+                </flux:button>
+
+                <flux:menu class="min-w-[200px] max-h-[300px] overflow-y-auto">
+                    @foreach (\App\Enums\TrailerType::cases() as $type)
+                        {{-- Use the new PHP method instead of $toggle --}}
+                        <flux:menu.item wire:click="toggleTrailer('{{ $type->value }}')">
+                            <span class="flex-1 text-sm">{{ $type->label() }}</span>
+
+                            @if (is_array($trailerFilters) && in_array($type->value, $trailerFilters))
+                                <flux:icon name="check" class="size-4 text-lime-600" />
+                            @endif
+                        </flux:menu.item>
+                    @endforeach
+                </flux:menu>
+            </flux:dropdown>
+
+            {{-- Reset Button --}}
+            @if (
+                $search ||
+                    $carrier_search ||
+                    $available_date ||
+                    $min_rate ||
+                    $max_rate ||
+                    $rate_type ||
+                    $status ||
+                    $vehicle_status ||
+                    !empty($trailerFilters))
+                <flux:button variant="ghost" color="red" icon="x-mark" wire:click="clearFilters" class="ml-auto">
+                    Reset Filters
+                </flux:button>
+            @endif
+        </div>
+
+    </div>
+
+    <div class="flex flex-wrap gap-2 mb-6">
+        {{-- Search Text Chip --}}
+        @if ($search)
+            <x-filter-chip label="Search: {{ $search }}" wire:click="removeFilter('search')" />
+        @endif
+
+        {{-- Rate Range Chip --}}
+        @if ($min_rate || $max_rate)
+            <x-filter-chip label="Rate: ${{ $min_rate ?? 0 }} - {{ $max_rate ? '$' . $max_rate : '∞' }}"
+                wire:click="removeFilter('min_rate'); removeFilter('max_rate');" />
+        @endif
+
+        {{-- Trailer Chips (Individual) --}}
+        @foreach ($trailerFilters as $value)
+            @php $trailerEnum = \App\Enums\TrailerType::tryFrom($value); @endphp
+            <x-filter-chip label="{{ $trailerEnum ? $trailerEnum->label() : $value }}"
+                wire:click="removeFilter('trailerFilters', '{{ $value }}')" />
+        @endforeach
+
+        {{-- Date Chip --}}
+        @if ($available_date)
+            <x-filter-chip label="Date: {{ $available_date }}" wire:click="removeFilter('available_date')" />
+        @endif
+    </div>
+
+    {{-- 3. RESULTS GRID --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         @forelse($this->lanes as $lane)
             <div
-                class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all duration-300 group">
-                <!-- Header -->
-                <div class="p-6 pb-4">
-                    <div class="flex items-start justify-between mb-3">
-                        <div>
-                            <h3 class="font-semibold text-gray-900 dark:text-white text-lg">
-                            @if ($lane->countryfrom && $lane->cityfrom && $lane->countryto && $lane->cityto)
-                                {!! $this->highlight($lane->cityfrom, $this->search) !!}
-                                 → {!! $this->highlight($lane->cityto, $this->search) !!}   
-                            @else
-                                {!! $this->highlight($lane->location, $this->search) !!}
-                                 → {!! $this->highlight($lane->destination, $this->search) !!}  
-                            @endif
-                            </h3>
-                            <p class="text-gray-600 dark:text-gray-400 text-sm">
-                                {!! $this->highlight($lane->trailer->label(), $this->search) !!} •
-                                {!! $this->highlight($lane->capacity ?? 'N/A', $this->search) !!}
-                            </p>
+                class="bg-white dark:bg-slate-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden hover:border-lime-500 transition-all duration-300 group shadow-sm hover:shadow-xl">
+                <div class="p-6">
+                    <div class="flex justify-between items-start mb-4">
+                        @php
+    // Check if this specific trailer type is currently being filtered
+    $isSelected = in_array($lane->trailer->value, (array)$this->trailerFilters);
+@endphp
+<div class="flex flex-col items-center justify-center p-6 rounded-3xl border transition-all duration-300 group
+    {{ $isSelected 
+        ? 'bg-lime-50 border-lime-400 dark:bg-lime-900/20 dark:border-lime-500 shadow-sm ring-1 ring-lime-400' 
+        : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800 group-hover:bg-lime-50 group-hover:border-lime-100' 
+    }}">
+                        <div class="relative">
+                            <x-graphic :name="$lane->trailer->iconName()"
+                                class="size-24 text-zinc-600 dark:text-zinc-400 group-hover:text-lime-600 group-hover:scale-110 transition-transform duration-500 {{ $isSelected ? 'text-lime-600 scale-110' : 'text-zinc-600 dark:text-zinc-400 group-hover:text-lime-600 group-hover:scale-110' }}" />
+{{-- Optional: A small checkmark badge if selected --}}
+        @if($isSelected)
+            <div class="absolute -top-2 -right-2 bg-lime-600 text-white rounded-full p-1 shadow-md">
+                <flux:icon name="check" variant="mini" class="size-3" />
+            </div>
+        @endif                                
                         </div>
-                        <flux:badge :color="$lane->status->color()" size="sm">
-                            {{ $lane->status->label() }}
-                        </flux:badge>
+{{-- The Trailer Label --}}
+    <div class="mt-3 text-center">
+        <span class="text-[11px] font-black uppercase tracking-[0.15em] transition-colors
+            {{ $isSelected ? 'text-lime-700 dark:text-lime-400' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-lime-700' }}">
+            {{ $lane->trailer->label() }}
+        </span>
+    </div>
+</div>
+                        <div class="text-right">
+                            {{-- Status Badge (Interactive) --}}
+                            @auth
+                                @if (auth()->user()->hasAnyRole(['admin', 'superadmin', 'operations logistics associate', 'procurement executive associate']) ||
+                                        auth()->user()->id === $lane->creator_id ||
+                                        auth()->user()->id === $lane->carrier_id)
+                                    <div class="mb-2">
+                                        <button type="button"
+                                            wire:click="setFilter('status', '{{ $lane->status->value }}')"
+                                            class="group/status flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border shadow-sm transition-all active:scale-95 hover:brightness-95 {{ $status === $lane->status->value ? 'ring-2 ring-zinc-400 ring-offset-1' : '' }}"
+                                            style="border-color: {{ $lane->status->color() }}40; background-color: {{ $lane->status->color() }}10; color: {{ $lane->status->color() }}"
+                                            title="Click to filter by {{ $lane->status->label() }}">
+                                            <span class="size-1 rounded-full"
+                                                style="background-color: {{ $lane->status->color() }}"></span>
+
+                                            {{ $lane->status->label() }}
+
+                                            @if ($status === $lane->status->value)
+                                                <flux:icon name="x-mark" variant="mini"
+                                                    class="size-2.5 opacity-60 group-hover/status:opacity-100" />
+                                            @endif
+                                        </button>
+                                    </div>
+                                @endif
+                            @endauth
+                            <span class="text-2xl font-black text-zinc-900 dark:text-white">
+                                ${{ number_format((float) $lane->rate, 2) }}
+                            </span>
+                            <p class="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">
+                                {{ $lane->rate_type?->label() }}</p>
+                        </div>
                     </div>
 
-                    <!-- Route Visualization -->
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center gap-2">
-                            <flux:icon name="map-pin" class="w-4 h-4 text-green-500" />
-                            <span
-                                class="text-sm font-medium text-gray-900 dark:text-white">
-                            @if ($lane->countryfrom && $lane->cityfrom && $lane->countryto && $lane->cityto)
-                                {!! $this->highlight($lane->cityfrom, $this->search) !!}  
+                    <div class="space-y-1 mb-4">
+                        <h3 class="text-lg font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+                            {{-- Legacy Fallback Logic --}}
+                            {!! $this->highlight($lane->cityfrom ?: $lane->location, $this->search) !!}
+                            <flux:icon name="arrow-right" class="size-4 text-zinc-300" />
+                            {!! $this->highlight($lane->cityto ?: $lane->destination, $this->search) !!}
+                        </h3>
+                        <p class="text-[11px] text-zinc-500 font-medium lowercase italic">
+                            @if ($lane->countryfrom)
+                                {!! $this->highlight($lane->countryfrom, $this->search) !!} to {{ $lane->countryto }}
                             @else
-                                {!! $this->highlight($lane->location, $this->search) !!}
-                            @endif 
+                                legacy route mapping
+                            @endif
+                        </p>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
+                        @php
+                            $user = auth()->user();
+
+                            // PRIVILEGE CHECK:
+                            // 1. Is the user the Owner?
+                            $isOwner = $user && ($user->id === $lane->creator_id || $user->id === $lane->carrier_id);
+                            // 2. Is the user an Admin?
+                            $isAdmin = $user && $user->hasAnyRole(['admin', 'superadmin']);
+                            // 3. Is the user Staff in the correct territory? (The "getVisibleLanes" pass)
+                            $isStaffWithAccess =
+                                $user &&
+                                $user->hasAnyRole([
+                                    'operations logistics associate',
+                                    'procurement executive associate',
+                                ]) &&
+                                in_array($lane->creator_id, $this->getTerritoryIds());
+
+                            $hasFullAccess = $isOwner || $isAdmin || $isStaffWithAccess;
+                        @endphp
+
+                        {{-- Carrier Info --}}
+                        <div class="flex items-center gap-2">
+                            <flux:icon name="truck" variant="mini" class="size-3 text-zinc-400" />
+                            <span class="text-[10px] text-zinc-500 font-medium">
+                                Carrier:
+                                @if ($hasFullAccess)
+                                    {{-- FULL ACCESS: Show "Me" or Name + ID --}}
+                                    @if ($user && $user->id === $lane->carrier_id)
+                                        <span
+                                            class="inline-flex items-center px-2 py-0.5 rounded-full bg-lime-500 text-white text-[9px] font-black uppercase tracking-widest shadow-sm">Me</span>
+                                    @else
+                                        <a href="{{ route('users.show', $lane->carrier->slug ?? 'deleted-user') }}"
+                                            class="text-zinc-900 dark:text-zinc-200 font-bold hover:text-lime-600 underline decoration-zinc-200 underline-offset-2">
+                                            {!! $this->highlight(
+                                                $lane->carrier?->organisation ?? ($lane->carrier?->contact_person ?? 'Private Carrier'),
+                                                $this->carrier_search,
+                                            ) !!}
+                                        </a>
+                                    @endif
+
+                                    {{-- Show ID alongside name for those with full access --}}
+                                    @if ($lane->identification_number)
+                                        <span
+                                            class="ml-1 px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded text-[8px] uppercase font-black">
+                                            ID: {!! $this->highlight($lane->identification_number, $this->carrier_search) !!}
+                                        </span>
+                                    @endif
+                                @else
+                                    {{-- RESTRICTED ACCESS: Show identification_number from the lanes table --}}
+                                    <span
+                                        class="px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 rounded text-[9px] font-bold">
+                                        Vehicle ID: {{ $lane->identification_number ?? 'N/A' }}
+                                    </span>
+                                @endif
                             </span>
                         </div>
-                        <div class="flex-1 mx-4 border-t border-dashed border-gray-300 dark:border-slate-600"></div>
-                        <div class="flex items-center gap-2">
-                            <flux:icon name="flag" class="w-4 h-4 text-orange-500" />
-                            <span class="text-sm font-medium text-gray-900 dark:text-white">
-                            @if ($lane->countryfrom && $lane->cityfrom && $lane->countryto && $lane->cityto)
-                                {!! $this->highlight($lane->cityto, $this->search) !!}  
-                            @else
-                                {!! $this->highlight($lane->destination, $this->search) !!}
-                            @endif 
-                            </span>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Lane Details -->
-                <div class="px-6 space-y-3">
-                @if ($lane->countryfrom && $lane->cityfrom && $lane->countryto && $lane->cityto)
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600 dark:text-gray-400">From Country</span>
-                        <span class="font-medium text-gray-900 dark:text-white">{!! $this->highlight($lane->countryfrom, $this->search) !!}</span>
+                        {{-- Agent/Creator Info --}}
+                        @if ($lane->creator_id !== $lane->carrier_id)
+                            <div class="flex items-center gap-2">
+                                <flux:icon name="pencil-square" variant="mini" class="size-3 text-zinc-400" />
+                                <span class="text-[10px] text-zinc-400 italic">
+                                    Agent:
+                                    @if ($hasFullAccess)
+                                        @if ($user && $user->id === $lane->creator_id)
+                                            <span
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500 text-white text-[9px] font-black uppercase tracking-widest shadow-sm">Me</span>
+                                        @else
+                                            <a href="{{ route('users.show', $lane->createdBy->slug ?? 'deleted-user') }}"
+                                                class="hover:text-lime-600 font-medium transition-colors">
+                                                {!! $this->highlight($lane->createdBy?->contact_person ?? 'Staff', $this->carrier_search) !!}
+                                            </a>
+                                        @endif
+                                    @else
+                                        <span class="text-zinc-300">Staff Managed</span>
+                                    @endif
+                                </span>
+                            </div>
+                        @endif
                     </div>
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600 dark:text-gray-400">To Country</span>
-                        <span class="font-medium text-gray-900 dark:text-white">{!! $this->highlight($lane->countryto, $this->search) !!}</span>
-                    </div>
-                @endif
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600 dark:text-gray-400">Rate</span>
-                        <span class="font-medium text-gray-900 dark:text-white">
-                            @if ($lane->rate)
-                                ${{ $lane->rate }}
-                            @else
-                                N/A
-                            @endif
-                        </span>
-                    </div>
-                    @if ($lane->availability_date)
-                        <div class="flex items-center justify-between text-sm">
-                            <span class="text-gray-600 dark:text-gray-400">Available Date</span>
-                            <span
-                                class="font-medium text-gray-900 dark:text-white">{{ $lane->availability_date->format('M d, Y') }}</span>
-                        </div>
-                    @endif
-                </div>
 
-                <!-- Bidding Section -->
-                <div class="p-6 pt-4 border-t border-gray-100 dark:border-slate-700 mt-4">
-                    <!-- Vehicle Status Info -->
-                    <div class="flex items-center justify-between mb-3">
+                    <div class="grid grid-cols-2 gap-4 py-4 mt-4 border-t border-zinc-100 dark:border-zinc-800">
                         <div>
-                            <p class="text-xs text-gray-500 dark:text-gray-500">Vehicle Status</p>
-                            <p class="text-sm font-medium text-gray-900 dark:text-white capitalize">
-                                {{ str_replace('_', ' ', $lane->vehicle_status->label()) }}
-                            </p>
+                            <p class="text-[10px] font-bold text-zinc-400 uppercase">Available</p>
+                            <p class="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                                {{ $lane->availability_date->diffForHumans() }}</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-xs text-gray-500 dark:text-gray-500">Trailer Type</p>
-                            <p class="text-sm font-medium text-gray-900 dark:text-white">{!! $this->highlight($lane->trailer->label(), $this->search) !!}
+                            <p class="text-[10px] font-bold text-zinc-400 uppercase">Capacity</p>
+                            <p class="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+                                {!! $this->highlight($lane->capacity, $this->search) !!} {{ $lane->capacity_unit?->value }}
                             </p>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Bid Action -->
-                    <div class="space-y-3">
-                        <flux:button class="w-full bg-lime-500 hover:bg-lime-600 text-white"
-                            wire:click="openBidModal({{ $lane->id }})">
-                            <flux:icon name="scale" class="w-4 h-4 mr-2" />
-                            Place Bid
-                        </flux:button>
-
-                        <!-- Quick Bid Options -->
-                        <div class="flex gap-2">
-                            <button
-                                class="flex-1 px-3 py-2 text-xs border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
-                                Quick Bid 1
-                            </button>
-                            <button
-                                class="flex-1 px-3 py-2 text-xs border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
-                                Quick Bid 2
-                            </button>
-                            <button
-                                class="flex-1 px-3 py-2 text-xs border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
-                                Quick Bid 3
-                            </button>
+                <div
+                    class="px-6 py-4 bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <div
+                            class="size-2 rounded-full {{ $lane->status->value === 'published' ? 'bg-lime-500 animate-pulse' : 'bg-zinc-300' }}">
                         </div>
+                        <span class="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                            {{ $lane->vehicle_status->label() }}
+                        </span>
                     </div>
-
-                    <!-- Additional Info -->
-                    <div class="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
-                        <div class="flex items-center gap-1">
-                            <flux:icon name="calendar" class="w-3 h-3" />
-                            <span>Created {{ $lane->created_at->diffForHumans() }}</span>
-                        </div>
-                        <button class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
-                            View Details
-                        </button>
-                    </div>
+                    <flux:button variant="filled" size="sm" class="rounded-xl"
+                        href="{{ route('lanes.show', $lane->uuid) }}">
+                        View Details
+                    </flux:button>
                 </div>
             </div>
         @empty
-            <div class="col-span-full text-center py-12">
-                <flux:icon name="map" class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No lanes found</h3>
-                <p class="text-gray-600 dark:text-gray-400 mb-4">No available lanes match your current filters.</p>
-                <flux:button variant="outline" wire:click="clearFilters"
-                    class="border-lime-300 text-lime-600 hover:bg-lime-50 dark:border-lime-600 dark:text-lime-400 dark:hover:bg-lime-900/20">
-                    Clear Filters
-                </flux:button>
+            <div
+                class="col-span-full py-20 text-center bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
+                <flux:icon name="magnifying-glass" class="size-10 text-zinc-300 mx-auto mb-4" />
+                <p class="text-zinc-500 font-bold">No results found.</p>
+                <p class="text-xs text-zinc-400">Try adjusting your filters or search terms.</p>
+                <flux:button variant="ghost" class="mt-4" wire:click="clearFilters">Clear All Filters</flux:button>
             </div>
         @endforelse
     </div>
 
-    <!-- Pagination -->
-    @if ($this->lanes->hasPages())
-        <div class="flex justify-center">
-            {{ $this->lanes->links() }}
-        </div>
-    @endif
-
-    <!-- Load More (Alternative to pagination) -->
-    @if ($this->lanes->hasMorePages())
-        <div class="flex justify-center">
-            <flux:button variant="outline"
-                class="border-lime-300 text-lime-600 hover:bg-lime-50 dark:border-lime-600 dark:text-lime-400 dark:hover:bg-lime-900/20"
-                wire:click="loadMore">
-                <flux:icon name="arrow-down" class="w-4 h-4 mr-2" />
-                Load More Lanes
-            </flux:button>
-        </div>
-    @endif
+    <div class="mt-8">
+        {{ $this->lanes->links() }}
+    </div>
 </div>

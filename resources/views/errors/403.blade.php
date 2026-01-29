@@ -50,9 +50,16 @@
 
             <!-- Description -->
             <p class="text-lg text-gray-600 mb-10 max-w-md mx-auto leading-relaxed dark:text-gray-400">
-                You don't have permission to access this resource. Please contact your system administrator if you
-                believe this is an error.
+                @php
+                    // Try to get the message, fallback to default if empty
+                    $errorMessage = $exception->getMessage();
+                @endphp
+
+                {!! !empty($errorMessage)
+                    ? $errorMessage
+                    : "You don't have permission to access this resource. Please contact your system administrator if you believe this is an error." !!}
             </p>
+
 
             <!-- Action Buttons -->
             <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">

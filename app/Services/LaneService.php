@@ -6,65 +6,58 @@ use App\Models\Lane;
 use App\Models\User;
 use App\Enums\LaneStatus;
 use App\Enums\VehiclePositionStatus;
-use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class LaneService
 {
-    public function getVisibleLanesQuery(User $user, array $filters = []): Builder
+    /**
+     * Builds the base query with visibility constraints and user filters.
+     */
+    public function getVisibleLanesQuery(?User $user, array $filters = []): Builder
     {
-        $query = Lane::query()->with('createdBy');
+        $query = Lane::query()->with(['carrier', 'createdBy']);
 
-        // Handle different user roles
-        if ($user->hasRole('superadmin')) {
-            // Superadmin sees all lanes
-            return $this->applyFilters($query, $filters);
-        }
-
-        if ($user->hasRole('admin')) {
-            // Admin sees all lanes except DRAFT
-            $query->where('status', '!=', LaneStatus::DRAFT);
-            return $this->applyFilters($query, $filters);
-        }
-
-        if ($user->hasAnyRole([
-            'carrier',
-            'procurement logistics associate',
-            'operations logistics associate',
-            'procurement executive associate'
-        ])) {
-            // These roles see their own lanes + additional rules
-            $query->where(function (Builder $q) use ($user) {
-                // User's own lanes
-                $q->where('creator_id', $user->id);
-
-                // Additional rules for specific roles
-                if ($user->hasAnyRole([
-                    'operations logistics associate',
-                    'procurement executive associate'
-                ])) {
-                    // Add lanes created by users in their territory except DRAFT
-                    $this->addTerritoryLanes($q, $user);
-                }
+        $query->where(function (Builder $mainQuery) use ($user) {
+            // 1. PUBLIC VISIBILITY: Published lanes are visible to everyone
+            $mainQuery->where(function ($q) {
+                $q->where('status', LaneStatus::PUBLISHED)
+                    ->whereIn('vehicle_status', [
+                        VehiclePositionStatus::NOT_CONTRACTED,
+                        VehiclePositionStatus::INAPPLICABLE
+                    ]);
             });
-        } else {
-            // Default user: only published/expired with specific vehicle status
-            $query->whereIn('vehicle_status', [
-                VehiclePositionStatus::NOT_CONTRACTED,
-                VehiclePositionStatus::INAPPLICABLE
-            ])
-            ->whereIn('status', [
-                LaneStatus::PUBLISHED,
-                LaneStatus::EXPIRED
-            ]);
-        }
+
+            // 2. PRIVATE VISIBILITY: Extra lanes based on authentication/roles
+            if ($user) {
+                $mainQuery->orWhere(function (Builder $authQuery) use ($user) {
+                    // User sees their own lanes regardless of status
+                    $authQuery->where(function ($q) use ($user) {
+                        $q->where('creator_id', $user->id)
+                            ->orWhere('carrier_id', $user->id);
+                    });
+
+                    // Territory-based visibility for specific staff roles
+                    if ($user->hasAnyRole(['operations logistics associate', 'procurement executive associate'])) {
+                        $this->addTerritoryLanes($authQuery, $user);
+                    }
+
+                    // Admin override: See everything
+                    if ($user->hasAnyRole(['admin', 'superadmin'])) {
+                        $authQuery->orWhere('id', '>', 0);
+                    }
+                });
+            }
+        });
 
         return $this->applyFilters($query, $filters);
     }
 
+    /**
+     * Handles territory-based visibility logic.
+     */
     protected function addTerritoryLanes(Builder $query, User $user): void
     {
-        // Get users in the same territory
         $territoryUserIds = $user->territories()
             ->with('users')
             ->get()
@@ -72,40 +65,71 @@ class LaneService
             ->unique()
             ->toArray();
 
-        // Add OR condition for territory users' lanes except DRAFT
         $query->orWhere(function (Builder $q) use ($territoryUserIds) {
             $q->whereIn('creator_id', $territoryUserIds)
-              ->where('status', '!=', LaneStatus::DRAFT);
+                ->where('status', '!=', LaneStatus::DRAFT);
         });
     }
 
+    /**
+     * Applies user-specific filters and search constraints.
+     */
     protected function applyFilters(Builder $query, array $filters): Builder
     {
-        return $query->when($filters['search'] ?? null, function (Builder $q, $search) {
-            $q->whereAny([
-                'destination',
-                'location', 
-                'cityfrom',
-                'cityto',
-                'countryfrom',
-                'countryto'
-            ], 'LIKE', "%{$search}%");
-        })
-        ->when($filters['trailerFilters'] ?? [], function (Builder $q, $trailerFilters) {
-            $q->whereIn('trailer', $trailerFilters);
-        })
-        ->when($filters['statusFilters'] ?? [], function (Builder $q, $statusFilters) {
-            // Custom status filter logic if needed
-        })
-        ->when($filters['routeFilters'] ?? [], function (Builder $q, $routeFilters) {
-            // Custom route filter logic if needed
-        });
+        return $query
+            // General Search using whereAny
+            ->when($filters['search'] ?? null, function (Builder $q, $search) {
+                $q->whereAny([
+                    'destination',
+                    'location',
+                    'cityfrom',
+                    'cityto',
+                    'countryfrom',
+                    'countryto',
+                    'capacity'
+                ], 'LIKE', "%{$search}%");
+            })
+
+            // Carrier & Creator Search (Restricted to Backend Staff)
+            ->when($filters['carrier_search'] ?? null, function ($q, $carrierSearch) {
+                $staffRoles = ['admin', 'superadmin', 'operations logistics associate', 'procurement executive associate'];
+                if (Auth::user()?->hasAnyRole($staffRoles)) {
+                    $q->where(function ($sub) use ($carrierSearch) {
+                        $sub->whereHas('carrier', function ($query) use ($carrierSearch) {
+                            $query->whereAny([
+                                'contact_person',
+                                'organisation',
+                                'identification_number'
+                            ], 'LIKE', "%{$carrierSearch}%");
+                        })
+                            ->orWhereHas('createdBy', function ($query) use ($carrierSearch) {
+                                $query->whereAny([
+                                    'contact_person',
+                                    'email'
+                                ], 'LIKE', "%{$carrierSearch}%");
+                            });
+                    });
+                }
+            })
+
+            // Standard Enums and Value Filters
+            ->when($filters['trailerFilters'] ?? [], fn($q, $trailers) => $q->whereIn('trailer', $trailers))
+            ->when($filters['status'] ?? null, fn($q, $status) => $q->where('status', $status))
+            ->when($filters['vehicle_status'] ?? null, fn($q, $vStatus) => $q->where('vehicle_status', $vStatus))
+            ->when($filters['min_rate'] ?? null, fn($q, $min) => $q->where('rate', '>=', (float)$min))
+            ->when($filters['max_rate'] ?? null, fn($q, $max) => $q->where('rate', '<=', (float)$max))
+            ->when($filters['rate_type'] ?? null, fn($q, $type) => $q->where('rate_type', $type))
+            ->when($filters['available_date'] ?? null, fn($q, $date) => $q->whereDate('availability_date', $date));
     }
 
-    public function getVisibleLanes(User $user, array $filters = [], int $perPage = 9)
+    /**
+     * Executes the query with sorting and pagination.
+     */
+    public function getVisibleLanes(?User $user, array $filters = [], int $perPage = 12)
     {
         return $this->getVisibleLanesQuery($user, $filters)
             ->latest()
             ->paginate($perPage);
     }
+
 }

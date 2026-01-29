@@ -80,7 +80,7 @@ class User extends Authenticatable implements MustVerifyEmail
     public function suspendedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'suspended_by_id');
-    }    
+    }
 
     public function isApproved(): bool
     {
@@ -91,7 +91,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->belongsTo(User::class, 'approved_by_id');
     }
-    
+
     public function needsApproval(): bool
     {
         return $this->hasAnyRole(['shipper', 'carrier']) && !$this->isApproved();
@@ -239,19 +239,25 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function lanes()
     {
-        return $this->hasMany(Lane::class, 'creator_id');
+        // Now points to carrier_id so the carrier 'owns' the record
+        return $this->hasMany(Lane::class, 'carrier_id');
     }
 
-    // A company has many directors (through contacts)
-    public function directors()
+    public function createdLanes()
     {
-        return $this->morphMany(Contact::class, 'contactable')->where('type', 'director');
+        // Tracks lanes physically created by this user (audit trail)
+        return $this->hasMany(Lane::class, 'creator_id');
     }
 
     // A company has many trade references (through contacts)
     public function traderefs()
     {
         return $this->morphMany(Contact::class, 'contactable')->where('type', 'traderef');
+    }
+
+    public function directors()
+    {
+        return $this->morphMany(Contact::class, 'contactable')->where('type', 'director');
     }
 
     public function fleets()
