@@ -5,6 +5,7 @@ use App\Models\Lane;
 use App\Enums\LaneStatus;
 use App\Enums\VehiclePositionStatus;
 use App\Services\LaneService;
+use Livewire\Attributes\Lazy;
 
 new class extends Component {
     public Lane $lane;
@@ -43,6 +44,28 @@ new class extends Component {
         $this->lane->update(['vehicle_status' => $status]);
         $this->selectedPositionStatus = $status;
         session()->flash('status', 'Vehicle position updated successfully.');
+    }
+
+    public function placeholder()
+    {
+        return <<<'HTML'
+        <div class="p-6 max-w-5xl mx-auto animate-pulse">
+            <div class="h-64 w-full bg-zinc-100 dark:bg-zinc-800/50 rounded-3xl mb-8"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="md:col-span-2 space-y-6">
+                    <div class="h-10 w-3/4 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                    <div class="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded"></div>
+                    <div class="h-4 w-5/6 bg-zinc-100 dark:bg-zinc-800 rounded"></div>
+                </div>
+
+                <div class="h-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6">
+                    <div class="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded mb-4"></div>
+                    <div class="h-10 w-full bg-cyan-100 dark:bg-cyan-900/30 rounded-xl"></div>
+                </div>
+            </div>
+        </div>
+        HTML;
     }
 }; ?>
 

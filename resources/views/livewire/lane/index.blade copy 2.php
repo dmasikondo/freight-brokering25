@@ -45,7 +45,7 @@ new class extends Component {
             ->paginate(20);
     }
 
-    #[Comupted]
+    #[Computed]
     public function availableTrailers()
     {
         // Get distinct trailers from the Lane model

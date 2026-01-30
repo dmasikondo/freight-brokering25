@@ -10,6 +10,7 @@ use App\Enums\VehiclePositionStatus;
 use App\Enums\TrailerType;
 use App\Services\LaneService;
 use Livewire\WithPagination;
+use Livewire\Attributes\Lazy;
 
 new class extends Component {
     use WithPagination;
@@ -149,6 +150,28 @@ new class extends Component {
             // Reset specific property
             $this->reset($key);
         }
+    }
+
+    public function placeholder()
+    {
+        return <<<'HTML'
+        <div class="p-6 max-w-5xl mx-auto animate-pulse">
+            <div class="h-64 w-full bg-zinc-100 dark:bg-zinc-800/50 rounded-3xl mb-8"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="md:col-span-2 space-y-6">
+                    <div class="h-10 w-3/4 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                    <div class="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded"></div>
+                    <div class="h-4 w-5/6 bg-zinc-100 dark:bg-zinc-800 rounded"></div>
+                </div>
+
+                <div class="h-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6">
+                    <div class="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded mb-4"></div>
+                    <div class="h-10 w-full bg-cyan-100 dark:bg-cyan-900/30 rounded-xl"></div>
+                </div>
+            </div>
+        </div>
+        HTML;
     }
 }; ?>
 
@@ -367,32 +390,34 @@ new class extends Component {
                 <div class="p-6">
                     <div class="flex justify-between items-start mb-4">
                         @php
-    // Check if this specific trailer type is currently being filtered
-    $isSelected = in_array($lane->trailer->value, (array)$this->trailerFilters);
-@endphp
-<div class="flex flex-col items-center justify-center p-6 rounded-3xl border transition-all duration-300 group
-    {{ $isSelected 
-        ? 'bg-lime-50 border-lime-400 dark:bg-lime-900/20 dark:border-lime-500 shadow-sm ring-1 ring-lime-400' 
-        : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800 group-hover:bg-lime-50 group-hover:border-lime-100' 
-    }}">
-                        <div class="relative">
-                            <x-graphic :name="$lane->trailer->iconName()"
-                                class="size-24 text-zinc-600 dark:text-zinc-400 group-hover:text-lime-600 group-hover:scale-110 transition-transform duration-500 {{ $isSelected ? 'text-lime-600 scale-110' : 'text-zinc-600 dark:text-zinc-400 group-hover:text-lime-600 group-hover:scale-110' }}" />
-{{-- Optional: A small checkmark badge if selected --}}
-        @if($isSelected)
-            <div class="absolute -top-2 -right-2 bg-lime-600 text-white rounded-full p-1 shadow-md">
-                <flux:icon name="check" variant="mini" class="size-3" />
-            </div>
-        @endif                                
-                        </div>
-{{-- The Trailer Label --}}
-    <div class="mt-3 text-center">
-        <span class="text-[11px] font-black uppercase tracking-[0.15em] transition-colors
+                            // Check if this specific trailer type is currently being filtered
+                            $isSelected = in_array($lane->trailer->value, (array) $this->trailerFilters);
+                        @endphp
+                        <div
+                            class="flex flex-col items-center justify-center p-6 rounded-3xl border transition-all duration-300 group
+    {{ $isSelected
+        ? 'bg-lime-50 border-lime-400 dark:bg-lime-900/20 dark:border-lime-500 shadow-sm ring-1 ring-lime-400'
+        : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800 group-hover:bg-lime-50 group-hover:border-lime-100' }}">
+                            <div class="relative">
+                                <x-graphic :name="$lane->trailer->iconName()"
+                                    class="size-24 text-zinc-600 dark:text-zinc-400 group-hover:text-lime-600 group-hover:scale-110 transition-transform duration-500 {{ $isSelected ? 'text-lime-600 scale-110' : 'text-zinc-600 dark:text-zinc-400 group-hover:text-lime-600 group-hover:scale-110' }}" />
+                                {{-- Optional: A small checkmark badge if selected --}}
+                                @if ($isSelected)
+                                    <div
+                                        class="absolute -top-2 -right-2 bg-lime-600 text-white rounded-full p-1 shadow-md">
+                                        <flux:icon name="check" variant="mini" class="size-3" />
+                                    </div>
+                                @endif
+                            </div>
+                            {{-- The Trailer Label --}}
+                            <div class="mt-3 text-center">
+                                <span
+                                    class="text-[11px] font-black uppercase tracking-[0.15em] transition-colors
             {{ $isSelected ? 'text-lime-700 dark:text-lime-400' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-lime-700' }}">
-            {{ $lane->trailer->label() }}
-        </span>
-    </div>
-</div>
+                                    {{ $lane->trailer->label() }}
+                                </span>
+                            </div>
+                        </div>
                         <div class="text-right">
                             {{-- Status Badge (Interactive) --}}
                             @auth

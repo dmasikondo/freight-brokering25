@@ -7,7 +7,8 @@ use App\Models\User;
 use App\Models\Lane;
 use App\Enums\CapacityUnit;
 use App\Enums\RateType;
-use App\Enums\TrailerType; // Added Enum Import
+use App\Enums\TrailerType;
+use Livewire\Attributes\Lazy;
 
 new class extends Component {
     public $currentStep = 1;
@@ -229,6 +230,40 @@ new class extends Component {
         if ($this->currentStep > 1) {
             $this->currentStep--;
         }
+    }
+
+    public function placeholder()
+    {
+        return <<<'HTML'
+        <div class="p-6 max-w-5xl mx-auto animate-pulse">
+            <div class="flex justify-between mb-8">
+                @foreach (range(1, 4) as $i)
+                    <div class="flex flex-col items-center">
+                        <div class="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800"></div>
+                        <div class="h-2 w-12 bg-zinc-200 dark:bg-zinc-800 mt-2 rounded"></div>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="bg-white dark:bg-zinc-900 shadow-xl rounded-3xl p-8 border border-zinc-200 dark:border-zinc-800">
+                <div class="space-y-8">
+                    <div class="space-y-2">
+                        <div class="h-4 w-24 bg-zinc-100 dark:bg-zinc-800 rounded"></div>
+                        <div class="h-10 w-full bg-zinc-50 dark:bg-zinc-800/50 rounded-xl"></div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="h-40 border border-zinc-100 dark:border-zinc-800 rounded-2xl bg-zinc-50/30"></div>
+                        <div class="h-40 border border-zinc-100 dark:border-zinc-800 rounded-2xl bg-zinc-50/30"></div>
+                    </div>
+
+                    <div class="mt-12 flex justify-end border-t pt-6 border-zinc-100 dark:border-zinc-800">
+                        <div class="h-10 w-32 bg-zinc-200 dark:bg-zinc-700 rounded-lg"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        HTML;
     }
 }; ?>
 
