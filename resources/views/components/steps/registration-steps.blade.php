@@ -3,7 +3,7 @@
     'icon', 
     'title', 
     'description', 
-    'usageTitle', 
+    'usageTitle' => 'Why we need this:', // Set a default value here
     'items' => [], 
     'class' => '', 
     'disabled' => false,

@@ -39,13 +39,14 @@ Route::middleware(['auth',])->group(function () {
     Route::patch('users/{user:slug}/unsuspend', [UserController::class, 'unsuspend'])->name('users.unsuspend');
     Route::patch('/users/{user:slug}/approve', [UserController::class, 'approve'])->name('users.approve');
 
-    Volt::route('territories/create', 'territory.create')->name('territories.create');
+    Volt::route('territories/create', 'territory.create2')->name('territories.create');
     Volt::route('territories', 'territory.index')->name('territories.index');
     Volt::route('territories/{territory}/edit', 'territory.create')->name('territories.edit');
 
     Volt::route('freights/create', 'freight.create')->name('freights.create');
-    Volt::route('freights/{freight}/edit', 'freight.create')->name('freights.edit');
-    Volt::route('freights/{freight}/edit', 'freight.create')->name('freights.edit');
+    Volt::route('freights/create2', 'freight.create2')->name('freights.create');
+    Volt::route('freights/{freight:uuid}', 'freight.show')->name('freights.show');
+    Volt::route('freights/{freight:uuid}/edit', 'freight.create')->name('freights.edit');
 
     Volt::route('lanes/create', 'lane.create')->name('lanes.create');
     Volt::route('lanes/{lane:uuid}/edit', 'lane.create')->name('lanes.edit');

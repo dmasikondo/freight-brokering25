@@ -27,7 +27,7 @@ enum FreightStatus: string
             self::SUBMITTED => 'amber',
             self::PUBLISHED => 'teal',
             self::UNPUBLISHED =>'fuchsia',
-            self::DRAFT => 'zinc',
+            self::DRAFT => 'slate',
             self::EXPIRED => 'red',
         };
     }

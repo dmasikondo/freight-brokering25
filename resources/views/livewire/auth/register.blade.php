@@ -133,7 +133,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
             // Update existing user
             $userToUpdate = User::where('slug', $this->slug)->firstOrFail();
             $this->userRegistrationService->registerUser($validated, auth()->user(), $userToUpdate);
-            $this->redirect(route('users.index'), navigate: true);
+            $this->redirect(route('users.show', ['user' => $userToUpdate->slug]), navigate: true);
         } else {
             // Create new user
             $creator = $this->isStaffRegistration ? Auth::user() : null;
@@ -145,7 +145,7 @@ new #[Layout('components.layouts.auth')] class extends Component {
             }
 
             if ($this->isStaffRegistration) {
-                $this->redirect(route('users.index'), navigate: true);
+                $this->redirect(route('users.show', ['user' => $user->slug]), navigate: true);
             } else {
                 Auth::login($user);
                 $this->redirectIntended(route('dashboard', absolute: false), navigate: true);

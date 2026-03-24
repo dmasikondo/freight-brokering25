@@ -46,7 +46,14 @@ class UserPolicy
 
         return false;
     }
-
+    public function create(User $auth): bool
+    {
+        return $auth->hasAnyRole([
+            'superadmin', 'admin', 'marketing logistics associate', 
+            'procurement logistics associate', 
+            'operations logistics associate', 'logistics operations executive',
+        ]);
+    }
     public function update(User $auth, User $target): bool
     {
         if ($auth->hasAnyRole(['superadmin', 'admin', 'logistics operations executive'])) return true;

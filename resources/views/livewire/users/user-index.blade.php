@@ -191,12 +191,12 @@
                                     class="!bg-slate-100 !border-slate-200 !rounded-xl" />
                                 <flux:menu>
                                     <flux:menu.item icon="pencil-square" wire:click="userEdit('{{ $user->slug }}')">
-                                        Edit Member</flux:menu.item>
-                                    <flux:menu.item icon="key" wire:click="userActivation('{{ $user->slug }}')">
+                                        Edit User</flux:menu.item>
+                                    {{-- <flux:menu.item icon="key" wire:click="userActivation('{{ $user->slug }}')">
                                         {{ $user->must_reset ? 'Activate' : 'Suspend' }}
                                     </flux:menu.item>
                                     <flux:menu.separator />
-                                    <flux:menu.item variant="danger" icon="trash">Archive User</flux:menu.item>
+                                    <flux:menu.item variant="danger" icon="trash">Archive User</flux:menu.item> --}}
                                 </flux:menu>
                             </flux:dropdown>
                         </div>

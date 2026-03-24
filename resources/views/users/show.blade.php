@@ -124,14 +124,16 @@
                         <form action="{{ route('users.approve', $user) }}" method="POST">
                             @csrf @method('PATCH')
                             <flux:button type="submit" variant="primary" color="emerald"
-                                class="w-full !rounded-[1.5rem] !py-4 font-black uppercase text-xs">Authorize Node
+                                class="w-full !rounded-[1.5rem] !py-4 font-black uppercase text-xs  cursor-pointer">
+                                Authorize Node
                             </flux:button>
                         </form>
                     @endif
                     @can('suspend', $user)
                         <flux:modal.trigger name="suspend_user_modal">
-                            <flux:button variant="primary" color="rose"
-                                class="w-full !rounded-[1.5rem] !py-4 font-black uppercase text-xs">Suspend Account
+                            <flux:button variant="primary" :color="$user->suspended_at ? 'lime' : 'rose'"
+                                class="w-full !rounded-[1.5rem] !py-4 font-black uppercase text-xs cursor-pointer">
+                                {{ $user->suspended_at ? 'Unsuspend User' : 'Suspend User' }}
                             </flux:button>
                         </flux:modal.trigger>
                     @endcan

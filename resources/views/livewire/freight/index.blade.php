@@ -13,7 +13,7 @@ new class extends Component {
     public function getFreights()
     {
         return Freight::orderBy('updated_at')
-            ->with(['goods', 'contacts', 'createdBy'])
+            ->with(['goods', 'contacts', 'creator'])
             ->get();
     }
 
@@ -232,13 +232,13 @@ new class extends Component {
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3">
                                     <flux:avatar 
-                                        name="{{ $freight->createdBy->contact_person }}" 
+                                        name="{{ $freight->creator->contact_person }}" 
                                         color="auto" 
                                         size="sm"
                                     />
                                     <div>
                                         <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                            {{ $freight->createdBy->contact_person }}
+                                            {{ $freight->creator->contact_person }}
                                         </div>
                                         <div class="text-xs text-gray-500 dark:text-gray-500">
                                             Updated {{ $freight->updated_at->diffForHumans() }}
