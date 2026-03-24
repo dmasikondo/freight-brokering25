@@ -60,11 +60,11 @@ new class extends Component {
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-yellow-800">
-                        Your profile is not complete
+                        Profile is not complete
                     </h3>
                     <div class="mt-2 text-sm text-yellow-700">
                         <p>
-                            Complete your profile to start accepting loads. 
+                            Complete the profile to start accepting loads. 
                             @if($missingSections)
                                 Missing: {{ $missingSections }}
                             @endif

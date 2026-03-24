@@ -219,6 +219,39 @@
                             @endif
                         </div>
                     </div>
+                    {{-- Territory Management Section --}}
+                    @php
+                        $logisticsRoles = [
+                            'procurement logistics associate',
+                            'marketing logistics associate',
+                            'logistics operations executive',
+                            'operations logistics associate',
+                        ];
+                        $isLogisticsNode = $user->roles->pluck('name')->intersect($logisticsRoles)->isNotEmpty();
+                        $canManageTerritories = auth()
+                            ->user()
+                            ->hasRole(['admin', 'superadmin']);
+                    @endphp
+
+                    @if ($isLogisticsNode && $canManageTerritories)
+                        <div
+                            class="mt-8 bg-zinc-50 dark:bg-zinc-950 p-8 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 space-y-6">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Territory
+                                    Jurisdictions</h3>
+                                <flux:icon.map class="size-4 text-zinc-400" />
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                @foreach (\App\Models\Territory::orderBy('name')->get() as $territory)
+                                    <div wire:key="territory-wrapper-{{ $territory->id }}">
+                                        <livewire:territory.assignment-toggle :user="$user" :territory="$territory"
+                                            :key="'toggle-' . $territory->id" />
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- TAB: LOGISTICS NETWORK --}}

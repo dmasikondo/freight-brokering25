@@ -39,7 +39,7 @@ Route::middleware(['auth',])->group(function () {
     Route::patch('users/{user:slug}/unsuspend', [UserController::class, 'unsuspend'])->name('users.unsuspend');
     Route::patch('/users/{user:slug}/approve', [UserController::class, 'approve'])->name('users.approve');
 
-    Volt::route('territories/create', 'territory.create2')->name('territories.create');
+    Volt::route('territories/create', 'territory.create')->name('territories.create');
     Volt::route('territories', 'territory.index')->name('territories.index');
     Volt::route('territories/{territory}/edit', 'territory.create')->name('territories.edit');
 
