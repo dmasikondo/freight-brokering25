@@ -39,7 +39,7 @@ class Territory extends Model
 
     public function zimbabweCities()
     {
-        return $this->belongsToMany(zimbabweCity::class, 'territory_zimbabwe_city')
+        return $this->belongsToMany(ZimbabweCity::class, 'territory_zimbabwe_city')
                     ->withTimestamps();
     }
 

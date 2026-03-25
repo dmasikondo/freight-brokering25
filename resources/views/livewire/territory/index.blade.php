@@ -34,6 +34,31 @@ new class extends Component {
 }; ?>
 
 <div class="p-6 bg-white shadow-md rounded-lg mb-6 relative">
+    <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            {{-- Main Page Title --}}
+            <flux:heading size="xl" class="tracking-tight font-black uppercase">
+                Territory Jurisdictions
+            </flux:heading>
+
+            {{-- Contextual Subheading --}}
+            <div class="mt-1 flex items-center gap-2 text-zinc-500">
+                <flux:icon.globe-alt variant="mini" class="size-4" />
+                <flux:subheading>
+                    Managing {{ $this->getTerritories->count() }} active zones across your logistics network
+                </flux:subheading>
+            </div>
+        </div>
+
+        {{-- Action Button (Optional: if you have a create route) --}}
+        @if (Route::has('territories.create'))
+            <flux:button icon="plus" variant="primary" href="{{ route('territories.create') }}" wire:navigate>
+                New Territory
+            </flux:button>
+        @endif
+    </div>
+
+    <hr class="border-zinc-100 dark:border-zinc-800 mb-8" />
     @if (session()->has('message'))
         <div class="my-2">
             <flux:callout icon="check" color='green'>
@@ -83,43 +108,42 @@ new class extends Component {
                     <x-action-message class="me-3 text-green-400" on="user-removed">
                         {{ __('Removed.') }}
                     </x-action-message>
-                    <h2 class="text-xl font-semibold text-gray-800">
-                        {{ $territory->name }}
+                    <h2 class="text-xl font-bold text-gray-800 hover:text-indigo-600 transition-colors">
+                        <a href="{{ route('territories.show', $territory->id) }}" wire:navigate>
+                            {{ $territory->name }}
+                        </a>
                     </h2>
                     <span class="text-sm text-gray-500">
                         Created on {{ $territory->created_at->format('M d, Y') }}
                     </span>
                 </div>
 
-<p class="mt-2 text-gray-700 flex items-center">
-    <flux:icon.users class="inline-block w-5 h-5 text-gray-600 mr-2" />
-    <span class="font-semibold">{{ $territory->users->count() }}</span> 
-    &nbsp;{{ Str::plural('user', $territory->users->count()) }} assigned to this territory.
-</p>
+                <p class="mt-2 text-gray-700 flex items-center">
+                    <flux:icon.users class="inline-block w-5 h-5 text-gray-600 mr-2" />
+                    <span class="font-semibold">{{ $territory->users->count() }}</span>
+                    &nbsp;{{ Str::plural('user', $territory->users->count()) }} assigned to this territory.
+                </p>
 
-@if ($territory->users->isNotEmpty())
-    <div class="mt-2 flex flex-wrap gap-2">
-        @foreach ($territory->users->take(5) as $user)
-            <flux:button 
-                variant="subtle" 
-                size="sm" 
-                href="{{ route('users.show', $user->slug) }}"
-                class="hover:bg-blue-50"
-            >
-                <div class="flex flex-col items-start text-left leading-tight">
-                    <span class="text-xs font-bold text-blue-700">{{ $user->organisation }}</span>
-                    <span class="text-[10px] text-gray-500">{{ $user->contact_person }}</span>
-                </div>
-            </flux:button>
-        @endforeach
+                @if ($territory->users->isNotEmpty())
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @foreach ($territory->users->take(5) as $user)
+                            <flux:button variant="subtle" size="sm" href="{{ route('users.show', $user->slug) }}"
+                                wire:navigate class="hover:bg-indigo-50 border-zinc-200">
+                                <div class="flex flex-col items-start text-left leading-tight">
+                                    <span
+                                        class="text-[10px] font-black text-indigo-700 uppercase">{{ $user->organisation }}</span>
+                                    <span class="text-[9px] text-zinc-500">{{ $user->contact_person }}</span>
+                                </div>
+                            </flux:button>
+                        @endforeach
 
-        @if ($territory->users->count() > 5)
-            <flux:badge color="zinc" variant="outline" class="self-center">
-                +{{ $territory->users->count() - 5 }} more
-            </flux:badge>
-        @endif
-    </div>
-@endif
+                        @if ($territory->users->count() > 5)
+                            <flux:badge color="zinc" variant="outline" class="self-center">
+                                +{{ $territory->users->count() - 5 }} more
+                            </flux:badge>
+                        @endif
+                    </div>
+                @endif
 
                 <div class="mt-3">
                     <p class="flex items-center text-gray-700">

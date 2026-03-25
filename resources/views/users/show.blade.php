@@ -230,7 +230,7 @@
                         $isLogisticsNode = $user->roles->pluck('name')->intersect($logisticsRoles)->isNotEmpty();
                         $canManageTerritories = auth()
                             ->user()
-                            ->hasRole(['admin', 'superadmin']);
+                            ->hasAnyRole(['admin', 'superadmin']);
                     @endphp
 
                     @if ($isLogisticsNode && $canManageTerritories)
