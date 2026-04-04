@@ -139,6 +139,24 @@ new class extends Component {
         }
     }
 
+    public function removePartner($index)
+    {
+        unset($this->temp_partners[$index]);
+        // Re-index the array so the keys stay sequential (0, 1, 2...)
+        $this->temp_partners = array_values($this->temp_partners);
+    }
+
+    public function movePartner($index, $direction)
+    {
+        $newIndex = $direction === 'up' ? $index - 1 : $index + 1;
+
+        // Check if the move is within bounds
+        if (isset($this->temp_partners[$newIndex])) {
+            $out = array_splice($this->temp_partners, $index, 1);
+            array_splice($this->temp_partners, $newIndex, 0, $out);
+        }
+    }
+
     public function viewWorksheet($id)
     {
         $this->viewing_header_id = $id;
@@ -205,26 +223,61 @@ new class extends Component {
                         @if (count($temp_partners) > 0)
                             <div
                                 class="mt-4 border border-slate-200 rounded-2xl bg-white divide-y overflow-hidden shadow-sm">
-                                <div
-                                    class="px-4 py-2 bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    Planned Sequence</div>
+                                <div class="px-4 py-2 bg-slate-50 flex justify-between items-center">
+                                    <span
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Planned
+                                        Sequence</span>
+                                    <span class="text-[10px] font-bold text-blue-500">{{ count($temp_partners) }}
+                                        Partners</span>
+                                </div>
+
                                 @foreach ($temp_partners as $index => $tp)
                                     <div
                                         class="p-4 flex justify-between items-center bg-white group hover:bg-slate-50 transition-colors">
                                         <div class="flex items-center gap-4">
                                             <span
-                                                class="h-6 w-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-bold">{{ $index + 1 }}</span>
+                                                class="h-6 w-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-bold">
+                                                {{ $index + 1 }}
+                                            </span>
                                             <div>
                                                 <span class="font-bold text-slate-800">{{ $tp['name'] }}</span>
                                                 <span
-                                                    class="ml-2 px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[9px] font-black uppercase">{{ $tp['type'] }}</span>
+                                                    class="ml-2 px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[9px] font-black uppercase">
+                                                    {{ $tp['type'] }}
+                                                </span>
+                                                <p class="text-[10px] text-slate-400 mt-0.5">
+                                                    {{ Str::limit($tp['contact'], 30) }}</p>
                                             </div>
                                         </div>
-                                        <span
-                                            class="text-xs text-slate-400 font-mono">{{ Str::limit($tp['contact'], 40) }}</span>
+
+                                        <div class="flex items-center gap-1">
+                                            @if (!$loop->first)
+                                                <button wire:click="movePartner({{ $index }}, 'up')"
+                                                    type="button"
+                                                    class="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-900 transition-colors">
+                                                    <flux:icon.chevron-up variant="micro" />
+                                                </button>
+                                            @endif
+
+                                            @if (!$loop->last)
+                                                <button wire:click="movePartner({{ $index }}, 'down')"
+                                                    type="button"
+                                                    class="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-900 transition-colors">
+                                                    <flux:icon.chevron-down variant="micro" />
+                                                </button>
+                                            @endif
+
+                                            <div class="w-px h-4 bg-slate-200 mx-1"></div>
+
+                                            <button wire:click="removePartner({{ $index }})" type="button"
+                                                class="p-1 hover:bg-red-50 rounded text-slate-300 hover:text-red-500 transition-colors">
+                                                <flux:icon.trash variant="micro" />
+                                            </button>
+                                        </div>
                                     </div>
                                 @endforeach
                             </div>
+
                             <flux:button wire:click="createWorksheet" variant="primary"
                                 class="w-full shadow-lg shadow-blue-100" icon="play">
                                 Initialize & Start Worksheet
@@ -334,7 +387,8 @@ new class extends Component {
                                         placeholder="Discussed transit times, rate requirements..." />
 
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <flux:textarea wire:model="feedback" label="Partner Feedback" rows="auto" />
+                                        <flux:textarea wire:model="feedback" label="Partner Feedback"
+                                            rows="auto" />
                                         <flux:textarea wire:model="way_forward" label="Way Forward" rows="auto" />
                                     </div>
 
