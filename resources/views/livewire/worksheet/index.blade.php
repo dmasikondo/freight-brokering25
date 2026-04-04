@@ -1,9 +1,9 @@
 <?php
 
-use App\Models\WorksheetHeader;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
+use App\Models\WorksheetHeader;
 
 new class extends Component {
     use WithPagination;
@@ -15,6 +15,7 @@ new class extends Component {
     public $status = 'all';
     public $date_from;
     public $date_to;
+    public $reminder_filter = 'all';
     public $perPage = 10;
     public $is_global = false;
 
@@ -38,11 +39,14 @@ new class extends Component {
 
     public function viewArchive($id)
     {
-        $this->viewingWorksheet = WorksheetHeader::with([
-            'entries' => function ($q) {
-                $q->orderBy('sort_order', 'asc');
-            },
-        ])->findOrFail($id);
+        $worksheet = WorksheetHeader::findOrFail($id);
+
+        // AUTHORIZATION: Check the 'view' policy for this specific worksheet
+        if (!auth()->user()->can('view', $worksheet)) {
+            abort(403, 'You do not have permission to view this specific worksheet.');
+        }
+
+        $this->viewingWorksheet = $worksheet->load(['entries' => fn($q) => $q->orderBy('sort_order', 'asc')]);
     }
 
     public function closeArchive()
@@ -52,12 +56,21 @@ new class extends Component {
 
     public function with()
     {
+        $user = auth()->user();
         $query = WorksheetHeader::query()
             ->with(['user', 'user.territories'])
             ->withCount('entries');
 
-        if (!$this->is_global) {
-            $query->where('user_id', Auth::id());
+        // RULE: Global View is restricted to Admin/Superadmin
+        $canViewGlobal = $user->hasAnyRole(['superadmin', 'admin']);
+
+        if ($this->is_global && $canViewGlobal) {
+            // No user_id constraint (Global View)
+        } else {
+            // Forced to personal view for all other backend staff
+            $query->where('user_id', $user->id);
+            // Reset the toggle in case a non-admin manually typed ?is_global=true in URL
+            $this->is_global = false;
         }
 
         // Filter: Name
@@ -94,10 +107,29 @@ new class extends Component {
             });
         }
 
+        // Filter: Reminder Status
+        if ($this->reminder_filter === 'overdue') {
+            $query->whereHas('entries', function ($q) {
+                $q->whereNotNull('reminder_at')->where('reminder_at', '<', now());
+            });
+        } elseif ($this->reminder_filter === 'forthcoming') {
+            $query->whereHas('entries', function ($q) {
+                $q->whereNotNull('reminder_at')->where('reminder_at', '>', now());
+            });
+        }
+
         return [
             'worksheets' => $query->latest()->paginate($this->perPage),
             'all_territories' => \App\Models\Territory::orderBy('name')->get(),
         ];
+    }
+
+    public function mount()
+    {
+        // AUTHORIZATION: Ensure only backend staff can even land here
+        if (!auth()->user()->can('viewAny', WorksheetHeader::class)) {
+            abort(403, 'Unauthorized access to worksheet archives.');
+        }
     }
 }; ?>
 
@@ -138,16 +170,29 @@ new class extends Component {
                     <option value="{{ $t->id }}">{{ $t->name }}</option>
                 @endforeach
             </flux:select>
+
+            <flux:select label="Reminders" wire:model.live="reminder_filter">
+                <x-slot name="icon">
+                    <flux:icon.bell variant="micro" />
+                </x-slot>
+                <option value="all">All Reminders</option>
+                <option value="overdue">Overdue (Past)</option>
+                <option value="forthcoming">Forthcoming (Future)</option>
+            </flux:select>
         </div>
 
         <div class="flex items-center justify-between pt-4 border-t border-slate-100">
             <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2">
-                    <flux:checkbox wire:model.live="is_global" label="Global View" />
-                    <flux:tooltip content="View worksheets from all team members">
-                        <flux:icon.information-circle variant="micro" class="text-slate-400" />
-                    </flux:tooltip>
-                </div>
+                @can('viewGlobal', App\Models\WorksheetHeader::class)
+                    <div class="flex items-center gap-2">
+                        <flux:checkbox wire:model.live="is_global" label="Global View" />
+                        <flux:tooltip content="View worksheets from all team members">
+                            <flux:icon.information-circle variant="micro" class="text-slate-400" />
+                        </flux:tooltip>
+                    </div>
+
+                    <div class="h-4 w-px bg-slate-200"></div>
+                @endcan
 
                 <div class="h-4 w-px bg-slate-200"></div>
 
@@ -250,7 +295,8 @@ new class extends Component {
 
                             <div class="flex justify-between items-start mb-4">
                                 <div>
-                                    <h3 class="font-black text-slate-800 text-lg leading-none">{{ $ent->partner_name }}
+                                    <h3 class="font-black text-slate-800 text-lg leading-none">
+                                        {{ $ent->partner_name }}
                                     </h3>
                                     <div class="flex items-center gap-2 mt-2">
                                         <span

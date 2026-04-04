@@ -88,6 +88,7 @@ new class extends Component {
 
     public function createWorksheet()
     {
+        $this->authorize('create', WorksheetHeader::class);
         $this->validate(['worksheet_name' => 'required', 'temp_partners' => 'required|array|min:1']);
         $header = WorksheetHeader::create(['user_id' => Auth::id(), 'name' => $this->worksheet_name]);
         foreach ($this->temp_partners as $idx => $p) {
@@ -165,6 +166,15 @@ new class extends Component {
     {
         $this->viewing_header_id = null;
     }
+
+    public function mount()
+    {
+        if (auth()->user()->cannot('create', WorksheetHeader::class)) {
+            abort(403, 'You are not authorized to start a new scouting session.');
+        }
+    }
+    
+    
 }; ?>
 
 <div class="p-6 max-w-7xl mx-auto space-y-10 min-h-screen bg-slate-50/50">
