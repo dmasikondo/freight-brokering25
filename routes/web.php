@@ -53,7 +53,8 @@ Route::middleware(['auth',])->group(function () {
     Volt::route('lanes/{lane:uuid}/edit', 'lane.create')->name('lanes.edit');
     Volt::route('lanes/{lane:uuid}', 'lane.show')->name('lanes.show');
 
-    Volt::route('worksheet/create', 'worksheet.create')->name('worksheets.create');
+    Volt::route('worksheets/create', 'worksheet.create')->name('worksheets.create');
+    Volt::route('worksheets', 'worksheet.index')->name('worksheets.index');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
