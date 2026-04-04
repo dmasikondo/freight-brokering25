@@ -53,13 +53,15 @@ Route::middleware(['auth',])->group(function () {
     Volt::route('lanes/{lane:uuid}/edit', 'lane.create')->name('lanes.edit');
     Volt::route('lanes/{lane:uuid}', 'lane.show')->name('lanes.show');
 
-
+    Volt::route('worksheet/create', 'worksheet.create')->name('worksheets.create');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.markAllRead');
     Route::get('/notifications/{notification}/read-and-view', [NotificationController::class, 'readAndView'])
     ->name('notifications.readAndView');
+
+    
 });
 
 require __DIR__ . '/auth.php';

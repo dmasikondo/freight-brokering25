@@ -440,4 +440,17 @@ class User extends Authenticatable implements MustVerifyEmail
                 ->whereHas('territories', fn($t) => $t->whereIn('territories.id', $territoryIds));
         };
     }
+
+    public function worksheetHeaders(): HasMany
+    {
+        return $this->hasMany(WorksheetHeader::class);
+    }
+
+    /**
+     * Helper to check if the user has an unfinished worksheet.
+     */
+    public function hasActiveWorksheet(): bool
+    {
+        return $this->worksheetHeaders()->where('is_completed', false)->exists();
+    }
 }
