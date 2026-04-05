@@ -23,12 +23,24 @@ new class extends Component {
         $private_notes = '',
         $reminder_at = '';
 
+    // public $activeHeader;
     public $viewing_header_id = null;
+    public $active_id;
+    protected $queryString = ['active_id'];
+    public $activeHeaderTrigger = null;
 
     public function with()
     {
         $userId = Auth::id();
-        $activeHeader = WorksheetHeader::where('user_id', $userId)->where('is_completed', false)->first();
+
+        $activeHeader = WorksheetHeader::where('is_completed', false)
+            ->when($this->active_id, fn($q) => $q->where('id', $this->active_id))
+            ->where(function ($query) use ($userId) {
+                $query->where('user_id', $userId)
+                      ->orWhereHas('sharedWith', fn($q) => $q->where('user_id', $userId));
+            })
+            ->first();
+
 
         $currentEntry = null;
         $progress = 0;
@@ -53,7 +65,13 @@ new class extends Component {
             'available_partners' => User::where('contact_person', 'like', "%{$this->p_name}%")
                 ->limit(5)
                 ->get(),
-            'history' => WorksheetHeader::withCount('entries')->where('user_id', $userId)->latest()->get(),
+            // Update history to also show things shared with you
+            'history' => WorksheetHeader::withCount('entries')
+                ->where(function ($query) use ($userId) {
+                    $query->where('user_id', $userId)->orWhereHas('sharedWith', fn($q) => $q->where('user_id', $userId));
+                })
+                ->latest()
+                ->get(),
             'selected_worksheet' => $this->viewing_header_id ? WorksheetHeader::with('entries')->find($this->viewing_header_id) : null,
         ];
     }
@@ -123,7 +141,9 @@ new class extends Component {
             ],
         );
 
-        $entry = WorksheetEntry::find($id);
+        $entry = WorksheetEntry::findOrFail($id);
+        // Authorization check
+        $this->authorize('update', $entry->header);
         $entry->update([
             'activity' => $this->activity,
             'feedback' => $this->feedback,
@@ -131,6 +151,7 @@ new class extends Component {
             'private_notes' => $this->private_notes,
             'reminder_at' => $this->reminder_at ?: null,
             'completed_at' => now(),
+            'last_edited_by_id' => Auth::id(),
         ]);
 
         $this->reset(['activity', 'feedback', 'way_forward', 'private_notes', 'reminder_at']);
@@ -173,8 +194,6 @@ new class extends Component {
             abort(403, 'You are not authorized to start a new scouting session.');
         }
     }
-    
-    
 }; ?>
 
 <div class="p-6 max-w-7xl mx-auto space-y-10 min-h-screen bg-slate-50/50">
@@ -205,9 +224,9 @@ new class extends Component {
                                         <div
                                             class="absolute z-30 w-full bg-white border shadow-2xl rounded-xl mt-2 overflow-hidden border-slate-200">
                                             @foreach ($available_partners as $u)
-                                                <button type="button" {{-- FIX: Pass $u->contact_phone and $u->whatsapp --}}
+                                                <button type="button"
                                                     wire:click="selectPartner({{ $u->id }}, '{{ $u->contact_person }}', '{{ $u->contact_phone }}', '{{ $u->whatsapp }}')"
-                                                    class="w-full text-left p-3 hover:bg-blue-50 border-b last:border-0 transition-colors">
+                                                    class="w-full text-left p-3 hover:bg-lime-50 border-b last:border-0 transition-colors">
                                                     <p class="text-sm font-bold text-slate-900">{{ $u->contact_person }}
                                                     </p>
                                                     <p class="text-[10px] text-slate-500 uppercase">{{ $u->email }}
@@ -237,7 +256,7 @@ new class extends Component {
                                     <span
                                         class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Planned
                                         Sequence</span>
-                                    <span class="text-[10px] font-bold text-blue-500">{{ count($temp_partners) }}
+                                    <span class="text-[10px] font-bold text-lime-500">{{ count($temp_partners) }}
                                         Partners</span>
                                 </div>
 
@@ -252,7 +271,7 @@ new class extends Component {
                                             <div>
                                                 <span class="font-bold text-slate-800">{{ $tp['name'] }}</span>
                                                 <span
-                                                    class="ml-2 px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[9px] font-black uppercase">
+                                                    class="ml-2 px-2 py-0.5 rounded bg-lime-50 text-lime-600 text-[9px] font-black uppercase">
                                                     {{ $tp['type'] }}
                                                 </span>
                                                 <p class="text-[10px] text-slate-400 mt-0.5">
@@ -289,7 +308,7 @@ new class extends Component {
                             </div>
 
                             <flux:button wire:click="createWorksheet" variant="primary"
-                                class="w-full shadow-lg shadow-blue-100" icon="play">
+                                class="w-full shadow-lg shadow-lime-100" icon="play">
                                 Initialize & Start Worksheet
                             </flux:button>
                         @endif
@@ -302,12 +321,12 @@ new class extends Component {
                 <div class="space-y-3">
                     @forelse($history as $h)
                         <button wire:click="viewWorksheet({{ $h->id }})"
-                            class="w-full text-left p-4 bg-white border border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-md transition-all group">
+                            class="w-full text-left p-4 bg-white border border-slate-200 rounded-2xl hover:border-lime-400 hover:shadow-md transition-all group">
                             <div class="flex justify-between items-start">
-                                <p class="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                                <p class="font-bold text-slate-800 group-hover:text-lime-600 transition-colors">
                                     {{ $h->name }}</p>
                                 <flux:icon.chevron-right variant="micro"
-                                    class="text-slate-300 group-hover:text-blue-400" />
+                                    class="text-slate-300 group-hover:text-lime-400" />
                             </div>
                             <div class="flex justify-between items-center mt-3">
                                 <span
@@ -334,21 +353,38 @@ new class extends Component {
         <div
             class="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-6 duration-700">
             <div class="p-8 bg-slate-900 text-white">
+                @if ($activeHeader->user_id !== auth()->id())
+                    <div class="m-4 bg-lime-600 text-white p-4 rounded-3xl flex items-center justify-between shadow-lg">
+                        <div class="flex items-center gap-3">
+                            <flux:icon.users />
+                            <div>
+                                <p class="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none">
+                                    Collaborative Session</p>
+                                <p class="text-sm font-bold">Assisting
+                                    {{ $activeHeader->user->contact_person ?? 'Owner' }}</p>
+                            </div>
+                        </div>
+                        <flux:button size="xs" variant="ghost" class="text-white border-white/30 hover:bg-lime-700"
+                            wire:click="$set('active_id', null)">
+                            Back to my sessions
+                        </flux:button>
+                    </div>
+                @endif
                 <div class="flex justify-between items-end mb-6">
                     <div>
                         <h1 class="text-3xl font-black tracking-tight">{{ $activeHeader->name }}</h1>
                         <p class="text-slate-400 text-sm mt-1">
-                            <span class="text-blue-400 font-bold">{{ $completedCount }}</span> of {{ $totalCount }}
+                            <span class="text-lime-400 font-bold">{{ $completedCount }}</span> of {{ $totalCount }}
                             partners attended to
                         </p>
                     </div>
                     <div class="text-right">
-                        <span class="text-4xl font-black text-blue-400 leading-none">{{ round($progress) }}%</span>
+                        <span class="text-4xl font-black text-lime-400 leading-none">{{ round($progress) }}%</span>
                         <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Progress</p>
                     </div>
                 </div>
                 <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div class="bg-blue-500 h-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+                    <div class="bg-lime-500 h-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(59,130,246,0.5)]"
                         style="width: {{ $progress }}%"></div>
                 </div>
             </div>
@@ -360,7 +396,7 @@ new class extends Component {
                         <div class="lg:col-span-2 space-y-8 border-r border-slate-100 pr-12">
                             <div class="flex items-start gap-6">
                                 <div
-                                    class="h-14 w-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-2xl shadow-xl shadow-blue-200 ring-4 ring-blue-50">
+                                    class="h-14 w-14 rounded-2xl bg-lime-600 text-white flex items-center justify-center font-black text-2xl shadow-xl shadow-lime-200 ring-4 ring-lime-50">
                                     {{ $completedCount + 1 }}
                                 </div>
                                 <div>
@@ -380,11 +416,11 @@ new class extends Component {
                             </div>
 
                             @if (!$currentEntry->started_at)
-                                <div class="py-24 border-2 border-dashed border-slate-200 rounded-[2rem] text-center bg-slate-50/50 group hover:bg-white hover:border-blue-300 transition-all cursor-pointer"
+                                <div class="py-24 border-2 border-dashed border-slate-200 rounded-[2rem] text-center bg-slate-50/50 group hover:bg-white hover:border-lime-300 transition-all cursor-pointer"
                                     wire:click="startEntry({{ $currentEntry->id }})">
                                     <div
                                         class="h-16 w-16 bg-white rounded-full flex items-center justify-center mx-auto shadow-md mb-4 group-hover:scale-110 transition-transform">
-                                        <flux:icon.play variant="micro" class="text-blue-600" />
+                                        <flux:icon.play variant="micro" class="text-lime-600" />
                                     </div>
                                     <p class="font-bold text-slate-800">Start Interaction</p>
                                     <p class="text-xs text-slate-400 mt-1">Unlock logs and start the timer for this
@@ -416,7 +452,7 @@ new class extends Component {
                                     </div>
 
                                     <flux:button type="submit" variant="primary"
-                                        class="w-full py-4 text-lg font-bold shadow-xl shadow-blue-100"
+                                        class="w-full py-4 text-lg font-bold shadow-xl shadow-lime-100"
                                         icon="check-circle">
                                         Finalize Partner #{{ $completedCount + 1 }}
                                     </flux:button>
@@ -512,6 +548,12 @@ new class extends Component {
                         <h2 class="text-2xl font-black text-slate-900 leading-none">{{ $selected_worksheet->name }}
                         </h2>
                         <div class="flex gap-4 mt-2">
+                            <div class="flex flex-col border p-2">
+    <span class="text-[10px] uppercase tracking-widest text-slate-400">Initiated by</span>
+    <a href="{{ route('users.show', $selected_worksheet->user->slug) }}" wire:navigate class="text-sm font-bold text-lime-400 hover:text-lime-300">
+        {{ $selected_worksheet->user->contact_person }}
+    </a>
+</div>
                             <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                 Opened: {{ $selected_worksheet->created_at->format('d M Y, H:i') }}
                                 <span
@@ -532,7 +574,7 @@ new class extends Component {
                     @foreach ($selected_worksheet->entries as $ent)
                         <div class="relative pl-12 border-l-2 border-slate-100">
                             <div
-                                class="absolute -left-[11px] top-0 h-5 w-5 rounded-full bg-white border-2 border-blue-500 flex items-center justify-center text-[10px] font-black text-blue-600">
+                                class="absolute -left-[11px] top-0 h-5 w-5 rounded-full bg-white border-2 border-lime-500 flex items-center justify-center text-[10px] font-black text-lime-600">
                                 {{ $loop->iteration }}
                             </div>
 
@@ -582,7 +624,7 @@ new class extends Component {
                                 <div class="space-y-1">
                                     <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Way
                                         Forward</h4>
-                                    <p class="text-sm text-blue-700 font-bold leading-relaxed">{{ $ent->way_forward }}
+                                    <p class="text-sm text-lime-700 font-bold leading-relaxed">{{ $ent->way_forward }}
                                     </p>
                                 </div>
                             </div>

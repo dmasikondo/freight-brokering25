@@ -23,9 +23,10 @@ class WorksheetEntry extends Model
         'sort_order',
         'reminder_at',
         'private_notes',
-        'partner_type'
+        'partner_type',
+        'last_edited_by_id'
     ];
-  
+
     protected $casts = [
         'partner_type' => \App\Enums\PartnerType::class,
         'started_at' => 'datetime',
@@ -39,5 +40,10 @@ class WorksheetEntry extends Model
     public function header(): BelongsTo
     {
         return $this->belongsTo(WorksheetHeader::class, 'header_id');
+    }
+
+    public function lastEditor()
+    {
+        return $this->belongsTo(User::class, 'last_edited_by_id');
     }
 }

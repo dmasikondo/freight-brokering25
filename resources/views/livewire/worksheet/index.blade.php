@@ -4,6 +4,9 @@ use Livewire\Volt\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
 use App\Models\WorksheetHeader;
+use App\Models\Territory;
+use App\Models\User;
+//use Flux\Flux;
 
 new class extends Component {
     use WithPagination;
@@ -18,15 +21,45 @@ new class extends Component {
     public $reminder_filter = 'all';
     public $perPage = 10;
     public $is_global = false;
+    public $staff_search;
 
     // View State
     public $viewingWorksheet = null;
+    public $sharingWorksheet = null;
+    public $selectedStaff = [];
 
     protected $queryString = [
         'search' => ['except' => ''],
         'status' => ['except' => 'all'],
         'perPage' => ['except' => 10],
     ];
+
+    public function openShareModal($id)
+    {
+        // Load the worksheet with its current shared users
+        $this->sharingWorksheet = WorksheetHeader::with('sharedWith')->findOrFail($id);
+
+        // Sync the checkbox state with existing shares
+        $this->selectedStaff = $this->sharingWorksheet->sharedWith->pluck('id')->toArray();
+
+        $this->modal('share-modal')->show();
+    }
+
+public function toggleShare($userId)
+{
+    if (in_array($userId, $this->selectedStaff)) {
+        $this->sharingWorksheet->sharedWith()->detach($userId);
+        $this->selectedStaff = array_diff($this->selectedStaff, [$userId]);
+        $message = 'Access withdrawn.';
+    } else {
+        $this->sharingWorksheet->sharedWith()->attach($userId);
+        $this->selectedStaff[] = $userId;
+        $message = 'Access granted.';
+    }
+    
+    // Dispatch a simple browser event
+    $this->dispatch('notify', message: $message);
+}
 
     public function updatingSearch()
     {
@@ -54,23 +87,19 @@ new class extends Component {
         $this->viewingWorksheet = null;
     }
 
+    
+
     public function with()
     {
         $user = auth()->user();
         $query = WorksheetHeader::query()
-            ->with(['user', 'user.territories'])
+            ->with(['user.territories', 'sharedWith'])
             ->withCount('entries');
 
-        // RULE: Global View is restricted to Admin/Superadmin
-        $canViewGlobal = $user->hasAnyRole(['superadmin', 'admin']);
-
-        if ($this->is_global && $canViewGlobal) {
-            // No user_id constraint (Global View)
-        } else {
-            // Forced to personal view for all other backend staff
-            $query->where('user_id', $user->id);
-            // Reset the toggle in case a non-admin manually typed ?is_global=true in URL
-            $this->is_global = false;
+        if (!$this->is_global && !$user->hasAnyRole(['admin', 'superadmin'])) {
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)->orWhereHas('sharedWith', fn($sq) => $sq->where('user_id', $user->id));
+            });
         }
 
         // Filter: Name
@@ -120,7 +149,16 @@ new class extends Component {
 
         return [
             'worksheets' => $query->latest()->paginate($this->perPage),
-            'all_territories' => \App\Models\Territory::orderBy('name')->get(),
+            'all_territories' => Territory::orderBy('name')->get(),
+            // Get all backend staff except the owner of the current worksheet
+            'available_staff' => User::where('id', '!=', auth()->id())
+                ->whereHas('roles', function ($q) {
+                    $q->whereIn('name', ['superadmin', 'admin', 'marketing logistics associate', 'procurement logistics associate', 'operations logistics associate', 'logistics operations executive']);
+                })
+                ->when($this->staff_search, function ($q) {
+                    $q->whereAny(['users.contact_person', 'users.email'], 'like', "%{$this->staff_search}%");
+                })
+                ->get(),
         ];
     }
 
@@ -134,6 +172,15 @@ new class extends Component {
 }; ?>
 
 <div class="p-8 max-w-7xl mx-auto space-y-6 min-h-screen bg-slate-50/50">
+    <div x-data="{ show: false, message: '' }"
+     x-on:notify.window="show = true; message = $event.detail.message; setTimeout(() => show = false, 3000)"
+     x-show="show"
+     x-transition.out.opacity.duration.1000ms
+     class="fixed bottom-5 right-5 z-[100] bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700"
+     style="display: none;">
+    <flux:icon.check-circle class="text-emerald-400 h-5 w-5" />
+    <span class="text-xs font-bold" x-text="message"></span>
+</div>
 
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -215,43 +262,130 @@ new class extends Component {
     </div>
 
     <div class="grid grid-cols-1 gap-4">
-        @forelse($worksheets as $ws)
-            <div class="bg-white border border-slate-200 rounded-3xl p-6 hover:border-blue-300 transition-all">
-                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div class="flex items-start gap-4">
-                        <div class="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
-                            <flux:icon.archive-box variant="micro" />
-                        </div>
-                        <div>
-                            <h2 class="text-lg font-bold text-slate-900">{{ $ws->name }}</h2>
-                            <div class="flex items-center gap-3 mt-1">
-                                <span
-                                    class="px-2 py-0.5 rounded text-[9px] font-black uppercase {{ $ws->is_completed ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600' }}">
-                                    {{ $ws->is_completed ? 'Completed' : 'Partial' }}
-                                </span>
-                                <span class="text-xs text-slate-400">{{ $ws->entries_count }} Partners</span>
-                            </div>
-                        </div>
-                    </div>
+@forelse($worksheets as $ws)
+    {{-- 1. Main Card Container: Visual highlight for any shared content --}}
+    <div class="relative bg-white border-y md:border-x {{ $ws->sharedWith->isNotEmpty() ? 'border-l-4 border-l-lime-500 bg-lime-50/5' : 'border-slate-200' }} md:rounded-3xl p-6 mb-4 shadow-sm transition-all hover:shadow-md">
+        
+        {{-- 2. "Shared With Me" Banner: Only shows if you are NOT the owner but are a collaborator --}}
+        @if($ws->user_id !== auth()->id() && $ws->sharedWith->contains(auth()->id()))
+            <div class="absolute -top-3 left-6 px-3 py-1 bg-lime-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg flex items-center gap-2 border border-lime-400">
+                <flux:icon.users variant="micro" />
+                Collaborator Access
+            </div>
+        @endif
 
-                    <div class="flex gap-8 border-l border-slate-100 pl-8 hidden lg:flex">
-                        <div class="text-right">
-                            <p class="text-[10px] font-black text-slate-400 uppercase">Created</p>
-                            <p class="text-xs font-bold text-slate-700">{{ $ws->created_at->format('d M Y') }}</p>
-                            <p class="text-[9px] text-slate-400 italic">{{ $ws->created_at->diffForHumans() }}</p>
-                        </div>
-                    </div>
-
-                    <flux:button variant="filled" wire:click="viewArchive({{ $ws->id }})" icon="eye">
-                        View Logs
-                    </flux:button>
+        <div class="flex flex-col md:flex-row justify-between items-start gap-4">
+            <div class="flex-grow">
+                {{-- 3. Title & Header Info --}}
+                <div class="flex items-center gap-3">
+                    <h2 class="text-lg font-black text-slate-900 tracking-tight">{{ $ws->name }}</h2>
+                    @if($ws->is_completed)
+                        <flux:icon.lock-closed variant="micro" class="text-slate-400" tooltip="This session is finalized" />
+                    @endif
                 </div>
+                
+                <div class="flex flex-wrap items-center gap-3 mt-2">
+                    {{-- Status Badge --}}
+                    <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase {{ $ws->is_completed ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-600' }}">
+                        {{ $ws->is_completed ? 'Completed' : 'Active Session' }}
+                    </span>
+
+                    {{-- Ownership Context --}}
+                    <span class="flex items-center gap-1 text-xs text-slate-500 font-medium">
+                        <span class="text-slate-400 font-normal italic text-[10px]">Initiated by</span>
+                        <flux:icon.user variant="micro" class="text-slate-300" />
+                        <span class="{{ $ws->user_id === auth()->id() ? 'text-lime-600 font-bold' : '' }}">
+                            {{ $ws->user_id === auth()->id() ? 'You' : $ws->user->contact_person }}
+                        </span>
+                    </span>
+
+                    {{-- Overdue Reminder Check --}}
+                    @php
+                        $hasOverdue = $ws->entries()->whereNotNull('reminder_at')->where('reminder_at', '<', now())->exists();
+                    @endphp
+                    @if($hasOverdue && !$ws->is_completed)
+                        <span class="flex items-center gap-1 px-2 py-0.5 rounded bg-red-50 text-red-600 text-[9px] font-black uppercase animate-pulse">
+                            <flux:icon.exclamation-triangle variant="micro" />
+                            Overdue Action
+                        </span>
+                    @endif
+                </div>
+
+                {{-- 4. Team List: Displays colleagues shared on this worksheet (Excluding current user) --}}
+                @php
+                    $otherCollaborators = $ws->sharedWith->filter(fn($u) => $u->id !== auth()->id());
+                @endphp
+
+                @if($otherCollaborators->isNotEmpty() || ($ws->user_id === auth()->id() && $ws->sharedWith->isNotEmpty()))
+                    <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-2">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Sharing Team:</span>
+                        
+                        @foreach($ws->sharedWith as $staff)
+                            @if($staff->id !== auth()->id()) {{-- Hide yourself from the list to reduce noise --}}
+                                <a href="{{ route('users.show', $staff->slug) }}" 
+                                   class="flex items-center gap-2 px-2 py-1 rounded-xl bg-white border border-slate-200 hover:border-lime-400 transition-all group"
+                                   wire:navigate>
+                                    <div class="h-4 w-4 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-500 group-hover:bg-lime-600 group-hover:text-white">
+                                        {{ strtoupper(substr($staff->contact_person, 0, 1)) }}
+                                    </div>
+                                    <div class="flex flex-col leading-none pr-1">
+                                        <span class="text-[10px] font-black text-slate-700 group-hover:text-lime-700">{{ $staff->contact_person }}</span>
+                                        <span class="text-[7px] text-slate-400 uppercase font-black tracking-tighter">{{ $staff->roles->first()?->name }}</span>
+                                    </div>
+                                </a>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
             </div>
-        @empty
-            <div class="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200">
-                <p class="text-slate-400 font-medium">No records found matching your filters.</p>
+
+            {{-- 5. Context-Aware Action Buttons --}}
+            <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                {{-- Manage Sharing (Only for Owner) --}}
+                @if($ws->user_id === auth()->id())
+                    <flux:button variant="ghost" size="sm" icon="share" wire:click="openShareModal({{ $ws->id }})" tooltip="Manage Sharing" />
+                @endif
+                
+                {{-- Dynamic Entry Button --}}
+                @if(!$ws->is_completed)
+                    @can('update', $ws)
+                        <flux:button variant="filled" size="sm" icon="pencil-square" color="lime"
+                            href="{{ route('worksheets.create', ['id' => $ws->id]) }}"
+                            >
+                            {{ $ws->user_id === auth()->id() ? 'Manage' : 'Contribute' }}
+                        </flux:button>
+                        @endcan
+                        <flux:button variant="ghost" size="sm" icon="eye" wire:click="viewArchive({{ $ws->id }})">
+                            View Only
+                        </flux:button>                   
+                    
+                @else
+                    <flux:button variant="ghost" size="sm" icon="archive-box" wire:click="viewArchive({{ $ws->id }})">
+                        View Archive
+                    </flux:button>
+                @endif
             </div>
-        @endforelse
+        </div>
+
+        {{-- Footer Meta --}}
+        <div class="mt-4 flex items-center gap-4 text-[10px] text-slate-400 font-medium">
+            <span class="flex items-center gap-1">
+                <flux:icon.calendar variant="micro" class="text-slate-300" />
+                {{ $ws->created_at->format('d M Y') }} ({{ $ws->created_at->diffForHumans() }})
+            </span>
+            <span class="h-1 w-1 rounded-full bg-slate-200"></span>
+            <span>{{ $ws->entries_count }} Logged Entities</span>
+        </div>
+    </div>
+
+@empty
+    {{-- 6. Empty State --}}
+    <div class="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+        <flux:icon.document-magnifying-glass class="h-12 w-12 text-slate-300 mb-4" />
+        <h3 class="text-lg font-bold text-slate-900">No Worksheets Found</h3>
+        <p class="text-slate-500 text-sm">Adjust your filters or start a new scouting session.</p>
+    </div>
+@endforelse
 
         <div class="py-4">
             {{ $worksheets->links() }}
@@ -267,6 +401,12 @@ new class extends Component {
                     <div>
                         <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ $viewingWorksheet->name }}
                         </h2>
+                        <div class="flex items-center gap-2">
+    <span class="text-xs text-slate-500">Initiated by:</span>
+    <a href="{{ route('users.show', $ws->slug) }}" wire:navigate class="text-sm font-medium text-lime-600 hover:text-lime-700 hover:underline">
+        {{ $ws->user->contact_person }}
+    </a>
+</div>
                         <div class="flex flex-col gap-1 mt-2">
                             <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                 Opened: <span
@@ -289,7 +429,7 @@ new class extends Component {
                     @foreach ($viewingWorksheet->entries as $ent)
                         <div class="relative pl-8 border-l-2 border-slate-100">
                             <div
-                                class="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-white border-2 border-blue-500 flex items-center justify-center text-[8px] font-black text-blue-600">
+                                class="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-white border-2 border-lime-500 flex items-center justify-center text-[8px] font-black text-lime-600">
                                 {{ $loop->iteration }}
                             </div>
 
@@ -300,7 +440,7 @@ new class extends Component {
                                     </h3>
                                     <div class="flex items-center gap-2 mt-2">
                                         <span
-                                            class="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-black uppercase">
+                                            class="text-[9px] bg-lime-50 text-lime-600 px-2 py-0.5 rounded font-black uppercase">
                                             {{ $ent->partner_type->label() }}
                                         </span>
                                         <span class="text-[10px] text-slate-400 italic">
@@ -326,8 +466,15 @@ new class extends Component {
                                 <div class="space-y-1">
                                     <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Way
                                         Forward</label>
-                                    <p class="text-xs text-blue-700 font-bold leading-relaxed">{{ $ent->way_forward }}
+                                    <p class="text-xs text-lime-700 font-bold leading-relaxed">{{ $ent->way_forward }}
                                     </p>
+
+                                    @if ($ent->last_edited_by_id && $ent->last_edited_by_id !== $viewingWorksheet->user_id)
+                                        <p class="text-[9px] text-slate-400 italic mt-1">
+                                            Last updated by <span
+                                                class="font-bold">{{ $ent->lastEditor->contact_person }}</span>
+                                        </p>
+                                    @endif
                                 </div>
                             </div>
 
@@ -368,4 +515,62 @@ new class extends Component {
             </div>
         </div>
     @endif
+
+
+    <flux:modal name="share-modal" class="md:w-[500px]">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">Manage Sharing</flux:heading>
+                <flux:subheading>Select colleagues to collaborate on <strong>{{ $sharingWorksheet?->name }}</strong>
+                </flux:subheading>
+            </div>
+
+            {{-- Staff Search --}}
+            <flux:input wire:model.live.debounce.300ms="staff_search" placeholder="Search staff by name..."
+                icon="magnifying-glass" />
+
+<div class="max-h-[350px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+    @foreach($available_staff as $staff)
+        <div class="flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-all group">
+            <div class="flex items-center gap-4">
+                {{-- Avatar Circle --}}
+                <div class="h-10 w-10 rounded-full bg-lime-100 flex items-center justify-center text-sm font-black text-lime-700">
+                    {{ strtoupper(substr($staff->contact_person, 0, 1)) }}
+                </div>
+                
+                <div class="flex flex-col">
+                    {{-- Contact Person Name --}}
+                    <span class="text-sm font-black text-slate-900 leading-none">
+                        {{ $staff->contact_person }}
+                    </span>
+                    
+                    {{-- Email Address --}}
+                    <span class="text-[11px] text-slate-500 mt-1 font-medium italic">
+                        {{ $staff->email }}
+                    </span>
+
+                    {{-- Role Badge --}}
+                    <span class="text-[9px] text-lime-500 mt-1 uppercase font-black tracking-wider bg-lime-50 px-1.5 py-0.5 rounded w-fit">
+                        {{ $staff->roles->first()?->name ?? 'Staff' }}
+                    </span>
+                </div>
+            </div>
+
+            {{-- The Toggle --}}
+            <flux:checkbox 
+                wire:key="staff-{{ $staff->id }}-{{ count($selectedStaff) }}"
+                :checked="in_array($staff->id, $selectedStaff)"
+                wire:click="toggleShare({{ $staff->id }})" 
+            />
+        </div>
+    @endforeach
+</div>
+
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">Finished</flux:button>
+                </flux:modal.close>
+            </div>
+        </div>
+    </flux:modal>
 </div>

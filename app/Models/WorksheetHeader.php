@@ -20,7 +20,7 @@ class WorksheetHeader extends Model
     public function entries(): HasMany
     {
         return $this->hasMany(WorksheetEntry::class, 'header_id')
-                    ->orderBy('sort_order', 'asc');
+            ->orderBy('sort_order', 'asc');
     }
 
     /**
@@ -29,5 +29,10 @@ class WorksheetHeader extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function sharedWith()
+    {
+        return $this->belongsToMany(User::class, 'worksheet_header_user')->withTimestamps();
     }
 }
