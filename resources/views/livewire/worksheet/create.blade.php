@@ -36,11 +36,9 @@ new class extends Component {
         $activeHeader = WorksheetHeader::where('is_completed', false)
             ->when($this->active_id, fn($q) => $q->where('id', $this->active_id))
             ->where(function ($query) use ($userId) {
-                $query->where('user_id', $userId)
-                      ->orWhereHas('sharedWith', fn($q) => $q->where('user_id', $userId));
+                $query->where('user_id', $userId)->orWhereHas('sharedWith', fn($q) => $q->where('user_id', $userId));
             })
             ->first();
-
 
         $currentEntry = null;
         $progress = 0;
@@ -71,6 +69,7 @@ new class extends Component {
                     $query->where('user_id', $userId)->orWhereHas('sharedWith', fn($q) => $q->where('user_id', $userId));
                 })
                 ->latest()
+                ->limit(10)
                 ->get(),
             'selected_worksheet' => $this->viewing_header_id ? WorksheetHeader::with('entries')->find($this->viewing_header_id) : null,
         ];
@@ -191,7 +190,7 @@ new class extends Component {
     public function mount()
     {
         if (auth()->user()->cannot('create', WorksheetHeader::class)) {
-            abort(403, 'You are not authorized to start a new scouting session.');
+            abort(403, 'You are not authorized to start a new scouting worksheet.');
         }
     }
 }; ?>
@@ -204,15 +203,27 @@ new class extends Component {
             {{ session('status') }}
         </div>
     @endif
+    <div class="mb-6 flex items-center justify-between">
+        <flux:button href="{{ route('worksheets.index') }}" variant="ghost" size="sm" icon="chevron-left" wire:navigate
+            class="text-lime-600 hover:text-lime-700 hover:bg-lime-50 -ml-2">
+            {{ __('View All Worksheets') }}
+        </flux:button>
 
+        {{-- Optional: Badge showing the current mode --}}
+        @if ($activeHeader)
+            <flux:badge color="lime" variant="outline" size="sm" class="uppercase tracking-widest text-[10px]">
+                {{ $activeHeader->user_id === auth()->id() ? 'Private Session' : 'Collaborative' }}
+            </flux:badge>
+        @endif
+    </div>
     @if (!$activeHeader && !$viewing_header_id)
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="lg:col-span-2 space-y-6">
                 <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-                    <h2 class="text-2xl font-black text-slate-800 mb-6 tracking-tight">Plan New Scouting Session</h2>
+                    <h2 class="text-2xl font-black text-slate-800 mb-6 tracking-tight">Plan New Scouting Worksheet</h2>
 
                     <div class="space-y-6">
-                        <flux:input wire:model="worksheet_name" label="Session Name"
+                        <flux:input wire:model="worksheet_name" label="Worksheet Name"
                             placeholder="e.g. Harare-Beira Lane Scouting" />
 
                         <div class="p-6 bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
@@ -317,7 +328,8 @@ new class extends Component {
             </div>
 
             <div class="space-y-4">
-                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Session History</h3>
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Latest Worksheets
+                    History</h3>
                 <div class="space-y-3">
                     @forelse($history as $h)
                         <button wire:click="viewWorksheet({{ $h->id }})"
@@ -343,7 +355,7 @@ new class extends Component {
                     @empty
                         <div class="p-10 border-2 border-dashed rounded-3xl text-center text-slate-300">
                             <flux:icon.archive-box variant="micro" class="mx-auto mb-2 opacity-20" />
-                            <p class="text-xs font-medium">No archived sessions</p>
+                            <p class="text-xs font-medium">No archived worksheets</p>
                         </div>
                     @endforelse
                 </div>
@@ -359,14 +371,14 @@ new class extends Component {
                             <flux:icon.users />
                             <div>
                                 <p class="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none">
-                                    Collaborative Session</p>
+                                    Collaborative Worksheet</p>
                                 <p class="text-sm font-bold">Assisting
                                     {{ $activeHeader->user->contact_person ?? 'Owner' }}</p>
                             </div>
                         </div>
                         <flux:button size="xs" variant="ghost" class="text-white border-white/30 hover:bg-lime-700"
                             wire:click="$set('active_id', null)">
-                            Back to my sessions
+                            Back to my worksheets
                         </flux:button>
                     </div>
                 @endif
@@ -496,7 +508,7 @@ new class extends Component {
                                                 <flux:icon.check variant="micro" />
                                             </div>
                                             <p class="text-sm font-bold text-emerald-800">Final interaction of the
-                                                session!</p>
+                                                worksheet!</p>
                                         </div>
                                     @endforelse
                                 </div>
@@ -549,11 +561,12 @@ new class extends Component {
                         </h2>
                         <div class="flex gap-4 mt-2">
                             <div class="flex flex-col border p-2">
-    <span class="text-[10px] uppercase tracking-widest text-slate-400">Initiated by</span>
-    <a href="{{ route('users.show', $selected_worksheet->user->slug) }}" wire:navigate class="text-sm font-bold text-lime-400 hover:text-lime-300">
-        {{ $selected_worksheet->user->contact_person }}
-    </a>
-</div>
+                                <span class="text-[10px] uppercase tracking-widest text-slate-400">Initiated by</span>
+                                <a href="{{ route('users.show', $selected_worksheet->user->slug) }}" wire:navigate
+                                    class="text-sm font-bold text-lime-400 hover:text-lime-300">
+                                    {{ $selected_worksheet->user->contact_person }}
+                                </a>
+                            </div>
                             <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                 Opened: {{ $selected_worksheet->created_at->format('d M Y, H:i') }}
                                 <span

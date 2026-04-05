@@ -45,21 +45,26 @@ new class extends Component {
         $this->modal('share-modal')->show();
     }
 
-public function toggleShare($userId)
-{
-    if (in_array($userId, $this->selectedStaff)) {
-        $this->sharingWorksheet->sharedWith()->detach($userId);
-        $this->selectedStaff = array_diff($this->selectedStaff, [$userId]);
-        $message = 'Access withdrawn.';
-    } else {
-        $this->sharingWorksheet->sharedWith()->attach($userId);
-        $this->selectedStaff[] = $userId;
-        $message = 'Access granted.';
+    public function toggleShare($userId)
+    {
+        $targetUser = User::findOrFail($userId);
+        if (in_array($userId, $this->selectedStaff)) {
+            $this->sharingWorksheet->sharedWith()->detach($userId);
+            $this->selectedStaff = array_diff($this->selectedStaff, [$userId]);
+            $message = 'Access withdrawn.';
+            // Send Notification
+            $targetUser->notify(new \App\Notifications\WorksheetSharedNotification($this->sharingWorksheet, 'withdrawn'));
+        } else {
+            $this->sharingWorksheet->sharedWith()->attach($userId);
+            $this->selectedStaff[] = $userId;
+            $message = 'Access granted.';
+            // Send Notification
+            $targetUser->notify(new \App\Notifications\WorksheetSharedNotification($this->sharingWorksheet, 'granted'));
+        }
+
+        // Dispatch a simple browser event
+        $this->dispatch('notify', message: $message);
     }
-    
-    // Dispatch a simple browser event
-    $this->dispatch('notify', message: $message);
-}
 
     public function updatingSearch()
     {
@@ -86,8 +91,6 @@ public function toggleShare($userId)
     {
         $this->viewingWorksheet = null;
     }
-
-    
 
     public function with()
     {
@@ -173,29 +176,28 @@ public function toggleShare($userId)
 
 <div class="p-8 max-w-7xl mx-auto space-y-6 min-h-screen bg-slate-50/50">
     <div x-data="{ show: false, message: '' }"
-     x-on:notify.window="show = true; message = $event.detail.message; setTimeout(() => show = false, 3000)"
-     x-show="show"
-     x-transition.out.opacity.duration.1000ms
-     class="fixed bottom-5 right-5 z-[100] bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700"
-     style="display: none;">
-    <flux:icon.check-circle class="text-emerald-400 h-5 w-5" />
-    <span class="text-xs font-bold" x-text="message"></span>
-</div>
+        x-on:notify.window="show = true; message = $event.detail.message; setTimeout(() => show = false, 3000)"
+        x-show="show" x-transition.out.opacity.duration.1000ms
+        class="fixed bottom-5 right-5 z-[100] bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700"
+        style="display: none;">
+        <flux:icon.check-circle class="text-emerald-400 h-5 w-5" />
+        <span class="text-xs font-bold" x-text="message"></span>
+    </div>
 
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h1 class="text-3xl font-black text-slate-900 tracking-tight">Scouting Archive</h1>
+            <h1 class="text-3xl font-black text-slate-900 tracking-tight">Worksheet Scouting Archive</h1>
             <p class="text-slate-500 text-sm">Review historical partner interactions and logistics leads.</p>
         </div>
         <flux:button icon="plus" href="{{ route('worksheets.create') }}" wire:navigate
             class="bg-[#bef264] hover:bg-[#a3e635] text-slate-900 font-bold border-none shadow-lg shadow-lime-100">
-            New Session
+            New Worksheet
         </flux:button>
     </div>
 
     <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-            <flux:input label="Session Name" wire:model.live.debounce.300ms="search" icon="magnifying-glass"
+            <flux:input label="Worksheet Name" wire:model.live.debounce.300ms="search" icon="magnifying-glass"
                 placeholder="Search..." />
 
             <flux:input label="Author" wire:model.live.debounce.300ms="author_search" icon="user"
@@ -262,130 +264,147 @@ public function toggleShare($userId)
     </div>
 
     <div class="grid grid-cols-1 gap-4">
-@forelse($worksheets as $ws)
-    {{-- 1. Main Card Container: Visual highlight for any shared content --}}
-    <div class="relative bg-white border-y md:border-x {{ $ws->sharedWith->isNotEmpty() ? 'border-l-4 border-l-lime-500 bg-lime-50/5' : 'border-slate-200' }} md:rounded-3xl p-6 mb-4 shadow-sm transition-all hover:shadow-md">
-        
-        {{-- 2. "Shared With Me" Banner: Only shows if you are NOT the owner but are a collaborator --}}
-        @if($ws->user_id !== auth()->id() && $ws->sharedWith->contains(auth()->id()))
-            <div class="absolute -top-3 left-6 px-3 py-1 bg-lime-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg flex items-center gap-2 border border-lime-400">
-                <flux:icon.users variant="micro" />
-                Collaborator Access
-            </div>
-        @endif
+        @forelse($worksheets as $ws)
+            {{-- 1. Main Card Container: Visual highlight for any shared content --}}
+            <div
+                class="relative bg-white border-y md:border-x {{ $ws->sharedWith->isNotEmpty() ? 'border-l-4 border-l-lime-500 bg-lime-50/5' : 'border-slate-200' }} md:rounded-3xl p-6 mb-4 shadow-sm transition-all hover:shadow-md">
 
-        <div class="flex flex-col md:flex-row justify-between items-start gap-4">
-            <div class="flex-grow">
-                {{-- 3. Title & Header Info --}}
-                <div class="flex items-center gap-3">
-                    <h2 class="text-lg font-black text-slate-900 tracking-tight">{{ $ws->name }}</h2>
-                    @if($ws->is_completed)
-                        <flux:icon.lock-closed variant="micro" class="text-slate-400" tooltip="This session is finalized" />
-                    @endif
-                </div>
-                
-                <div class="flex flex-wrap items-center gap-3 mt-2">
-                    {{-- Status Badge --}}
-                    <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase {{ $ws->is_completed ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-600' }}">
-                        {{ $ws->is_completed ? 'Completed' : 'Active Session' }}
-                    </span>
-
-                    {{-- Ownership Context --}}
-                    <span class="flex items-center gap-1 text-xs text-slate-500 font-medium">
-                        <span class="text-slate-400 font-normal italic text-[10px]">Initiated by</span>
-                        <flux:icon.user variant="micro" class="text-slate-300" />
-                        <span class="{{ $ws->user_id === auth()->id() ? 'text-lime-600 font-bold' : '' }}">
-                            {{ $ws->user_id === auth()->id() ? 'You' : $ws->user->contact_person }}
-                        </span>
-                    </span>
-
-                    {{-- Overdue Reminder Check --}}
-                    @php
-                        $hasOverdue = $ws->entries()->whereNotNull('reminder_at')->where('reminder_at', '<', now())->exists();
-                    @endphp
-                    @if($hasOverdue && !$ws->is_completed)
-                        <span class="flex items-center gap-1 px-2 py-0.5 rounded bg-red-50 text-red-600 text-[9px] font-black uppercase animate-pulse">
-                            <flux:icon.exclamation-triangle variant="micro" />
-                            Overdue Action
-                        </span>
-                    @endif
-                </div>
-
-                {{-- 4. Team List: Displays colleagues shared on this worksheet (Excluding current user) --}}
-                @php
-                    $otherCollaborators = $ws->sharedWith->filter(fn($u) => $u->id !== auth()->id());
-                @endphp
-
-                @if($otherCollaborators->isNotEmpty() || ($ws->user_id === auth()->id() && $ws->sharedWith->isNotEmpty()))
-                    <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-2">
-                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Sharing Team:</span>
-                        
-                        @foreach($ws->sharedWith as $staff)
-                            @if($staff->id !== auth()->id()) {{-- Hide yourself from the list to reduce noise --}}
-                                <a href="{{ route('users.show', $staff->slug) }}" 
-                                   class="flex items-center gap-2 px-2 py-1 rounded-xl bg-white border border-slate-200 hover:border-lime-400 transition-all group"
-                                   wire:navigate>
-                                    <div class="h-4 w-4 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-500 group-hover:bg-lime-600 group-hover:text-white">
-                                        {{ strtoupper(substr($staff->contact_person, 0, 1)) }}
-                                    </div>
-                                    <div class="flex flex-col leading-none pr-1">
-                                        <span class="text-[10px] font-black text-slate-700 group-hover:text-lime-700">{{ $staff->contact_person }}</span>
-                                        <span class="text-[7px] text-slate-400 uppercase font-black tracking-tighter">{{ $staff->roles->first()?->name }}</span>
-                                    </div>
-                                </a>
-                            @endif
-                        @endforeach
+                {{-- 2. "Shared With Me" Banner: Only shows if you are NOT the owner but are a collaborator --}}
+                @if ($ws->user_id !== auth()->id() && $ws->sharedWith->contains(auth()->id()))
+                    <div
+                        class="absolute -top-3 left-6 px-3 py-1 bg-lime-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg flex items-center gap-2 border border-lime-400">
+                        <flux:icon.users variant="micro" />
+                        Collaborator Access
                     </div>
                 @endif
+
+                <div class="flex flex-col md:flex-row justify-between items-start gap-4">
+                    <div class="flex-grow">
+                        {{-- 3. Title & Header Info --}}
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-lg font-black text-slate-900 tracking-tight">{{ $ws->name }}</h2>
+                            @if ($ws->is_completed)
+                                <flux:icon.lock-closed variant="micro" class="text-slate-400"
+                                    tooltip="This worksheet is finalized" />
+                            @endif
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-3 mt-2">
+                            {{-- Status Badge --}}
+                            <span
+                                class="px-2 py-0.5 rounded text-[9px] font-black uppercase {{ $ws->is_completed ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-600' }}">
+                                {{ $ws->is_completed ? 'Completed' : 'Active Worksheet' }}
+                            </span>
+
+                            {{-- Ownership Context --}}
+                            <span class="flex items-center gap-1 text-xs text-slate-500 font-medium">
+                                <span class="text-slate-400 font-normal italic text-[10px]">Initiated by</span>
+                                <flux:icon.user variant="micro" class="text-slate-300" />
+                                <span class="{{ $ws->user_id === auth()->id() ? 'text-lime-600 font-bold' : '' }}">
+                                    {{ $ws->user_id === auth()->id() ? 'You' : $ws->user->contact_person }}
+                                </span>
+                            </span>
+
+                            {{-- Overdue Reminder Check --}}
+                            @php
+                                $hasOverdue = $ws
+                                    ->entries()
+                                    ->whereNotNull('reminder_at')
+                                    ->where('reminder_at', '<', now())
+                                    ->exists();
+                            @endphp
+                            @if ($hasOverdue && !$ws->is_completed)
+                                <span
+                                    class="flex items-center gap-1 px-2 py-0.5 rounded bg-red-50 text-red-600 text-[9px] font-black uppercase animate-pulse">
+                                    <flux:icon.exclamation-triangle variant="micro" />
+                                    Overdue Action
+                                </span>
+                            @endif
+                        </div>
+
+                        {{-- 4. Team List: Displays colleagues shared on this worksheet (Excluding current user) --}}
+                        @php
+                            $otherCollaborators = $ws->sharedWith->filter(fn($u) => $u->id !== auth()->id());
+                        @endphp
+
+                        @if ($otherCollaborators->isNotEmpty() || ($ws->user_id === auth()->id() && $ws->sharedWith->isNotEmpty()))
+                            <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-2">
+                                <span
+                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Sharing
+                                    Team:</span>
+
+                                @foreach ($ws->sharedWith as $staff)
+                                    @if ($staff->id !== auth()->id())
+                                        {{-- Hide yourself from the list to reduce noise --}}
+                                        <a href="{{ route('users.show', $staff->slug) }}"
+                                            class="flex items-center gap-2 px-2 py-1 rounded-xl bg-white border border-slate-200 hover:border-lime-400 transition-all group"
+                                            wire:navigate>
+                                            <div
+                                                class="h-4 w-4 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-500 group-hover:bg-lime-600 group-hover:text-white">
+                                                {{ strtoupper(substr($staff->contact_person, 0, 1)) }}
+                                            </div>
+                                            <div class="flex flex-col leading-none pr-1">
+                                                <span
+                                                    class="text-[10px] font-black text-slate-700 group-hover:text-lime-700">{{ $staff->contact_person }}</span>
+                                                <span
+                                                    class="text-[7px] text-slate-400 uppercase font-black tracking-tighter">{{ $staff->roles->first()?->name }}</span>
+                                            </div>
+                                        </a>
+                                    @endif
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- 5. Context-Aware Action Buttons --}}
+                    <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                        {{-- Manage Sharing (Only for Owner) --}}
+                        @if ($ws->user_id === auth()->id())
+                            <flux:button variant="ghost" size="sm" icon="share"
+                                wire:click="openShareModal({{ $ws->id }})" tooltip="Manage Sharing" />
+                        @endif
+
+                        {{-- Dynamic Entry Button --}}
+                        @if (!$ws->is_completed)
+                            @can('update', $ws)
+                                <flux:button variant="filled" size="sm" icon="pencil-square" color="lime"
+                                    href="{{ route('worksheets.create', ['id' => $ws->id]) }}">
+                                    {{ $ws->user_id === auth()->id() ? 'Manage' : 'Contribute' }}
+                                </flux:button>
+                            @endcan
+                            <flux:button variant="ghost" size="sm" icon="eye"
+                                wire:click="viewArchive({{ $ws->id }})">
+                                View Only
+                            </flux:button>
+                        @else
+                            <flux:button variant="ghost" size="sm" icon="archive-box"
+                                wire:click="viewArchive({{ $ws->id }})">
+                                View Archive
+                            </flux:button>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Footer Meta --}}
+                <div class="mt-4 flex items-center gap-4 text-[10px] text-slate-400 font-medium">
+                    <span class="flex items-center gap-1">
+                        <flux:icon.calendar variant="micro" class="text-slate-300" />
+                        {{ $ws->created_at->format('d M Y') }} ({{ $ws->created_at->diffForHumans() }})
+                    </span>
+                    <span class="h-1 w-1 rounded-full bg-slate-200"></span>
+                    <span>{{ $ws->entries_count }} Logged Entities</span>
+                </div>
             </div>
 
-            {{-- 5. Context-Aware Action Buttons --}}
-            <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-                {{-- Manage Sharing (Only for Owner) --}}
-                @if($ws->user_id === auth()->id())
-                    <flux:button variant="ghost" size="sm" icon="share" wire:click="openShareModal({{ $ws->id }})" tooltip="Manage Sharing" />
-                @endif
-                
-                {{-- Dynamic Entry Button --}}
-                @if(!$ws->is_completed)
-                    @can('update', $ws)
-                        <flux:button variant="filled" size="sm" icon="pencil-square" color="lime"
-                            href="{{ route('worksheets.create', ['id' => $ws->id]) }}"
-                            >
-                            {{ $ws->user_id === auth()->id() ? 'Manage' : 'Contribute' }}
-                        </flux:button>
-                        @endcan
-                        <flux:button variant="ghost" size="sm" icon="eye" wire:click="viewArchive({{ $ws->id }})">
-                            View Only
-                        </flux:button>                   
-                    
-                @else
-                    <flux:button variant="ghost" size="sm" icon="archive-box" wire:click="viewArchive({{ $ws->id }})">
-                        View Archive
-                    </flux:button>
-                @endif
+        @empty
+            {{-- 6. Empty State --}}
+            <div
+                class="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                <flux:icon.document-magnifying-glass class="h-12 w-12 text-slate-300 mb-4" />
+                <h3 class="text-lg font-bold text-slate-900">No Worksheets Found</h3>
+                <p class="text-slate-500 text-sm">Adjust your filters or start a new scouting worksheet.</p>
             </div>
-        </div>
-
-        {{-- Footer Meta --}}
-        <div class="mt-4 flex items-center gap-4 text-[10px] text-slate-400 font-medium">
-            <span class="flex items-center gap-1">
-                <flux:icon.calendar variant="micro" class="text-slate-300" />
-                {{ $ws->created_at->format('d M Y') }} ({{ $ws->created_at->diffForHumans() }})
-            </span>
-            <span class="h-1 w-1 rounded-full bg-slate-200"></span>
-            <span>{{ $ws->entries_count }} Logged Entities</span>
-        </div>
-    </div>
-
-@empty
-    {{-- 6. Empty State --}}
-    <div class="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-        <flux:icon.document-magnifying-glass class="h-12 w-12 text-slate-300 mb-4" />
-        <h3 class="text-lg font-bold text-slate-900">No Worksheets Found</h3>
-        <p class="text-slate-500 text-sm">Adjust your filters or start a new scouting session.</p>
-    </div>
-@endforelse
+        @endforelse
 
         <div class="py-4">
             {{ $worksheets->links() }}
@@ -402,11 +421,12 @@ public function toggleShare($userId)
                         <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ $viewingWorksheet->name }}
                         </h2>
                         <div class="flex items-center gap-2">
-    <span class="text-xs text-slate-500">Initiated by:</span>
-    <a href="{{ route('users.show', $ws->slug) }}" wire:navigate class="text-sm font-medium text-lime-600 hover:text-lime-700 hover:underline">
-        {{ $ws->user->contact_person }}
-    </a>
-</div>
+                            <span class="text-xs text-slate-500">Initiated by:</span>
+                            <a href="{{ route('users.show', $ws->user->slug) }}" wire:navigate
+                                class="text-sm font-medium text-lime-600 hover:text-lime-700 hover:underline">
+                                {{ $ws->user->contact_person }}
+                            </a>
+                        </div>
                         <div class="flex flex-col gap-1 mt-2">
                             <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                 Opened: <span
@@ -529,42 +549,43 @@ public function toggleShare($userId)
             <flux:input wire:model.live.debounce.300ms="staff_search" placeholder="Search staff by name..."
                 icon="magnifying-glass" />
 
-<div class="max-h-[350px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-    @foreach($available_staff as $staff)
-        <div class="flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-all group">
-            <div class="flex items-center gap-4">
-                {{-- Avatar Circle --}}
-                <div class="h-10 w-10 rounded-full bg-lime-100 flex items-center justify-center text-sm font-black text-lime-700">
-                    {{ strtoupper(substr($staff->contact_person, 0, 1)) }}
-                </div>
-                
-                <div class="flex flex-col">
-                    {{-- Contact Person Name --}}
-                    <span class="text-sm font-black text-slate-900 leading-none">
-                        {{ $staff->contact_person }}
-                    </span>
-                    
-                    {{-- Email Address --}}
-                    <span class="text-[11px] text-slate-500 mt-1 font-medium italic">
-                        {{ $staff->email }}
-                    </span>
+            <div class="max-h-[350px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                @foreach ($available_staff as $staff)
+                    <div
+                        class="flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-all group">
+                        <div class="flex items-center gap-4">
+                            {{-- Avatar Circle --}}
+                            <div
+                                class="h-10 w-10 rounded-full bg-lime-100 flex items-center justify-center text-sm font-black text-lime-700">
+                                {{ strtoupper(substr($staff->contact_person, 0, 1)) }}
+                            </div>
 
-                    {{-- Role Badge --}}
-                    <span class="text-[9px] text-lime-500 mt-1 uppercase font-black tracking-wider bg-lime-50 px-1.5 py-0.5 rounded w-fit">
-                        {{ $staff->roles->first()?->name ?? 'Staff' }}
-                    </span>
-                </div>
+                            <div class="flex flex-col">
+                                {{-- Contact Person Name --}}
+                                <span class="text-sm font-black text-slate-900 leading-none">
+                                    {{ $staff->contact_person }}
+                                </span>
+
+                                {{-- Email Address --}}
+                                <span class="text-[11px] text-slate-500 mt-1 font-medium italic">
+                                    {{ $staff->email }}
+                                </span>
+
+                                {{-- Role Badge --}}
+                                <span
+                                    class="text-[9px] text-lime-500 mt-1 uppercase font-black tracking-wider bg-lime-50 px-1.5 py-0.5 rounded w-fit">
+                                    {{ $staff->roles->first()?->name ?? 'Staff' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        {{-- The Toggle --}}
+                        <flux:checkbox wire:key="staff-{{ $staff->id }}-{{ count($selectedStaff) }}"
+                            :checked="in_array($staff->id, $selectedStaff)"
+                            wire:click="toggleShare({{ $staff->id }})" />
+                    </div>
+                @endforeach
             </div>
-
-            {{-- The Toggle --}}
-            <flux:checkbox 
-                wire:key="staff-{{ $staff->id }}-{{ count($selectedStaff) }}"
-                :checked="in_array($staff->id, $selectedStaff)"
-                wire:click="toggleShare({{ $staff->id }})" 
-            />
-        </div>
-    @endforeach
-</div>
 
             <div class="flex justify-end gap-2">
                 <flux:modal.close>
