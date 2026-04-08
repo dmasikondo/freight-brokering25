@@ -39,11 +39,17 @@ class NotificationController extends Controller
         // 1. Mark as read
         $notification->markAsRead();
 
-        // 2. Get the destination from the notification data
-        $clientId = $notification->data['client_id'] ?? null;
+        $data = $notification->data;
+
+        // 2. Handle Worksheet Notifications (Priority)
+        if (isset($data['link'])) {
+            return redirect($data['link']);
+        }
+
+        // 3. Handle Registration Notifications
+        $clientId = $data['client_id'] ?? null;
 
         if ($clientId) {
-            // 3. Go to the users.show route as requested
             return redirect()->route('users.show', $clientId);
         }
 

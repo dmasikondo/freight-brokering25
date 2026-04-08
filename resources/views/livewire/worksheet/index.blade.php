@@ -190,7 +190,7 @@ new class extends Component {
             <p class="text-slate-500 text-sm">Review historical partner interactions and logistics leads.</p>
         </div>
         <flux:button icon="plus" href="{{ route('worksheets.create') }}" wire:navigate
-            class="bg-[#bef264] hover:bg-[#a3e635] text-slate-900 font-bold border-none shadow-lg shadow-lime-100">
+            class="bg-[#bef264] hover:bg-[#a3e635] text-slate-900 font-bold border-none shadow-lg shadow-emerald-100">
             New Worksheet
         </flux:button>
     </div>
@@ -267,12 +267,12 @@ new class extends Component {
         @forelse($worksheets as $ws)
             {{-- 1. Main Card Container: Visual highlight for any shared content --}}
             <div
-                class="relative bg-white border-y md:border-x {{ $ws->sharedWith->isNotEmpty() ? 'border-l-4 border-l-lime-500 bg-lime-50/5' : 'border-slate-200' }} md:rounded-3xl p-6 mb-4 shadow-sm transition-all hover:shadow-md">
+                class="relative bg-white border-y md:border-x {{ $ws->sharedWith->isNotEmpty() ? 'border-l-4 border-l-emerald-500 bg-emerald-50/5' : 'border-slate-200' }} md:rounded-3xl p-6 mb-4 shadow-sm transition-all hover:shadow-md">
 
                 {{-- 2. "Shared With Me" Banner: Only shows if you are NOT the owner but are a collaborator --}}
                 @if ($ws->user_id !== auth()->id() && $ws->sharedWith->contains(auth()->id()))
                     <div
-                        class="absolute -top-3 left-6 px-3 py-1 bg-lime-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg flex items-center gap-2 border border-lime-400">
+                        class="absolute -top-3 left-6 px-3 py-1 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg flex items-center gap-2 border border-emerald-400">
                         <flux:icon.users variant="micro" />
                         Collaborator Access
                     </div>
@@ -300,7 +300,7 @@ new class extends Component {
                             <span class="flex items-center gap-1 text-xs text-slate-500 font-medium">
                                 <span class="text-slate-400 font-normal italic text-[10px]">Initiated by</span>
                                 <flux:icon.user variant="micro" class="text-slate-300" />
-                                <span class="{{ $ws->user_id === auth()->id() ? 'text-lime-600 font-bold' : '' }}">
+                                <span class="{{ $ws->user_id === auth()->id() ? 'text-emerald-600 font-bold' : '' }}">
                                     {{ $ws->user_id === auth()->id() ? 'You' : $ws->user->contact_person }}
                                 </span>
                             </span>
@@ -337,15 +337,15 @@ new class extends Component {
                                     @if ($staff->id !== auth()->id())
                                         {{-- Hide yourself from the list to reduce noise --}}
                                         <a href="{{ route('users.show', $staff->slug) }}"
-                                            class="flex items-center gap-2 px-2 py-1 rounded-xl bg-white border border-slate-200 hover:border-lime-400 transition-all group"
+                                            class="flex items-center gap-2 px-2 py-1 rounded-xl bg-white border border-slate-200 hover:border-emerald-400 transition-all group"
                                             wire:navigate>
                                             <div
-                                                class="h-4 w-4 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-500 group-hover:bg-lime-600 group-hover:text-white">
+                                                class="h-4 w-4 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-500 group-hover:bg-emerald-600 group-hover:text-white">
                                                 {{ strtoupper(substr($staff->contact_person, 0, 1)) }}
                                             </div>
                                             <div class="flex flex-col leading-none pr-1">
                                                 <span
-                                                    class="text-[10px] font-black text-slate-700 group-hover:text-lime-700">{{ $staff->contact_person }}</span>
+                                                    class="text-[10px] font-black text-slate-700 group-hover:text-emerald-700">{{ $staff->contact_person }}</span>
                                                 <span
                                                     class="text-[7px] text-slate-400 uppercase font-black tracking-tighter">{{ $staff->roles->first()?->name }}</span>
                                             </div>
@@ -367,7 +367,7 @@ new class extends Component {
                         {{-- Dynamic Entry Button --}}
                         @if (!$ws->is_completed)
                             @can('update', $ws)
-                                <flux:button variant="filled" size="sm" icon="pencil-square" color="lime"
+                                <flux:button variant="filled" size="sm" icon="pencil-square" color="emerald"
                                     href="{{ route('worksheets.create', ['id' => $ws->id]) }}">
                                     {{ $ws->user_id === auth()->id() ? 'Manage' : 'Contribute' }}
                                 </flux:button>
@@ -423,7 +423,7 @@ new class extends Component {
                         <div class="flex items-center gap-2">
                             <span class="text-xs text-slate-500">Initiated by:</span>
                             <a href="{{ route('users.show', $ws->user->slug) }}" wire:navigate
-                                class="text-sm font-medium text-lime-600 hover:text-lime-700 hover:underline">
+                                class="text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:underline">
                                 {{ $ws->user->contact_person }}
                             </a>
                         </div>
@@ -449,7 +449,7 @@ new class extends Component {
                     @foreach ($viewingWorksheet->entries as $ent)
                         <div class="relative pl-8 border-l-2 border-slate-100">
                             <div
-                                class="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-white border-2 border-lime-500 flex items-center justify-center text-[8px] font-black text-lime-600">
+                                class="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-white border-2 border-emerald-500 flex items-center justify-center text-[8px] font-black text-emerald-600">
                                 {{ $loop->iteration }}
                             </div>
 
@@ -460,7 +460,7 @@ new class extends Component {
                                     </h3>
                                     <div class="flex items-center gap-2 mt-2">
                                         <span
-                                            class="text-[9px] bg-lime-50 text-lime-600 px-2 py-0.5 rounded font-black uppercase">
+                                            class="text-[9px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-black uppercase">
                                             {{ $ent->partner_type->label() }}
                                         </span>
                                         <span class="text-[10px] text-slate-400 italic">
@@ -486,7 +486,7 @@ new class extends Component {
                                 <div class="space-y-1">
                                     <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Way
                                         Forward</label>
-                                    <p class="text-xs text-lime-700 font-bold leading-relaxed">{{ $ent->way_forward }}
+                                    <p class="text-xs text-emerald-700 font-bold leading-relaxed">{{ $ent->way_forward }}
                                     </p>
 
                                     @if ($ent->last_edited_by_id && $ent->last_edited_by_id !== $viewingWorksheet->user_id)
@@ -556,7 +556,7 @@ new class extends Component {
                         <div class="flex items-center gap-4">
                             {{-- Avatar Circle --}}
                             <div
-                                class="h-10 w-10 rounded-full bg-lime-100 flex items-center justify-center text-sm font-black text-lime-700">
+                                class="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-black text-emerald-700">
                                 {{ strtoupper(substr($staff->contact_person, 0, 1)) }}
                             </div>
 
@@ -573,7 +573,7 @@ new class extends Component {
 
                                 {{-- Role Badge --}}
                                 <span
-                                    class="text-[9px] text-lime-500 mt-1 uppercase font-black tracking-wider bg-lime-50 px-1.5 py-0.5 rounded w-fit">
+                                    class="text-[9px] text-emerald-500 mt-1 uppercase font-black tracking-wider bg-emerald-50 px-1.5 py-0.5 rounded w-fit">
                                     {{ $staff->roles->first()?->name ?? 'Staff' }}
                                 </span>
                             </div>

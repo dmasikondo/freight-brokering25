@@ -24,7 +24,8 @@ class WorksheetEntry extends Model
         'reminder_at',
         'private_notes',
         'partner_type',
-        'last_edited_by_id'
+        'last_edited_by_id',
+        'notified_as_reminder'
     ];
 
     protected $casts = [

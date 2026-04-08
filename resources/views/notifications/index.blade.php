@@ -30,12 +30,15 @@
             <div @class([
                 'relative flex items-center gap-4 p-4 rounded-xl border transition-all',
                 // Lime theme for Worksheet Sharing
-                'bg-lime-50/40 dark:bg-lime-900/10 border-lime-200 dark:border-lime-800 border-l-4 border-l-lime-500 shadow-sm' => $notification->unread() && $isWorksheet,
-                'bg-blue-50/40 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 border-l-4 border-l-blue-500 shadow-sm' => $notification->unread() && $isRegistration,
-                'bg-emerald-50/40 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 border-l-4 border-l-emerald-500 shadow-sm' => $notification->unread() && $isVerification,
+                'bg-lime-50/40 dark:bg-lime-900/10 border-lime-200 dark:border-lime-800 border-l-4 border-l-lime-500 shadow-sm' =>
+                    $notification->unread() && $isWorksheet,
+                'bg-blue-50/40 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 border-l-4 border-l-blue-500 shadow-sm' =>
+                    $notification->unread() && $isRegistration,
+                'bg-emerald-50/40 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 border-l-4 border-l-emerald-500 shadow-sm' =>
+                    $notification->unread() && $isVerification,
                 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 opacity-80' => $notification->read(),
             ])>
-                
+
                 {{-- Status Icon --}}
                 <div @class([
                     'flex items-center justify-center w-12 h-12 rounded-xl shrink-0',
@@ -44,7 +47,7 @@
                     'bg-emerald-100 text-emerald-600' => $isVerification,
                     'bg-zinc-100 text-zinc-500' => $notification->read(),
                 ])>
-                    @if($isVerification)
+                    @if ($isVerification)
                         <flux:icon.check-badge variant="mini" class="w-6 h-6" />
                     @elseif($isWorksheet)
                         <flux:icon.users variant="mini" class="w-6 h-6" />
@@ -57,7 +60,7 @@
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between mb-1">
                         <flux:text font="semibold" class="text-zinc-900 dark:text-white leading-none">
-                            @if($isVerification)
+                            @if ($isVerification)
                                 {{ $data['title'] ?? __('Account Verified') }}
                             @elseif($isWorksheet)
                                 {{ $data['action'] === 'granted' ? __('Worksheet Shared') : __('Access Withdrawn') }}
@@ -71,7 +74,7 @@
                     </div>
 
                     <flux:text size="sm" class="text-zinc-600 dark:text-zinc-400">
-                        @if($isVerification)
+                        @if ($isVerification)
                             {{ $data['message'] }}
                         @elseif($isWorksheet)
                             {{ $data['message'] }}
@@ -92,31 +95,26 @@
 
                     @php
                         // Determine the redirect URL
-                        $viewUrl = match(true) {
-                            $isWorksheet => $data['link'] ?? '#',
-                            $isRegistration => route('notifications.readAndView', $notification->id),
-                            default => ($data['action_url'] ?? '#'),
+                        $viewUrl = match (true) {
+                            $isWorksheet || $isRegistration => route('notifications.readAndView', $notification->id),
+                            default => $data['action_url'] ?? '#',
                         };
 
                         $isWithdrawn = $isWorksheet && ($data['action'] ?? '') === 'withdrawn';
                     @endphp
 
                     {{-- Only show 'Open' button if access wasn't withdrawn --}}
-                    @if(!$isWithdrawn)
-                        <flux:button 
-                            size="sm" 
-                            variant="filled" 
-                            :color="$isWorksheet ? 'lime' : 'blue'" 
-                            :href="$viewUrl" 
-                            wire:navigate
-                        >
+                    @if (!$isWithdrawn)
+                        <flux:button size="sm" variant="filled" :color="$isWorksheet ? 'lime' : 'blue'"
+                            :href="$viewUrl" wire:navigate>
                             {{ __('Open') }}
                         </flux:button>
                     @endif
                 </div>
             </div>
         @empty
-            <div class="flex flex-col items-center justify-center py-20 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700">
+            <div
+                class="flex flex-col items-center justify-center py-20 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700">
                 <flux:icon.bell-slash class="w-12 h-12 text-zinc-300 dark:text-zinc-600 mb-4" />
                 <flux:heading size="lg">{{ __('All caught up!') }}</flux:heading>
                 <flux:subheading>{{ __('You have no new notifications.') }}</flux:subheading>

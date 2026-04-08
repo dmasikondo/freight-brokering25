@@ -20,7 +20,7 @@
                 <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')"
                     wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
                 <flux:spacer />
-                
+
                 <flux:navlist.item icon="bell" :href="route('notifications.index')"
                     :current="request()->routeIs('notifications.*')" wire:navigate>
                     {{ __('Notifications') }}
@@ -64,7 +64,14 @@
                 {{ __('F.A.Q') }}
             </flux:navlist.item>
         </flux:navlist>
-
+    @can('create', \App\Models\WorksheetHeader::class)
+        <flux:navlist variant="outline">
+            <flux:navlist.item icon="calendar-days" :href="route('worksheets.index')" :current="request()->routeIs('worksheets.index') || request()->routeIs('worksheets.create')"
+                wire:navigate>
+                {{ __('Worksheets') }}
+            </flux:navlist.item>
+        </flux:navlist>        
+    @endcan
         <flux:navlist variant="outline">
             <flux:navlist.item icon="scale" :href="route('terms')" :current="request()->routeIs('terms')"
                 wire:navigate>
@@ -238,7 +245,67 @@
             </flux:menu>
         </flux:dropdown>
     </flux:header>
+    {{-- Worksheet Follow-up Reminder Toast --}}
+    @if (session()->has('worksheet_reminder'))
+        @php $reminderData = session('worksheet_reminder'); @endphp
+        <div x-data="{ show: true }" x-show="show" x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:translate-x-4"
+            x-transition:enter-end="opacity-100 translate-y-0 sm:translate-x-0"
+            class="fixed bottom-4 right-4 z-[100] w-full max-w-sm px-4 sm:px-0">
+            <div class="overflow-hidden rounded-2xl bg-lime-600 shadow-2xl ring-1 ring-black/5">
+                <div class="p-4">
+                    <div class="flex items-start gap-4">
+                        {{-- Icon Circle --}}
+                        <div class="flex-shrink-0 pt-0.5">
+                            <div
+                                class="flex h-10 w-10 items-center justify-center rounded-full bg-lime-500 text-white shadow-inner">
+                                <flux:icon.clock variant="mini" class="h-5 w-5" />
+                            </div>
+                        </div>
 
+                        {{-- Text Content --}}
+                        <div class="flex-1 min-w-0">
+                            <p class="text-[10px] font-black uppercase tracking-widest text-lime-200">
+                                Action Required
+                            </p>
+                            <p class="mt-1 text-sm font-semibold text-white leading-tight">
+                                Follow up with {{ $reminderData['partner'] }}
+                            </p>
+                            <div class="mt-3 flex items-center gap-3">
+                                <a href="{{ route('worksheets.create', ['active_id' => $reminderData['id']]) }}"
+                                    wire:navigate
+                                    class="text-xs font-bold text-white underline decoration-lime-300 underline-offset-4 hover:text-lime-100">
+                                    Open Worksheet
+                                </a>
+                                <button @click="show = false"
+                                    class="text-xs font-medium text-lime-200 hover:text-white">
+                                    Dismiss
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Progress bar timer (Optional visual) --}}
+                <div class="h-1 bg-lime-700/30">
+                    <div class="h-full bg-lime-300/50 animate-shrink" style="animation: shrink 5s linear forwards">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            @keyframes shrink {
+                from {
+                    width: 100%;
+                }
+
+                to {
+                    width: 0%;
+                }
+            }
+        </style>
+    @endif
     {{ $slot }}
 
     @fluxScripts

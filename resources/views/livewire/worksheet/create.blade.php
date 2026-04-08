@@ -205,13 +205,13 @@ new class extends Component {
     @endif
     <div class="mb-6 flex items-center justify-between">
         <flux:button href="{{ route('worksheets.index') }}" variant="ghost" size="sm" icon="chevron-left" wire:navigate
-            class="text-lime-600 hover:text-lime-700 hover:bg-lime-50 -ml-2">
+            class="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 -ml-2">
             {{ __('View All Worksheets') }}
         </flux:button>
 
         {{-- Optional: Badge showing the current mode --}}
         @if ($activeHeader)
-            <flux:badge color="lime" variant="outline" size="sm" class="uppercase tracking-widest text-[10px]">
+            <flux:badge color="emerald" variant="outline" size="sm" class="uppercase tracking-widest text-[10px]">
                 {{ $activeHeader->user_id === auth()->id() ? 'Private Session' : 'Collaborative' }}
             </flux:badge>
         @endif
@@ -227,7 +227,7 @@ new class extends Component {
                             placeholder="e.g. Harare-Beira Lane Scouting" />
 
                         <div class="p-6 bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end" wire:key="partner-form-{{ count($temp_partners) }}">
                                 <div class="relative md:col-span-1">
                                     <flux:input wire:model.live="p_name" label="Partner Search"
                                         placeholder="Contact Person..." />
@@ -237,7 +237,7 @@ new class extends Component {
                                             @foreach ($available_partners as $u)
                                                 <button type="button"
                                                     wire:click="selectPartner({{ $u->id }}, '{{ $u->contact_person }}', '{{ $u->contact_phone }}', '{{ $u->whatsapp }}')"
-                                                    class="w-full text-left p-3 hover:bg-lime-50 border-b last:border-0 transition-colors">
+                                                    class="w-full text-left p-3 hover:bg-emerald-50 border-b last:border-0 transition-colors">
                                                     <p class="text-sm font-bold text-slate-900">{{ $u->contact_person }}
                                                     </p>
                                                     <p class="text-[10px] text-slate-500 uppercase">{{ $u->email }}
@@ -267,7 +267,7 @@ new class extends Component {
                                     <span
                                         class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Planned
                                         Sequence</span>
-                                    <span class="text-[10px] font-bold text-lime-500">{{ count($temp_partners) }}
+                                    <span class="text-[10px] font-bold text-emerald-500">{{ count($temp_partners) }}
                                         Partners</span>
                                 </div>
 
@@ -282,7 +282,7 @@ new class extends Component {
                                             <div>
                                                 <span class="font-bold text-slate-800">{{ $tp['name'] }}</span>
                                                 <span
-                                                    class="ml-2 px-2 py-0.5 rounded bg-lime-50 text-lime-600 text-[9px] font-black uppercase">
+                                                    class="ml-2 px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase">
                                                     {{ $tp['type'] }}
                                                 </span>
                                                 <p class="text-[10px] text-slate-400 mt-0.5">
@@ -319,7 +319,7 @@ new class extends Component {
                             </div>
 
                             <flux:button wire:click="createWorksheet" variant="primary"
-                                class="w-full shadow-lg shadow-lime-100" icon="play">
+                                class="w-full shadow-lg shadow-emerald-100" icon="play">
                                 Initialize & Start Worksheet
                             </flux:button>
                         @endif
@@ -333,12 +333,12 @@ new class extends Component {
                 <div class="space-y-3">
                     @forelse($history as $h)
                         <button wire:click="viewWorksheet({{ $h->id }})"
-                            class="w-full text-left p-4 bg-white border border-slate-200 rounded-2xl hover:border-lime-400 hover:shadow-md transition-all group">
+                            class="w-full text-left p-4 bg-white border border-slate-200 rounded-2xl hover:border-emerald-400 hover:shadow-md transition-all group">
                             <div class="flex justify-between items-start">
-                                <p class="font-bold text-slate-800 group-hover:text-lime-600 transition-colors">
+                                <p class="font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">
                                     {{ $h->name }}</p>
                                 <flux:icon.chevron-right variant="micro"
-                                    class="text-slate-300 group-hover:text-lime-400" />
+                                    class="text-slate-300 group-hover:text-emerald-400" />
                             </div>
                             <div class="flex justify-between items-center mt-3">
                                 <span
@@ -366,7 +366,7 @@ new class extends Component {
             class="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-6 duration-700">
             <div class="p-8 bg-slate-900 text-white">
                 @if ($activeHeader->user_id !== auth()->id())
-                    <div class="m-4 bg-lime-600 text-white p-4 rounded-3xl flex items-center justify-between shadow-lg">
+                    <div class="m-4 bg-emerald-600 text-white p-4 rounded-3xl flex items-center justify-between shadow-lg">
                         <div class="flex items-center gap-3">
                             <flux:icon.users />
                             <div>
@@ -376,7 +376,7 @@ new class extends Component {
                                     {{ $activeHeader->user->contact_person ?? 'Owner' }}</p>
                             </div>
                         </div>
-                        <flux:button size="xs" variant="ghost" class="text-white border-white/30 hover:bg-lime-700"
+                        <flux:button size="xs" variant="ghost" class="text-white border-white/30 hover:bg-emerald-700"
                             wire:click="$set('active_id', null)">
                             Back to my worksheets
                         </flux:button>
@@ -386,17 +386,17 @@ new class extends Component {
                     <div>
                         <h1 class="text-3xl font-black tracking-tight">{{ $activeHeader->name }}</h1>
                         <p class="text-slate-400 text-sm mt-1">
-                            <span class="text-lime-400 font-bold">{{ $completedCount }}</span> of {{ $totalCount }}
+                            <span class="text-emerald-400 font-bold">{{ $completedCount }}</span> of {{ $totalCount }}
                             partners attended to
                         </p>
                     </div>
                     <div class="text-right">
-                        <span class="text-4xl font-black text-lime-400 leading-none">{{ round($progress) }}%</span>
+                        <span class="text-4xl font-black text-emerald-400 leading-none">{{ round($progress) }}%</span>
                         <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Progress</p>
                     </div>
                 </div>
                 <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div class="bg-lime-500 h-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+                    <div class="bg-emerald-500 h-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(59,130,246,0.5)]"
                         style="width: {{ $progress }}%"></div>
                 </div>
             </div>
@@ -408,7 +408,7 @@ new class extends Component {
                         <div class="lg:col-span-2 space-y-8 border-r border-slate-100 pr-12">
                             <div class="flex items-start gap-6">
                                 <div
-                                    class="h-14 w-14 rounded-2xl bg-lime-600 text-white flex items-center justify-center font-black text-2xl shadow-xl shadow-lime-200 ring-4 ring-lime-50">
+                                    class="h-14 w-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-2xl shadow-xl shadow-emerald-200 ring-4 ring-emerald-50">
                                     {{ $completedCount + 1 }}
                                 </div>
                                 <div>
@@ -428,11 +428,11 @@ new class extends Component {
                             </div>
 
                             @if (!$currentEntry->started_at)
-                                <div class="py-24 border-2 border-dashed border-slate-200 rounded-[2rem] text-center bg-slate-50/50 group hover:bg-white hover:border-lime-300 transition-all cursor-pointer"
+                                <div class="py-24 border-2 border-dashed border-slate-200 rounded-[2rem] text-center bg-slate-50/50 group hover:bg-white hover:border-emerald-300 transition-all cursor-pointer"
                                     wire:click="startEntry({{ $currentEntry->id }})">
                                     <div
                                         class="h-16 w-16 bg-white rounded-full flex items-center justify-center mx-auto shadow-md mb-4 group-hover:scale-110 transition-transform">
-                                        <flux:icon.play variant="micro" class="text-lime-600" />
+                                        <flux:icon.play variant="micro" class="text-emerald-600" />
                                     </div>
                                     <p class="font-bold text-slate-800">Start Interaction</p>
                                     <p class="text-xs text-slate-400 mt-1">Unlock logs and start the timer for this
@@ -464,7 +464,7 @@ new class extends Component {
                                     </div>
 
                                     <flux:button type="submit" variant="primary"
-                                        class="w-full py-4 text-lg font-bold shadow-xl shadow-lime-100"
+                                        class="w-full py-4 text-lg font-bold shadow-xl shadow-emerald-100"
                                         icon="check-circle">
                                         Finalize Partner #{{ $completedCount + 1 }}
                                     </flux:button>
@@ -563,7 +563,7 @@ new class extends Component {
                             <div class="flex flex-col border p-2">
                                 <span class="text-[10px] uppercase tracking-widest text-slate-400">Initiated by</span>
                                 <a href="{{ route('users.show', $selected_worksheet->user->slug) }}" wire:navigate
-                                    class="text-sm font-bold text-lime-400 hover:text-lime-300">
+                                    class="text-sm font-bold text-emerald-400 hover:text-emerald-300">
                                     {{ $selected_worksheet->user->contact_person }}
                                 </a>
                             </div>
@@ -587,7 +587,7 @@ new class extends Component {
                     @foreach ($selected_worksheet->entries as $ent)
                         <div class="relative pl-12 border-l-2 border-slate-100">
                             <div
-                                class="absolute -left-[11px] top-0 h-5 w-5 rounded-full bg-white border-2 border-lime-500 flex items-center justify-center text-[10px] font-black text-lime-600">
+                                class="absolute -left-[11px] top-0 h-5 w-5 rounded-full bg-white border-2 border-emerald-500 flex items-center justify-center text-[10px] font-black text-emerald-600">
                                 {{ $loop->iteration }}
                             </div>
 
@@ -637,7 +637,7 @@ new class extends Component {
                                 <div class="space-y-1">
                                     <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Way
                                         Forward</h4>
-                                    <p class="text-sm text-lime-700 font-bold leading-relaxed">{{ $ent->way_forward }}
+                                    <p class="text-sm text-emerald-700 font-bold leading-relaxed">{{ $ent->way_forward }}
                                     </p>
                                 </div>
                             </div>
