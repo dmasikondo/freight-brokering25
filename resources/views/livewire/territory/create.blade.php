@@ -50,8 +50,17 @@ new class extends Component {
         $selected = collect($this->selectedCountry)->map(fn($v) => strtolower($v));
 
         if ($selected->contains('zimbabwe')) {
-            // Load provinces as array to minimize serialization overhead
-            $this->zimbabweProvinces = Province::with('zimbabweCities:id,province_id,name')->orderBy('name')->get()->toArray();
+            // Load provinces ordered by name
+            // AND load nested cities ordered by name
+            $this->zimbabweProvinces = Province::with([
+                'zimbabweCities' => function ($query) {
+                    $query->select('id', 'province_id', 'name')->orderBy('name', 'asc');
+                },
+            ])
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+
             $this->showProvinces = true;
         } else {
             $this->showProvinces = false;
@@ -145,7 +154,8 @@ new class extends Component {
 };
 ?>
 
-<div class="bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm border border-zinc-100 dark:border-zinc-800 p-8 space-y-8">
+<div
+    class="bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm border border-zinc-100 dark:border-zinc-800 p-8 space-y-8">
     {{-- 1. Header Section --}}
     <div class="flex items-center justify-between">
         <div>
@@ -162,14 +172,9 @@ new class extends Component {
     <form wire:submit.prevent="createTerritory" class="space-y-8">
         {{-- 2. Territory Name Input --}}
         <div class="space-y-2">
-            <flux:input 
-                label="Territory Name" 
-                placeholder="e.g. Mashonaland Cluster" 
-                wire:model.live.blur="territory" 
-                wire:change="checkTerritoryStatus"
-                :invalid="$errors->has('territory')"
-            />
-            @if($territoryExistanceMessage)
+            <flux:input label="Territory Name" placeholder="e.g. Mashonaland Cluster" wire:model.live.blur="territory"
+                wire:change="checkTerritoryStatus" :invalid="$errors->has('territory')" />
+            @if ($territoryExistanceMessage)
                 <p class="text-[10px] text-amber-600 font-black uppercase tracking-widest animate-pulse">
                     {{ $territoryExistanceMessage }}
                 </p>
@@ -177,7 +182,7 @@ new class extends Component {
             <flux:error name="territory" />
         </div>
 
-        @if($showCountries)
+        @if ($showCountries)
             <flux:separator />
 
             {{-- 3. Country Selection Grid --}}
@@ -186,7 +191,7 @@ new class extends Component {
                     <flux:label class="font-bold uppercase text-[10px] text-zinc-400 tracking-widest">
                         Step 1: Select Regional Scope
                     </flux:label>
-                    
+
                     @error('selectedCountry')
                         <span class="text-[10px] font-black text-red-500 uppercase tracking-widest">
                             Selection Required
@@ -196,18 +201,16 @@ new class extends Component {
 
                 <div @class([
                     'grid grid-cols-2 md:grid-cols-4 gap-3 p-1 rounded-2xl transition-all',
-                    'ring-2 ring-red-500/20 p-2 bg-red-50/30' => $errors->has('selectedCountry')
+                    'ring-2 ring-red-500/20 p-2 bg-red-50/30' => $errors->has(
+                        'selectedCountry'),
                 ])>
                     @foreach (App\Models\Country::orderBy('name')->get() as $country)
-                        <label wire:key="country-{{ $country->id }}" 
+                        <label wire:key="country-{{ $country->id }}"
                             class="group flex items-center gap-3 p-4 border border-zinc-100 dark:border-zinc-800 rounded-2xl hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition-all">
-                            <input 
-                                type="checkbox" 
-                                wire:model.live="selectedCountry" 
-                                value="{{ $country->name }}" 
-                                class="rounded text-indigo-600 focus:ring-indigo-500 border-zinc-300 dark:bg-zinc-800"
-                            >
-                            <span class="text-xs font-bold text-zinc-700 dark:text-zinc-300 group-hover:text-indigo-600 uppercase tracking-tighter transition-colors">
+                            <input type="checkbox" wire:model.live="selectedCountry" value="{{ $country->name }}"
+                                class="rounded text-lime-600 focus:ring-lime-500 border-zinc-300 dark:bg-zinc-800">
+                            <span
+                                class="text-xs font-bold text-zinc-700 dark:text-zinc-300 group-hover:text-lime-600 uppercase tracking-tighter transition-colors">
                                 {{ $country->name }}
                             </span>
                         </label>
@@ -217,54 +220,54 @@ new class extends Component {
             </div>
 
             {{-- 4. Zimbabwe Specific Jurisdictions --}}
-            @if($showProvinces)
-                <div class="p-8 bg-zinc-50 dark:bg-zinc-950 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 space-y-8" x-transition>
+            @if ($showProvinces)
+                <div class="p-8 bg-zinc-50 dark:bg-zinc-950 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 space-y-8"
+                    x-transition>
                     <div class="flex items-center gap-3">
-                        <div class="p-2 bg-indigo-600 rounded-lg">
+                        <div class="p-2 bg-lime-600 rounded-lg">
                             <flux:icon.map-pin variant="mini" class="text-white" />
                         </div>
                         <flux:heading size="sm">Step 2: Define Zimbabwe Scope</flux:heading>
                     </div>
-                    
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         @foreach ($zimbabweProvinces as $province)
-                            <div class="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-sm" wire:key="prov-{{ $province['id'] }}">
-                                <div class="mb-4 pb-2 border-b border-zinc-50 dark:border-zinc-800 flex items-center justify-between">
+                            <div class="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-sm"
+                                wire:key="prov-{{ $province['id'] }}">
+                                <div
+                                    class="mb-4 pb-2 border-b border-zinc-50 dark:border-zinc-800 flex items-center justify-between">
                                     {{-- Province Select All Toggle --}}
                                     <label class="flex items-center gap-2 cursor-pointer group">
-                                        <input 
-                                            type="checkbox" 
-                                            wire:click="toggleProvince({{ $province['id'] }})"
+                                        <input type="checkbox" wire:click="toggleProvince({{ $province['id'] }})"
                                             @php
-                                                $pCityIds = collect($province['zimbabwe_cities'])->pluck('id')->map(fn($id) => (string)$id);
+$pCityIds = collect($province['zimbabwe_cities'])->pluck('id')->map(fn($id) => (string)$id);
                                                 $selInP = collect($selectedCities)->intersect($pCityIds);
-                                                $isFull = $selInP->count() === $pCityIds->count() && $pCityIds->count() > 0;
-                                            @endphp
+                                                $isFull = $selInP->count() === $pCityIds->count() && $pCityIds->count() > 0; @endphp
                                             {{ $isFull ? 'checked' : '' }}
-                                            class="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 shadow-sm"
-                                        >
-                                        <span class="text-xs font-black text-indigo-600 group-hover:text-indigo-700 uppercase tracking-widest transition-colors">
+                                            class="rounded border-zinc-300 text-lime-600 focus:ring-lime-500 shadow-sm">
+                                        <span
+                                            class="text-xs font-black text-lime-600 group-hover:text-lime-700 uppercase tracking-widest transition-colors">
                                             {{ $province['name'] }}
                                         </span>
                                     </label>
 
-                                    @if($selInP->count() > 0 && !$isFull)
-                                        <span class="text-[9px] font-black text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">
+                                    @if ($selInP->count() > 0 && !$isFull)
+                                        <span
+                                            class="text-[9px] font-black text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full uppercase tracking-tighter">
                                             Partial Selection
                                         </span>
                                     @endif
                                 </div>
-                                
+
                                 <div class="grid grid-cols-2 gap-3">
                                     @foreach ($province['zimbabwe_cities'] as $city)
-                                        <label class="flex items-center gap-2 group cursor-pointer" wire:key="city-{{ $city['id'] }}">
-                                            <input 
-                                                type="checkbox" 
-                                                wire:model.live="selectedCities" 
-                                                value="{{ $city['id'] }}" 
-                                                class="rounded text-emerald-500 border-zinc-300 dark:border-zinc-700 shadow-sm focus:ring-emerald-500"
-                                            >
-                                            <span class="text-[11px] font-medium text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">
+                                        <label class="flex items-center gap-2 group cursor-pointer"
+                                            wire:key="city-{{ $city['id'] }}">
+                                            <input type="checkbox" wire:model.live="selectedCities"
+                                                value="{{ $city['id'] }}"
+                                                class="rounded text-emerald-500 border-zinc-300 dark:border-zinc-700 shadow-sm focus:ring-emerald-500">
+                                            <span
+                                                class="text-[11px] font-medium text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">
                                                 {{ $city['name'] }}
                                             </span>
                                         </label>
@@ -279,10 +282,11 @@ new class extends Component {
 
         {{-- 5. Submission Section --}}
         <div class="flex items-center gap-4 pt-6">
-            <flux:button variant="primary" type="submit" class="px-12 py-3 !rounded-2xl shadow-xl shadow-indigo-500/20 font-bold uppercase tracking-widest text-xs">
+            <flux:button variant="primary" type="submit"
+                class="px-12 py-3 !rounded-2xl shadow-xl shadow-lime-500/20 font-bold uppercase tracking-widest text-xs">
                 {{ $createOrUpdateMessage }} Territory
             </flux:button>
-            
+
             <x-action-message on="message" class="text-emerald-600 font-bold uppercase text-[10px] tracking-widest">
                 {{ session('message') }}
             </x-action-message>

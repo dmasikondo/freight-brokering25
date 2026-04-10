@@ -108,7 +108,7 @@ new class extends Component {
                     <x-action-message class="me-3 text-green-400" on="user-removed">
                         {{ __('Removed.') }}
                     </x-action-message>
-                    <h2 class="text-xl font-bold text-gray-800 hover:text-indigo-600 transition-colors">
+                    <h2 class="text-xl font-bold text-gray-800 hover:text-lime-600 transition-colors">
                         <a href="{{ route('territories.show', $territory->id) }}" wire:navigate>
                             {{ $territory->name }}
                         </a>
@@ -128,10 +128,10 @@ new class extends Component {
                     <div class="mt-2 flex flex-wrap gap-2">
                         @foreach ($territory->users->take(5) as $user)
                             <flux:button variant="subtle" size="sm" href="{{ route('users.show', $user->slug) }}"
-                                wire:navigate class="hover:bg-indigo-50 border-zinc-200">
+                                wire:navigate class="hover:bg-lime-50 border-zinc-200">
                                 <div class="flex flex-col items-start text-left leading-tight">
                                     <span
-                                        class="text-[10px] font-black text-indigo-700 uppercase">{{ $user->organisation }}</span>
+                                        class="text-[10px] font-black text-lime-700 uppercase">{{ $user->organisation }}</span>
                                     <span class="text-[9px] text-zinc-500">{{ $user->contact_person }}</span>
                                 </div>
                             </flux:button>

@@ -51,13 +51,12 @@ class WorksheetHeaderPolicy
 
     public function update(User $user, WorksheetHeader $worksheet): bool
     {
-        // If it's already completed, nobody (except maybe superadmin) should edit it
         if ($worksheet->is_completed && !$user->hasAnyRole(['superadmin', 'admin'])) {
             return false;
         }
 
-        // Allow edit if owner OR if shared with this user
-        $isOwner = $user->id === $worksheet->user_id;
+        // Force (int) casting to ensure string IDs from MySQL don't break logic
+        $isOwner = (int) $user->id === (int) $worksheet->user_id;
         $isShared = $worksheet->sharedWith->contains($user->id);
 
         return $isOwner || $isShared;

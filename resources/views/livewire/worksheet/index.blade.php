@@ -300,8 +300,8 @@ new class extends Component {
                             <span class="flex items-center gap-1 text-xs text-slate-500 font-medium">
                                 <span class="text-slate-400 font-normal italic text-[10px]">Initiated by</span>
                                 <flux:icon.user variant="micro" class="text-slate-300" />
-                                <span class="{{ $ws->user_id === auth()->id() ? 'text-emerald-600 font-bold' : '' }}">
-                                    {{ $ws->user_id === auth()->id() ? 'You' : $ws->user->contact_person }}
+                                <span class="{{ $ws->user_id == auth()->id() ? 'text-emerald-600 font-bold' : '' }}">
+                                    {{ $ws->user_id == auth()->id() ? 'You' : $ws->user->contact_person }}
                                 </span>
                             </span>
 
@@ -327,7 +327,7 @@ new class extends Component {
                             $otherCollaborators = $ws->sharedWith->filter(fn($u) => $u->id !== auth()->id());
                         @endphp
 
-                        @if ($otherCollaborators->isNotEmpty() || ($ws->user_id === auth()->id() && $ws->sharedWith->isNotEmpty()))
+                        @if ($otherCollaborators->isNotEmpty() || ($ws->user_id == auth()->id() && $ws->sharedWith->isNotEmpty()))
                             <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-2">
                                 <span
                                     class="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Sharing
@@ -359,7 +359,7 @@ new class extends Component {
                     {{-- 5. Context-Aware Action Buttons --}}
                     <div class="flex items-center gap-2 w-full md:w-auto justify-end">
                         {{-- Manage Sharing (Only for Owner) --}}
-                        @if ($ws->user_id === auth()->id())
+                        @if ($ws->user_id == auth()->id())
                             <flux:button variant="ghost" size="sm" icon="share"
                                 wire:click="openShareModal({{ $ws->id }})" tooltip="Manage Sharing" />
                         @endif
@@ -369,7 +369,7 @@ new class extends Component {
                             @can('update', $ws)
                                 <flux:button variant="filled" size="sm" icon="pencil-square" color="emerald"
                                     href="{{ route('worksheets.create', ['id' => $ws->id]) }}">
-                                    {{ $ws->user_id === auth()->id() ? 'Manage' : 'Contribute' }}
+                                    {{ $ws->user_id == auth()->id() ? 'Manage' : 'Contribute' }}
                                 </flux:button>
                             @endcan
                             <flux:button variant="ghost" size="sm" icon="eye"
@@ -498,7 +498,7 @@ new class extends Component {
                                 </div>
                             </div>
 
-                            @if ($viewingWorksheet->user_id === auth()->id() && $ent->private_notes)
+                            @if ($viewingWorksheet->user_id == auth()->id() && $ent->private_notes)
                                 <div class="mt-3 p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
                                     <label
                                         class="flex items-center gap-1.5 text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">

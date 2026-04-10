@@ -212,7 +212,7 @@ new class extends Component {
         {{-- Optional: Badge showing the current mode --}}
         @if ($activeHeader)
             <flux:badge color="emerald" variant="outline" size="sm" class="uppercase tracking-widest text-[10px]">
-                {{ $activeHeader->user_id === auth()->id() ? 'Private Session' : 'Collaborative' }}
+                {{ $activeHeader->user_id == auth()->id() ? 'Private Session' : 'Collaborative' }}
             </flux:badge>
         @endif
     </div>
@@ -365,7 +365,7 @@ new class extends Component {
         <div
             class="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-6 duration-700">
             <div class="p-8 bg-slate-900 text-white">
-                @if ($activeHeader->user_id !== auth()->id())
+                @if ($activeHeader->user_id != auth()->id())
                     <div class="m-4 bg-emerald-600 text-white p-4 rounded-3xl flex items-center justify-between shadow-lg">
                         <div class="flex items-center gap-3">
                             <flux:icon.users />

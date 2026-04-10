@@ -8,7 +8,6 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Locked;
 
 new class extends Component {
-
     #[Locked]
     public $slug;
     public $username;
@@ -20,7 +19,10 @@ new class extends Component {
         $user = User::whereSlug($this->slug)->firstOrFail();
 
         // Load the territories related to the user along with their related models
-        return $user->territories()->with(['countries', 'provinces', 'zimbabweCities'])->get();        
+        return $user
+            ->territories()
+            ->with(['countries', 'provinces', 'zimbabweCities'])
+            ->get();
     }
 
     public function userRemove($territoryId)
@@ -32,15 +34,14 @@ new class extends Component {
         // Check if the user is associated with the territory
         if ($territory->users()->find($userId)) {
             // Remove the user from the territory
-            $territory->users()->detach($userId);  
-            $this->dispatch('user-removed');      
+            $territory->users()->detach($userId);
+            $this->dispatch('user-removed');
         }
-
     }
 
     public function userTerritoryAssignmentStatus()
     {
-       $user = User::whereSlug($this->slug);
+        $user = User::whereSlug($this->slug);
 
         // Check if the user is assigned to any territories
         $assignedTerritories = $user->territories; // Assuming 'territories' is the relationship name
@@ -49,13 +50,12 @@ new class extends Component {
         return !$assignedTerritories->isEmpty(); // Returns true if there are assigned territories
     }
 
-    public function mount(?String $createdUser):void
+    public function mount(?string $createdUser): void
     {
-        if($createdUser){
+        if ($createdUser) {
             $this->slug = $createdUser;
             $this->username = User::whereSlug($this->slug)->value('contact_person');
         }
-        
     }
 }; ?>
 
@@ -64,30 +64,30 @@ new class extends Component {
         <flux:callout icon="face-frown">
             <flux:callout.heading>No territories</flux:callout.heading>
             <flux:callout.text>
-            There are no territories associated with user: {{ $username }}        
+                There are no territories associated with user: {{ $username }}
             </flux:callout.text>
         </flux:callout>
-    @else    
+    @else
         @foreach ($this->getUserTerritories as $territory)
-            <div class="border-b pb-4 mb-4 last:border-0 relative p-8">       
+            <div class="border-b pb-4 mb-4 last:border-0 relative p-8">
                 <div class="mr-2 absolute top-0 right-0">
                     <flux:dropdown position="right" align="end">
-                        <flux:button icon:trailing="ellipsis-horizontal"/>
+                        <flux:button icon:trailing="ellipsis-horizontal" />
 
                         <flux:navmenu>
                             <flux:navmenu.item href="#" icon="pencil-square">Edit Territory</flux:navmenu.item>
-                            <flux:navmenu.item  icon="trash" variant="danger"                        
-                            wire:click="userRemove('{{ $territory->id }}')"
-                            wire:confirm.prompt="Are you sure you want to remove the user: {{ $username }} from territory:{{ strtoupper($territory->name) }}? \n\nType REMOVE to confirm your  action|REMOVE">
-                            Remove User
+                            <flux:navmenu.item icon="trash" variant="danger"
+                                wire:click="userRemove('{{ $territory->id }}')"
+                                wire:confirm.prompt="Are you sure you want to remove the user: {{ $username }} from territory:{{ strtoupper($territory->name) }}? \n\nType REMOVE to confirm your  action|REMOVE">
+                                Remove User
                             </flux:navmenu.item>
                         </flux:navmenu>
-                    </flux:dropdown>  
-                </div>  
+                    </flux:dropdown>
+                </div>
                 <div class="flex items-center justify-between">
                     <x-action-message class="me-3 text-green-400" on="user-removed">
                         {{ __('Removed.') }}
-                    </x-action-message>                
+                    </x-action-message>
                     <h2 class="text-xl font-semibold text-gray-800">
                         {{ $territory->name }}
                     </h2>
@@ -98,14 +98,17 @@ new class extends Component {
 
                 <p class="mt-2 text-gray-700">
                     <flux:icon.users class="inline-block w-5 h-5 text-gray-600" />
-                    {{ $territory->users->count() }} users{{ $territory->users_count > 1 ? 's' : '' }} in this territory.
+                    {{ $territory->users->count() }} users{{ $territory->users_count > 1 ? 's' : '' }} in this
+                    territory.
                 </p>
 
                 @if ($otherUsers = $territory->users->where('id', '!=', auth()->id()))
                     <p class="mt-1 text-sm text-gray-600">
-                        <span class="font-medium">{{ $otherUsers->count() }} {{Str::plural('user', $otherUsers->count())}}</span> including 
+                        <span class="font-medium">{{ $otherUsers->count() }}
+                            {{ Str::plural('user', $otherUsers->count()) }}</span> including
                         @foreach ($otherUsers->take(2) as $user)
-                            <a href="{{ route('users.show', $user->slug) }}" class="text-blue-600 hover:underline">{{ $user->name }}</a>{{ !$loop->last ? ', ' : '' }}
+                            <a href="{{ route('users.show', $user->slug) }}"
+                                class="text-blue-600 hover:underline">{{ $user->name }}</a>{{ !$loop->last ? ', ' : '' }}
                         @endforeach
                         @if ($otherUsers->count() > 2)
                             and {{ $otherUsers->count() - 2 }} more.
