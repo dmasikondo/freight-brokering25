@@ -15,6 +15,7 @@ new class extends Component {
 
     public function mount(Territory $territory)
     {
+        $this->authorize('view', $territory);
         $this->territory = $territory->load(['users.roles', 'countries', 'provinces.zimbabweCities', 'zimbabweCities']);
     }
 
@@ -139,6 +140,7 @@ new class extends Component {
         // Count users grouped by their buslocation city
         return \App\Models\Buslocation::whereIn('user_id', $clientIds)->select('city', \DB::raw('count(*) as total'))->groupBy('city')->orderByDesc('total')->get();
     }
+
 }; ?>
 
 <div class="p-8">
@@ -210,7 +212,7 @@ new class extends Component {
             class="lg:col-span-2 p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] shadow-sm">
             <flux:heading size="sm" class="uppercase tracking-widest text-zinc-500 mb-6 flex items-center gap-2">
                 <flux:icon.map-pin class="size-5 text-zinc-400" />
-                Personnel Concentration
+                Clients Concentration
             </flux:heading>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">

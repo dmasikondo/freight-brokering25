@@ -26,6 +26,7 @@ new class extends Component {
 
     public function mount(?string $territory = null): void
     {
+        $this->authorize('viewAny', Territory::class); 
         if ($territory) {
             $this->territoryId = $territory;
             $t = Territory::with(['provinces.zimbabweCities', 'zimbabweCities', 'countries'])->findOrFail($territory);

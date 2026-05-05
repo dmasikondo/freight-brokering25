@@ -43,7 +43,8 @@ class LanePolicy
             'admin',
             'superadmin',
             'operations logistics associate',
-            'procurement executive associate'
+            'procurement executive associate',
+            'procurement logistics associate'
         ];
 
         // Allowed if you are Staff OR a Carrier
@@ -104,8 +105,10 @@ class LanePolicy
         $managementRoles = [
             'admin',
             'superadmin',
+            'logistics operations executive',
             'operations logistics associate',
-            'procurement executive associate'
+            'procurement logistics associate',         
+            
         ];
 
         if (!$user->hasAnyRole($managementRoles)) {

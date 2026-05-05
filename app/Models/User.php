@@ -350,6 +350,18 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getGeographicalBounds(): array
     {
+        // Define the specific roles allowed to access bounds
+        $allowedRoles = [
+            'operations logistics associate',
+            'procurement logistics associate',
+            'marketing logistics associate'
+        ];
+
+        // Check if the user qualifies; if not, return empty arrays
+        if (!$this->hasAnyRole($allowedRoles)) {
+            return ['countries' => [], 'cities' => []];
+        }
+
         return cache()->remember("user_{$this->id}_bounds", 3600, function () {
             $territories = $this->territories()
                 ->with(['countries', 'zimbabweCities', 'provinces.zimbabweCities'])
@@ -372,7 +384,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function scopeVisibleTo($query, User $staff)
     {
-        if ($staff->hasAnyRole(['superadmin', 'admin'])) {
+        if ($staff->hasAnyRole(['superadmin', 'admin', 'logistics operations executive'])) {
             return $query;
         }
 
@@ -396,15 +408,15 @@ class User extends Authenticatable implements MustVerifyEmail
                         ]));
                 }),
 
-                $staff->hasRole('logistics operations executive')
-                => $q->where(function ($sub) use ($staff, $bounds, $territoryIds) {
-                    $sub->where($this->getClientLogic($staff, $bounds, ['shipper', 'carrier']))
-                        ->orWhere($this->getAssociateLogic($territoryIds, [
-                            'marketing logistics associate',
-                            'procurement logistics associate',
-                            'operations logistics associate'
-                        ]));
-                }),
+                // $staff->hasRole('logistics operations executive')
+                // => $q->where(function ($sub) use ($staff, $bounds, $territoryIds) {
+                //     $sub->where($this->getClientLogic($staff, $bounds, ['shipper', 'carrier']))
+                //         ->orWhere($this->getAssociateLogic($territoryIds, [
+                //             'marketing logistics associate',
+                //             'procurement logistics associate',
+                //             'operations logistics associate'
+                //         ]));
+                // }),
 
                 default => $q->where('users.id', $staff->id),
             };

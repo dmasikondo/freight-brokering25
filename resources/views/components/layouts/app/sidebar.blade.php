@@ -64,14 +64,33 @@
                 {{ __('F.A.Q') }}
             </flux:navlist.item>
         </flux:navlist>
-    @can('create', \App\Models\WorksheetHeader::class)
-        <flux:navlist variant="outline">
-            <flux:navlist.item icon="calendar-days" :href="route('worksheets.index')" :current="request()->routeIs('worksheets.index') || request()->routeIs('worksheets.create')"
-                wire:navigate>
-                {{ __('Worksheets') }}
-            </flux:navlist.item>
-        </flux:navlist>        
-    @endcan
+        @can('create', \App\Models\WorksheetHeader::class)
+            <flux:navlist variant="outline">
+                <flux:navlist.item icon="calendar-days" :href="route('worksheets.index')"
+                    :current="request()->routeIs('worksheets.index') || request()->routeIs('worksheets.create')"
+                    wire:navigate>
+                    {{ __('Worksheets') }}
+                </flux:navlist.item>
+            </flux:navlist>
+        @endcan
+        @can('viewAny', \App\Models\Territory::class)
+            <flux:navlist variant="outline">
+                <flux:navlist.item icon="globe-alt" :href="route('territories.index')"
+                    :current="request()->routeIs('territories.index') || request()->routeIs('territories.create') || request()->routeIs('territories.show') || request()->routeIs('territories.edit')"
+                    wire:navigate>
+                    {{ __('Territories') }}
+                </flux:navlist.item>
+            </flux:navlist>
+        @endcan
+        @can('viewAny', \App\Models\User::class)
+            <flux:navlist variant="outline">
+                <flux:navlist.item icon="users" :href="route('users.index')"
+                    :current="request()->routeIs('users.index') || request()->routeIs('users.create') || request()->routeIs('users.show') || request()->routeIs('users.edit')"
+                    wire:navigate>
+                    {{ __('Users') }}
+                </flux:navlist.item>
+            </flux:navlist>
+        @endcan
         <flux:navlist variant="outline">
             <flux:navlist.item icon="scale" :href="route('terms')" :current="request()->routeIs('terms')"
                 wire:navigate>
@@ -190,7 +209,8 @@
 
                 <form method="POST" action="{{ route('logout') }}" class="w-full">
                     @csrf
-                    <flux:menu.item as="button" type="submit" icon="arrow-right-start-on-rectangle" class="w-full">
+                    <flux:menu.item as="button" type="submit" icon="arrow-right-start-on-rectangle"
+                        class="w-full">
                         {{ __('Log Out') }}
                     </flux:menu.item>
                 </form>

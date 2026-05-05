@@ -5,6 +5,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use App\Models\User;
 use App\Models\Lane;
+use App\Models\ZimbabweCity;
 use App\Enums\CapacityUnit;
 use App\Enums\RateType;
 use App\Enums\TrailerType;
@@ -83,7 +84,7 @@ new class extends Component {
                 abort(403, 'You must be a registered carrier to upload vehicles.');
             }
         }
-        $this->zimbabweCities = \App\Models\ZimbabweCity::orderBy('name')->pluck('name', 'name')->toArray();
+        $this->zimbabweCities = ZimbabweCity::orderBy('name')->pluck('name', 'name')->toArray();
         $this->availability_date = date('Y-m-d');
         if ($lane->id) {
             $this->laneId = $lane->id;

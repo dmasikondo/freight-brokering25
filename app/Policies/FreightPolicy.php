@@ -4,18 +4,21 @@ namespace App\Policies;
 
 use App\Models\Freight;
 use App\Models\User;
+use App\Services\FreightService;
+use App\Enums\FreightStatus;
 use Illuminate\Auth\Access\Response;
 
 class FreightPolicy
 {
+
     /**
-     * Determine whether the user can view any models.
+     * Determine if a user can access the full management list (Control Centre).
      */
     public function viewAny(User $user): bool
     {
-        return false;
+        // If they pass the staff visibility check or own the freight, they can view the index
+        return $this->isStaffOrOwner($user);
     }
-
     /**
      * Determine whether the user can view the model.
      */
@@ -29,23 +32,54 @@ class FreightPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['superadmin', 'admin', 'marketing logistics associate', 'shipper']);
+        return $user->hasAnyRole(['superadmin', 'admin', 'marketing logistics associate', 'shipper', 'logistics operations executive', 'operations logistics associate']);
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, Freight $freight): bool
     {
-        return false;
+        // Case A: User is a Carrier
+        if ($user->hasAnyRole('shipper')) {
+            return $freight->creator_id === $user->id
+                && $freight->status === FreightStatus::SUBMITTED; // "Pending"
+        }
+
+        // Case B: User is Staff
+        return $this->isAuthorizedStaff($user, $freight);
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
     public function delete(User $user, Freight $freight): bool
     {
-        return false;
+        return $this->isStaffOrOwner($user, $freight);
+    }
+    public function updateStatus(User $user, Freight $freight): bool
+    {
+        return $this->isAuthorizedStaff($user, $freight);
+    }
+    public function viewAllShipperDetails(User $user, Freight $freight): bool
+    {
+        return $this->isStaffOrOwner($user, $freight);
+    }
+    public function viewSomeShipperDetails(User $user): bool
+    {
+        $staffRoles = [
+            'admin',
+            'superadmin',
+            'logistics operations executive',
+            'operations logistics associate',
+            'marketing logistics associate',
+            'procurement logistics associate'
+
+        ];        
+        return $user->hasAnyRole($staffRoles);
+    }
+
+        public function viewFreightActivityLog(User $user): bool
+    {
+        $staffRoles = [
+            'admin',
+            'superadmin',
+        ];        
+        return $user->hasAnyRole($staffRoles);
     }
 
     /**
@@ -65,30 +99,54 @@ class FreightPolicy
     }
 
     /**
-     * Determine if the user can view sensitive shipper contact details.
+     * Logic for backend staff or record ownership.
      */
-public function viewShipperDetails(User $user, Freight $freight): bool
+    private function isStaffOrOwner(User $user, ?Freight $freight = null): bool
     {
-        // 1. Super Users always have access
-        if ($user->hasAnyRole(['admin', 'superadmin'])) {
+        // 1. Super Users / Admins
+        if ($user->hasAnyRole(['admin', 'superadmin', 'operations logistics executive'])) {
             return true;
         }
 
-        // 2. If the user is a shipper, they only see details of their own freight
-        if ($user->hasRole('shipper')) {
-            return (int) $user->id === (int) $freight->shipper_id;
-        }        
-
-        // 3. Check if the user is part of the "Visible To" staff scope
-        // This validates the roles: marketing logistics associate, operations logistics associate, etc.
-        $isVisibleStaff = User::query()->visibleTo($user)->where('id', $user->id)->exists();
-
-        if ($isVisibleStaff) {
-            return true;
+        // 2. Staff members within scope (Marketing/Operations etc.)
+        // Uses your existing 'visibleTo' scope logic
+        if (User::query()->visibleTo($user)->where('id', $user->id)->exists()) {
+            if ($user->hasAnyRole(['marketing logistics associate', 'logistics operations associate'])) {
+                return true;
+            } else {
+                return false;
+            }
         }
 
-
-
+        // 3. Ownership check (if a specific freight is provided)
+        if ($freight && $user->hasRole('shipper')) {
+            return  $user->id == $freight->shipper_id;
+        }
+        // 4. user is the creator of freight
+        if ($freight && $user) {
+            return $user->id == $freight->creator_id;
+        }
         return false;
+    }
+
+    protected function isAuthorizedStaff(User $user, Freight $freight): bool
+    {
+        $managementRoles = [
+            'admin',
+            'superadmin',
+            'logistics operations executive',
+            'operations logistics associate',
+            'marketing logistics associate',
+
+        ];
+
+        if (!$user->hasAnyRole($managementRoles)) {
+            return false;
+        }
+
+        return app(FreightService::class)
+            ->getVisibleFreightsQuery($user)
+            ->where('freights.id', $freight->id)
+            ->exists();
     }
 }

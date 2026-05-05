@@ -4,7 +4,7 @@
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
             <div>
                 <h1 class="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-4">
-                    <flux:icon.user-group class="size-10 text-indigo-600" />
+                    <flux:icon.user-group class="size-10 text-lime-600" />
                     Member Intelligence Hub
                 </h1>
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 ml-14">
@@ -13,7 +13,7 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-4">
-                <flux:button href="{{ route('users.create') }}" variant="primary" color="indigo" icon="user-plus"
+                <flux:button href="{{ route('users.create') }}" variant="primary" color="lime" icon="user-plus"
                     wire:navigate class="px-6">Register New Member</flux:button>
             </div>
         </div>
@@ -114,7 +114,7 @@
                         <div class="min-w-0 space-y-1">
                             <div class="flex items-center gap-4 flex-wrap">
                                 <flux:link href="{{ route('users.show', $user) }}" wire:navigate
-                                    class="text-xl font-black text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors">
+                                    class="text-xl font-black text-slate-900 tracking-tight group-hover:text-lime-600 transition-colors">
                                     {!! $this->highlight($user->contact_person, $this->search) !!}
                                 </flux:link>
                                 @if ($user->organisation)
@@ -122,7 +122,7 @@
                                 @endif
                                 @if (auth()->id() === $user->id)
                                     <span
-                                        class="bg-indigo-600 text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-indigo-200">Me</span>
+                                        class="bg-lime-600 text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-lime-200">Me</span>
                                 @endif
                             </div>
 
@@ -130,11 +130,11 @@
                                 class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-bold text-slate-500 uppercase tracking-tighter">
                                 <span class="flex items-center gap-2 group/email">
                                     <flux:icon.envelope
-                                        class="size-4 text-slate-300 group-hover/email:text-indigo-400 transition-colors" />
+                                        class="size-4 text-slate-300 group-hover/email:text-lime-400 transition-colors" />
                                     {!! $this->highlight($user->email, $this->search) !!}
                                 </span>
                                 <span
-                                    class="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100 flex items-center gap-2">
+                                    class="text-lime-600 bg-lime-50 px-3 py-1 rounded-lg border border-lime-100 flex items-center gap-2">
                                     {{ ucwords(str_replace('_', ' ', $roleName ?? 'Member')) }}
                                     @if (in_array($roleName, ['shipper', 'carrier']))
                                         <flux:icon.
@@ -162,11 +162,11 @@
                                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
                                     Registered By</p>
                                 <flux:link href="{{ route('users.show', $user->createdBy) }}" wire:navigate
-                                    class="flex items-center justify-end gap-2.5 text-sm font-black text-slate-800 hover:text-indigo-600 transition-colors group/creator">
+                                    class="flex items-center justify-end gap-2.5 text-sm font-black text-slate-800 hover:text-lime-600 transition-colors group/creator">
                                     <div
-                                        class="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center group-hover/creator:bg-indigo-50 transition-colors">
+                                        class="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center group-hover/creator:bg-lime-50 transition-colors">
                                         <flux:icon.user-plus
-                                            class="size-4 text-slate-400 group-hover/creator:text-indigo-500" />
+                                            class="size-4 text-slate-400 group-hover/creator:text-lime-500" />
                                     </div>
                                     {{ $user->createdBy->contact_person }}
                                 </flux:link>
@@ -240,7 +240,7 @@
             <div x-intersect="$wire.loadMore()"
                 class="p-16 flex flex-col items-center justify-center bg-slate-50/30 gap-6 border-t border-slate-100">
                 <flux:button variant="subtle" wire:click="loadMore" wire:loading.attr="disabled"
-                    class="!rounded-full !px-8 !py-3 !font-black !text-indigo-600">
+                    class="!rounded-full !px-8 !py-3 !font-black !text-lime-600">
                     <span wire:loading.remove wire:target="loadMore">Scroll for More Members</span>
                     <span wire:loading wire:target="loadMore" class="flex items-center gap-3">
                         <flux:icon.arrow-path class="size-5 animate-spin" />

@@ -38,12 +38,12 @@ class LaneService
                     });
 
                     // Territory-based visibility for specific staff roles
-                    if ($user->hasAnyRole(['operations logistics associate', 'procurement executive associate'])) {
+                    if ($user->hasAnyRole(['operations logistics associate', 'procurement logistics associate'])) {
                         $this->addTerritoryLanes($authQuery, $user);
                     }
 
                     // Admin override: See everything
-                    if ($user->hasAnyRole(['admin', 'superadmin'])) {
+                    if ($user->hasAnyRole(['admin', 'superadmin','logistics operations executive'])) {
                         $authQuery->orWhere('id', '>', 0);
                     }
                 });

@@ -8,7 +8,7 @@ enum TrailerType: string
     case DRY_BULK ='dry bulk';
     case DUMP ='dump';
     case CAR_CARRYING ='car carrying';
-    case CURTAIN_SIDE = 'curtain side';
+    case CURTAIN_SIDE = 'curtain side'; // Standardized value
     case DROP_DECKER = 'drop decker';
     case DOUBLE_DECKER = 'double decker';
     case FLAT_BED = 'flat bed';
@@ -22,20 +22,32 @@ enum TrailerType: string
     case SLIDE = 'slide';
     case STEP_DECK = 'step deck';
     case TANKER = 'tanker';
-    // case NOT_STATED = 'not stated';
-    // case NOT_GIVEN = 'not given';
 
-    public function label()
+    /**
+     * Map non-standard strings to the correct Enum case.
+     */
+    public static function fromValue(?string $value): ?self
+    {
+        if (!$value) return null;
+
+        $normalized = strtolower(trim($value));
+
+        // Handle the "Curtainside" vs "curtain side" issue specifically
+        if ($normalized === 'curtainside') {
+            return self::CURTAIN_SIDE;
+        }
+
+        // Try to match other values directly
+        return self::tryFrom($normalized);
+    }
+
+    public function label(): string
     {
         return ucwords($this->value);
     }
     
-    /**
-     * Gets the hyphenated, lower-case icon name (e.g., 'step-deck').
-     */
     public function iconName(): string
     {
-        // Convert the Enum's backing value ('Step Deck') to 'step-deck'
         return strtolower(str_replace(' ', '-', $this->value));
     }    
 }

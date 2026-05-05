@@ -14,6 +14,7 @@ use App\Traits\Auditable;   // Import the trait
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Freight extends Model
@@ -31,8 +32,9 @@ class Freight extends Model
             'payment_option' => PricingType::class,
 
             'vehicle_type' => TrailerType::class,      // Cast to Enum to match Lane Specs
-            'capacity_unit' => CapacityUnit::class,    // Cast new field to Enum
+            'capacity_unit' => CapacityUnit::class,    
             'rate_type' => RateType::class,
+            'weight' => 'float',
         ];
     }
 
@@ -65,6 +67,14 @@ class Freight extends Model
         'delivery_address',
     ];
 
+    protected function vehicleType(): Attribute
+    {
+        return Attribute::make(
+            get: fn($value) => TrailerType::fromValue($value),
+            set: fn($value) => $value instanceof TrailerType ? $value->value : $value,
+        );
+    }
+
     public function goods(): BelongsToMany
     {
         return $this->belongsToMany(Good::class);
@@ -85,10 +95,10 @@ class Freight extends Model
         return $this->morphMany(Contact::class, 'contactable');
     }
 
-        public function activityLogs(): MorphMany
+    public function activityLogs(): MorphMany
     {
         return $this->morphMany(ActivityLog::class, 'auditable');
-    }  
+    }
 
     protected static function boot()
     {

@@ -11,7 +11,7 @@ enum CapacityUnit: string
     {
         return match ($this) {
             self::TONNES  => 'Tonnes',
-            self::TONNES  => 'Litres',
+            self::LITRES  => 'Litres',
         };
     }
 }

@@ -103,7 +103,7 @@ new class extends Component {
     }
 
     /**
-     * The Main Query - Now using our updated Service
+     * The Main Query
      */
     #[Computed]
     public function lanes()

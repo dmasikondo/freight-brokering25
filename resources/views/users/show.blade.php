@@ -10,8 +10,8 @@
             <div
                 class="w-full bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
                 <div class="flex items-center gap-4">
-                    <div class="size-12 bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl flex items-center justify-center">
-                        <flux:icon.clipboard-document-check class="size-6 text-indigo-600" />
+                    <div class="size-12 bg-lime-50 dark:bg-lime-950/30 rounded-2xl flex items-center justify-center">
+                        <flux:icon.clipboard-document-check class="size-6 text-lime-600" />
                     </div>
                     <div>
                         <h4 class="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white">Profile
@@ -52,7 +52,7 @@
                         @if ($user->isApproved() && $user->getRawOriginal('identification_number'))
                             <div
                                 class="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-sm">
-                                <flux:icon.finger-print variant="mini" class="size-3 text-indigo-500" />
+                                <flux:icon.finger-print variant="mini" class="size-3 text-lime-500" />
                                 <span
                                     class="text-[10px] font-mono font-black text-zinc-600 dark:text-zinc-400 tracking-tighter">
                                     {{ $user->getRawOriginal('identification_number') }}
@@ -95,7 +95,7 @@
                                 <p class="text-[11px] font-bold">
                                     @if ($user->createdBy)
                                         <a href="{{ route('users.show', $user->createdBy) }}"
-                                            class="hover:text-indigo-600 underline decoration-zinc-200">{{ $user->createdBy->contact_person }}</a>
+                                            class="hover:text-lime-600 underline decoration-zinc-200">{{ $user->createdBy->contact_person }}</a>
                                     @else
                                         Self-Registration
                                     @endif
@@ -125,7 +125,7 @@
                             @csrf @method('PATCH')
                             <flux:button type="submit" variant="primary" color="emerald"
                                 class="w-full !rounded-[1.5rem] !py-4 font-black uppercase text-xs  cursor-pointer">
-                                Authorize Node
+                                Approve Registration
                             </flux:button>
                         </form>
                     @endif
@@ -145,33 +145,33 @@
                 <div
                     class="flex flex-wrap items-center gap-3 mb-12 bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-[2rem] w-fit border border-zinc-200 dark:border-zinc-700">
                     <button @click="activeTab = 'activity'"
-                        :class="activeTab === 'activity' ? 'bg-white shadow-lg text-indigo-600' : 'text-zinc-500'"
-                        class="px-6 py-2.5 rounded-[1.6rem] text-xs font-black transition-all">Activity Hub</button>
+                        :class="activeTab === 'activity' ? 'bg-white shadow-lg text-lime-600' : 'text-zinc-500'"
+                        class="px-6 py-2.5 rounded-[1.6rem] text-xs font-black transition-all cursor-pointer">Activity Hub</button>
                     @if ($isShipper)
                         <button @click="activeTab = 'freights'"
-                            :class="activeTab === 'freights' ? 'bg-white shadow-lg text-indigo-600' : 'text-zinc-500'"
-                            class="px-6 py-2.5 rounded-[1.6rem] text-xs font-black transition-all">Freight
+                            :class="activeTab === 'freights' ? 'bg-white shadow-lg text-lime-600' : 'text-zinc-500'"
+                            class="px-6 py-2.5 rounded-[1.6rem] text-xs font-black transition-all  cursor-pointer">Freight
                             Ledger</button>
                     @endif
                     @if ($isCarrier)
                         <button @click="activeTab = 'logistics'"
-                            :class="activeTab === 'logistics' ? 'bg-white shadow-lg text-indigo-600' : 'text-zinc-500'"
-                            class="px-6 py-2.5 rounded-[1.6rem] text-xs font-black transition-all">Logistics
+                            :class="activeTab === 'logistics' ? 'bg-white shadow-lg text-lime-600' : 'text-zinc-500'"
+                            class="px-6 py-2.5 rounded-[1.6rem] text-xs font-black transition-all  cursor-pointer">Logistics
                             Network</button>
                     @endif
                     <button @click="activeTab = 'contact'"
-                        :class="activeTab === 'contact' ? 'bg-white shadow-lg text-indigo-600' : 'text-zinc-500'"
-                        class="px-6 py-2.5 rounded-[1.6rem] text-xs font-black transition-all">Metadata</button>
+                        :class="activeTab === 'contact' ? 'bg-white shadow-lg text-lime-600' : 'text-zinc-500'"
+                        class="px-6 py-2.5 rounded-[1.6rem] text-xs font-black transition-all  cursor-pointer">Metadata</button>
                     <button @click="activeTab = 'audit'"
-                        :class="activeTab === 'audit' ? 'bg-white shadow-lg text-indigo-600' : 'text-zinc-500'"
-                        class="px-6 py-2.5 rounded-[1.6rem] text-xs font-black transition-all">Audit Trail</button>
+                        :class="activeTab === 'audit' ? 'bg-white shadow-lg text-lime-600' : 'text-zinc-500'"
+                        class="px-6 py-2.5 rounded-[1.6rem] text-xs font-black transition-all  cursor-pointer">Audit Trail</button>
                 </div>
 
                 {{-- TAB: ACTIVITY HUB --}}
                 <div x-show="activeTab === 'activity'" x-transition class="space-y-12">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         @if ($isShipper)
-                            <div class="p-8 bg-indigo-600 text-white rounded-[2.5rem] shadow-xl">
+                            <div class="p-8 bg-lime-600 text-white rounded-[2.5rem] shadow-xl">
                                 <p class="text-[10px] font-black uppercase tracking-widest opacity-70">Freight Volume
                                 </p>
                                 <p class="text-4xl font-black mt-2">{{ $user->freights()->count() }}</p>
@@ -193,17 +193,17 @@
                                     Status</p>
                                 <p
                                     class="text-2xl font-black mt-2 {{ $user->isApproved() ? 'text-emerald-500' : 'text-amber-500' }}">
-                                    {{ $user->isApproved() ? 'Authorized' : 'Pending Review' }}
+                                    {{ $user->isApproved() ? 'Authorised' : 'Pending Review' }}
                                 </p>
                             </div>
 
                             @if ($user->isApproved() && $user->approvedBy)
                                 <div class="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-700">
-                                    <p class="text-[9px] font-black text-zinc-400 uppercase tracking-tighter">Authorized
+                                    <p class="text-[9px] font-black text-zinc-400 uppercase tracking-tighter">Approved
                                         By</p>
                                     <div class="flex items-center justify-between mt-1">
                                         <a href="{{ route('users.show', $user->approvedBy) }}"
-                                            class="text-xs font-bold text-indigo-600 hover:underline">
+                                            class="text-xs font-bold text-lime-600 hover:underline">
                                             {{ $user->approvedBy->contact_person }}
                                         </a>
                                         <span class="text-[10px] font-medium text-zinc-400">
@@ -282,7 +282,7 @@
                         <h3 class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Connectivity</h3>
                         <div class="space-y-4">
                             <div class="flex items-center gap-4">
-                                <flux:icon.envelope class="size-5 text-indigo-500" />
+                                <flux:icon.envelope class="size-5 text-lime-500" />
                                 <div>
                                     <p class="text-[8px] font-black text-zinc-400 uppercase">Email</p>
                                     <p class="text-sm font-bold">{{ $user->email }}</p>
@@ -347,7 +347,7 @@
                                     <p class="text-xs font-bold text-zinc-900 dark:text-white">
                                         @if ($log->actor)
                                             <a href="{{ route('users.show', $log->actor) }}"
-                                                class="text-indigo-600 hover:underline">
+                                                class="text-lime-600 hover:underline">
                                                 {{ $log->actor->contact_person }}
                                             </a>
                                         @else

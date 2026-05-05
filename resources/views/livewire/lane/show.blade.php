@@ -78,7 +78,7 @@ new class extends Component {
         </div>
     @endif
 
-    @if ($lane->status === \App\Enums\LaneStatus::SUBMITTED)
+    @if ($lane->status == \App\Enums\LaneStatus::SUBMITTED)
         <div
             class="flex items-center gap-3 p-4 border border-cyan-200 bg-cyan-50 dark:bg-cyan-950/20 rounded-2xl text-cyan-900 dark:text-cyan-200 shadow-sm">
             <flux:icon.information-circle variant="solid" class="size-5 text-cyan-600" />
@@ -320,13 +320,8 @@ new class extends Component {
 
                     <div class="mt-10 pt-8 border-t border-white/10 dark:border-zinc-100 grid grid-cols-1 gap-6">
                         <div>
-                            <flux:label class="text-[9px] uppercase text-zinc-400">Registration</flux:label>
-                            <flux:text class="font-mono font-bold text-lg tracking-tighter">
-                                {{ $lane->regno ?? '--- ---' }}</flux:text>
-                        </div>
-                        <div>
                             <flux:label class="text-[9px] uppercase text-zinc-400">Internal Reference</flux:label>
-                            <flux:text class="text-sm font-medium">#LN-{{ str_pad($lane->id, 5, '0', STR_PAD_LEFT) }}
+                            <flux:text class="text-sm font-medium text-zinc-500">#{{$lane->carrier->identification_number }}
                             </flux:text>
                         </div>
                     </div>

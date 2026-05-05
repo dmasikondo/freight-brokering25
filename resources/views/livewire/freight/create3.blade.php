@@ -6,7 +6,6 @@ use Livewire\Attributes\Url;
 use Livewire\WithPagination;
 use App\Models\Freight;
 use App\Enums\FreightStatus;
-use App\Enums\TrailerType;
 use App\Services\FreightService;
 
 new class extends Component {
@@ -39,38 +38,21 @@ new class extends Component {
     #[Url]
     public $hazardous = '';
 
-    public array $trailerFilters = [];
-
     public function setFilter($property, $value): void
     {
         $this->{$property} = $this->{$property} === $value ? '' : $value;
         $this->resetPage();
     }
 
-    public function toggleTrailer($value): void
-    {
-        if (in_array($value, $this->trailerFilters)) {
-            $this->trailerFilters = array_values(array_diff($this->trailerFilters, [$value]));
-        } else {
-            $this->trailerFilters[] = $value;
-        }
-        $this->resetPage();
-    }
-
     public function clearFilters(): void
     {
         $this->reset(['search', 'shipper_search', 'status', 'origin', 'destination', 'date_from', 'date_to', 'hazardous']);
-        $this->trailerFilters = [];
         $this->resetPage();
     }
 
-    public function removeFilter($key, $value = null): void
+    public function removeFilter($key): void
     {
-        if ($key === 'trailerFilters') {
-            $this->trailerFilters = array_values(array_diff($this->trailerFilters, [$value]));
-        } else {
-            $this->reset($key);
-        }
+        $this->reset($key);
         $this->resetPage();
     }
 
@@ -92,58 +74,23 @@ new class extends Component {
         );
     }
 
-    /**
-     * Determine if the current user can see the shipper/contact identity
-     * for a given freight record.
-     */
-    private function canSeeContact(Freight $freight, $user, array $territoryUserIds = []): bool
-    {
-        if (!$user) return false;
-
-        // Always sees: admin, superadmin, logistics operations executive
-        if ($user->hasAnyRole(['admin', 'superadmin', 'logistics operations executive'])) {
-            return true;
-        }
-
-        // Shipper: only their own freight
-        if ($user->hasRole('shipper')) {
-            return $freight->creator_id === $user->id || $freight->shipper_id === $user->id;
-        }
-
-        // Territory-restricted staff: created it OR shipper is in their territory
-        if ($user->hasAnyRole(['marketing logistics associate', 'operations logistics associate'])) {
-            return $freight->creator_id === $user->id
-                || in_array($freight->shipper_id, $territoryUserIds);
-        }
-
-        return false;
-    }
-
-    #[Computed]
-    public function territoryUserIds(): array
-    {
-        $user = auth()->user();
-        if (!$user) return [];
-        if ($user->hasAnyRole(['marketing logistics associate', 'operations logistics associate'])) {
-            return app(FreightService::class)->getTerritoryUserIds($user);
-        }
-        return [];
-    }
-
     #[Computed]
     public function freights()
     {
         $user = auth()->user();
         $query = Freight::query()->with(['goods', 'creator', 'shipper']);
 
-        // --- VISIBILITY ---
+        // --- VISIBILITY RULES ---
         if (!$user) {
+            // Guests: published only
             $query->where('status', FreightStatus::PUBLISHED);
         } elseif ($user->hasAnyRole(['admin', 'superadmin', 'logistics operations executive'])) {
+            // Unrestricted: see all, optionally filter by status tab
             if ($this->status) {
                 $query->where('status', $this->status);
             }
         } elseif ($user->hasRole('carrier')) {
+            // Carriers: published + their own
             $query->where(function ($q) use ($user) {
                 $q->where('status', FreightStatus::PUBLISHED)
                   ->orWhere('creator_id', $user->id)
@@ -153,7 +100,10 @@ new class extends Component {
                 $query->where('status', $this->status);
             }
         } elseif ($user->hasAnyRole(['marketing logistics associate', 'operations logistics associate'])) {
-            $territoryUserIds = $this->territoryUserIds;
+            // Territory-restricted staff
+            $service = app(FreightService::class);
+            $territoryUserIds = $service->getTerritoryUserIds($user);
+
             $query->where(function ($q) use ($user, $territoryUserIds) {
                 $q->where('status', FreightStatus::PUBLISHED)
                   ->orWhere('creator_id', $user->id)
@@ -165,45 +115,40 @@ new class extends Component {
             if ($this->status) {
                 $query->where('status', $this->status);
             }
-        } elseif ($user->hasRole('shipper')) {
-            $query->where(function ($q) use ($user) {
-                $q->where('status', FreightStatus::PUBLISHED)
-                  ->orWhere('creator_id', $user->id)
-                  ->orWhere('shipper_id', $user->id);
-            });
-            if ($this->status) {
-                $query->where('status', $this->status);
-            }
         } else {
+            // Any other authenticated user: published only
             $query->where('status', FreightStatus::PUBLISHED);
         }
 
-        // --- FILTERS ---
+        // --- SEARCH & FILTERS ---
         $query
-            ->when($this->search, fn($q) => $q->where(function ($sub) {
-                $sub->whereHas('goods', fn($g) => $g->where('name', 'like', "%{$this->search}%"))
-                    ->orWhere('name', 'like', "%{$this->search}%")
-                    ->orWhere('description', 'like', "%{$this->search}%");
-            }))
-            ->when($this->shipper_search, fn($q) => $q->whereHas('shipper', fn($sub) =>
-                $sub->where('contact_person', 'like', "%{$this->shipper_search}%")
-                    ->orWhere('organisation', 'like', "%{$this->shipper_search}%")
-                    ->orWhere('email', 'like', "%{$this->shipper_search}%")
+            ->when($this->search, function ($q) {
+                $q->where(function ($sub) {
+                    $sub->whereHas('goods', fn($g) => $g->where('name', 'like', "%{$this->search}%"))
+                        ->orWhere('name', 'like', "%{$this->search}%")
+                        ->orWhere('description', 'like', "%{$this->search}%");
+                });
+            })
+            ->when($this->shipper_search, function ($q) {
+                $q->whereHas('shipper', function ($sub) {
+                    $sub->where('contact_person', 'like', "%{$this->shipper_search}%")
+                        ->orWhere('organisation', 'like', "%{$this->shipper_search}%")
+                        ->orWhere('email', 'like', "%{$this->shipper_search}%");
+                });
+            })
+            ->when($this->origin, fn($q) => $q->where(
+                fn($sub) => $sub->where('cityfrom', 'like', "%{$this->origin}%")
+                                ->orWhere('countryfrom', 'like', "%{$this->origin}%")
             ))
-            ->when($this->origin, fn($q) => $q->where(fn($sub) =>
-                $sub->where('cityfrom', 'like', "%{$this->origin}%")
-                    ->orWhere('countryfrom', 'like', "%{$this->origin}%")
-            ))
-            ->when($this->destination, fn($q) => $q->where(fn($sub) =>
-                $sub->where('cityto', 'like', "%{$this->destination}%")
-                    ->orWhere('countryto', 'like', "%{$this->destination}%")
+            ->when($this->destination, fn($q) => $q->where(
+                fn($sub) => $sub->where('cityto', 'like', "%{$this->destination}%")
+                                ->orWhere('countryto', 'like', "%{$this->destination}%")
             ))
             ->when($this->date_from, fn($q) => $q->whereDate('datefrom', '>=', $this->date_from))
-            ->when($this->date_to,   fn($q) => $q->whereDate('dateto',   '<=', $this->date_to))
-            ->when($this->hazardous !== '', fn($q) => $q->where('is_hazardous', (bool) $this->hazardous))
-            ->when(!empty($this->trailerFilters), fn($q) => $q->whereIn('vehicle_type', $this->trailerFilters));
+            ->when($this->date_to, fn($q) => $q->whereDate('dateto', '<=', $this->date_to))
+            ->when($this->hazardous !== '', fn($q) => $q->where('is_hazardous', (bool) $this->hazardous));
 
-        return $query->latest('updated_at')->paginate((int) $this->perPage);
+        return $query->latest('updated_at')->paginate($this->perPage);
     }
 
     #[Computed]
@@ -215,18 +160,18 @@ new class extends Component {
         $base = Freight::query();
 
         if ($user->hasAnyRole(['admin', 'superadmin', 'logistics operations executive'])) {
-            // all
-        } elseif ($user->hasAnyRole(['carrier', 'shipper'])) {
+            // all freight
+        } elseif ($user->hasRole('carrier')) {
             $base->where(fn($q) => $q->where('creator_id', $user->id)->orWhere('shipper_id', $user->id));
         } elseif ($user->hasAnyRole(['marketing logistics associate', 'operations logistics associate'])) {
-            $ids = $this->territoryUserIds;
-            $base->where(fn($q) => $q->where('creator_id', $user->id)->orWhereIn('shipper_id', $ids));
+            $territoryUserIds = app(FreightService::class)->getTerritoryUserIds($user);
+            $base->where(fn($q) => $q->where('creator_id', $user->id)->orWhereIn('shipper_id', $territoryUserIds));
         } else {
             $base->where('status', FreightStatus::PUBLISHED);
         }
 
         return [
-            'total'     => (clone $base)->count(),
+            'total' => (clone $base)->count(),
             'by_status' => (clone $base)
                 ->selectRaw('status, count(*) as total')
                 ->groupBy('status')
@@ -264,41 +209,46 @@ new class extends Component {
         @endcan
     </header>
 
-    {{-- STATS --}}
+    {{-- STATS / DASHBOARD --}}
     @auth
         @if ($this->stats)
             <div class="bg-white dark:bg-slate-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
-                <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center justify-between mb-6">
                     <div>
                         <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Overview</h2>
-                        <p class="text-sm text-zinc-500">Total Visible: <strong>{{ $this->stats['total'] }}</strong></p>
+                        <p class="text-sm text-zinc-500">Total Visible Freight: <strong>{{ $this->stats['total'] }}</strong></p>
                     </div>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                    <button wire:click="setFilter('status', '')"
-                        class="flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-sm font-bold
-                        {{ $status === '' ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-600' }}">
-                        All
-                        <span class="px-2 py-0.5 text-xs rounded-lg {{ $status === '' ? 'bg-white/20' : 'bg-zinc-100 text-zinc-600' }}">
-                            {{ $this->stats['total'] }}
-                        </span>
-                    </button>
-                    @foreach (FreightStatus::cases() as $case)
-                        @php $count = $this->stats['by_status'][$case->value] ?? 0; @endphp
-                        <button wire:click="setFilter('status', '{{ $case->value }}')"
+
+                <div class="space-y-3">
+                    <p class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Filter by Status</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button wire:click="setFilter('status', '')"
                             class="flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-sm font-bold
-                            {{ $status === $case->value ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-600' }}">
-                            <div class="w-2 h-2 rounded-full bg-{{ $case->color() }}-500"></div>
-                            {{ $case->label() }}
-                            <span class="px-2 py-0.5 text-xs rounded-lg {{ $status === $case->value ? 'bg-white/20' : 'bg-zinc-100 text-zinc-600' }}">
-                                {{ $count }}
+                            {{ $status === '' ? 'bg-zinc-900 text-white border-zinc-900 ring-2 ring-zinc-900/20' : 'bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-600' }}">
+                            All
+                            <span class="px-2 py-0.5 text-xs rounded-lg {{ $status === '' ? 'bg-white/20' : 'bg-zinc-100 text-zinc-600' }}">
+                                {{ $this->stats['total'] }}
                             </span>
                         </button>
-                    @endforeach
+                        @foreach (FreightStatus::cases() as $case)
+                            @php $count = $this->stats['by_status'][$case->value] ?? 0; @endphp
+                            <button wire:click="setFilter('status', '{{ $case->value }}')"
+                                class="flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-sm font-bold
+                                {{ $status === $case->value ? 'bg-zinc-900 text-white border-zinc-900 ring-2 ring-zinc-900/20' : 'bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-600' }}">
+                                <div class="w-2 h-2 rounded-full bg-{{ $case->color() }}-500"></div>
+                                {{ $case->label() }}
+                                <span class="px-2 py-0.5 text-xs rounded-lg {{ $status === $case->value ? 'bg-white/20' : 'bg-zinc-100 text-zinc-600' }}">
+                                    {{ $count }}
+                                </span>
+                            </button>
+                        @endforeach
+                    </div>
                 </div>
             </div>
         @endif
     @else
+        {{-- Guest aggregate stats --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="p-6 bg-zinc-900 rounded-2xl text-white flex items-center justify-between shadow-lg">
                 <div>
@@ -309,26 +259,39 @@ new class extends Component {
                     <flux:icon name="truck" class="size-8 text-lime-500" />
                 </div>
             </div>
+            <div class="p-6 bg-white border border-zinc-200 rounded-2xl flex items-center justify-between shadow-sm">
+                <div>
+                    <p class="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1">Routes Available</p>
+                    <h3 class="text-4xl font-black text-zinc-900">{{ $this->freights->total() }}</h3>
+                </div>
+                <div class="p-3 bg-zinc-50 rounded-xl text-zinc-400">
+                    <flux:icon name="map-pin" class="size-8" />
+                </div>
+            </div>
         </div>
     @endauth
 
-    {{-- SEARCH & FILTERS --}}
+    {{-- SEARCH & FILTER BAR --}}
     <div class="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm border border-zinc-200 dark:border-zinc-800 space-y-4">
 
+        {{-- Row 1: Primary Search --}}
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div class="lg:col-span-4">
-                <flux:input icon="magnifying-glass" wire:model.live.debounce.300ms="search"
+                <flux:input icon="magnifying-glass"
+                    wire:model.live.debounce.300ms="search"
                     placeholder="Goods, cargo description..." />
             </div>
             <div class="lg:col-span-3">
-                <flux:input icon="map-pin" wire:model.live.debounce.300ms="origin"
+                <flux:input icon="map-pin"
+                    wire:model.live.debounce.300ms="origin"
                     placeholder="Origin city or country..." />
             </div>
             <div class="lg:col-span-3">
-                <flux:input icon="flag" wire:model.live.debounce.300ms="destination"
+                <flux:input icon="flag"
+                    wire:model.live.debounce.300ms="destination"
                     placeholder="Destination city or country..." />
             </div>
-            <div class="lg:col-span-2">
+            <div class="lg:col-span-2 flex gap-2 items-center lg:justify-end">
                 <flux:select wire:model.live="perPage" class="w-full">
                     <option value="12">12 / page</option>
                     <option value="24">24 / page</option>
@@ -337,56 +300,37 @@ new class extends Component {
             </div>
         </div>
 
+        {{-- Row 2: Advanced Filters --}}
         <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
 
-            {{-- Shipper search: staff only --}}
+            {{-- Shipper Search (Staff only) --}}
             @auth
                 @if(auth()->user()->hasAnyRole(['admin', 'superadmin', 'logistics operations executive', 'marketing logistics associate', 'operations logistics associate']))
-                    <flux:input icon="user-group" wire:model.live.debounce.300ms="shipper_search"
-                        placeholder="Search shipper..." class="w-52" />
+                    <flux:input icon="user-group"
+                        wire:model.live.debounce.300ms="shipper_search"
+                        placeholder="Search shipper..."
+                        class="w-48" />
                 @endif
             @endauth
 
-            {{-- Date range --}}
+            {{-- Date Range --}}
             <div class="flex items-center gap-1 bg-zinc-50 dark:bg-white/5 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700">
                 <flux:input type="date" wire:model.live="date_from"
-                    class="w-[140px] border-none shadow-none !bg-transparent" />
+                    class="w-[140px] border-none shadow-none !bg-transparent focus:ring-0" />
                 <span class="text-zinc-300 text-xs">—</span>
                 <flux:input type="date" wire:model.live="date_to"
-                    class="w-[140px] border-none shadow-none !bg-transparent" />
+                    class="w-[140px] border-none shadow-none !bg-transparent focus:ring-0" />
             </div>
 
-            {{-- Hazardous --}}
+            {{-- Hazardous Filter --}}
             <flux:select wire:model.live="hazardous" class="w-[160px]">
                 <option value="">All Cargo</option>
                 <option value="1">Hazardous Only</option>
                 <option value="0">Non-Hazardous</option>
             </flux:select>
 
-            {{-- Trailer type filter --}}
-            <flux:dropdown>
-                <flux:button icon:trailing="chevron-down" variant="subtle">
-                    Trailer Type
-                    @if(count($trailerFilters) > 0)
-                        <span class="ml-1 px-1.5 py-0.5 rounded-full bg-lime-100 text-lime-700 text-[10px] font-bold">
-                            {{ count($trailerFilters) }}
-                        </span>
-                    @endif
-                </flux:button>
-                <flux:menu class="min-w-[200px] max-h-[300px] overflow-y-auto">
-                    @foreach (TrailerType::cases() as $type)
-                        <flux:menu.item wire:click="toggleTrailer('{{ $type->value }}')">
-                            <span class="flex-1 text-sm">{{ $type->label() }}</span>
-                            @if(in_array($type->value, $trailerFilters))
-                                <flux:icon name="check" class="size-4 text-lime-600" />
-                            @endif
-                        </flux:menu.item>
-                    @endforeach
-                </flux:menu>
-            </flux:dropdown>
-
             {{-- Reset --}}
-            @if($search || $shipper_search || $origin || $destination || $date_from || $date_to || $hazardous !== '' || $status || count($trailerFilters))
+            @if($search || $shipper_search || $origin || $destination || $date_from || $date_to || $hazardous !== '' || $status)
                 <flux:button variant="ghost" color="red" icon="x-mark" wire:click="clearFilters" class="ml-auto">
                     Reset Filters
                 </flux:button>
@@ -395,7 +339,7 @@ new class extends Component {
     </div>
 
     {{-- ACTIVE FILTER CHIPS --}}
-    @if($search || $shipper_search || $origin || $destination || $date_from || $date_to || $status || count($trailerFilters))
+    @if($search || $shipper_search || $origin || $destination || $date_from || $date_to || $status)
         <div class="flex flex-wrap gap-2">
             @if($search)
                 <x-filter-chip label="Search: {{ $search }}" wire:click="removeFilter('search')" />
@@ -410,54 +354,26 @@ new class extends Component {
                 <x-filter-chip label="To: {{ $destination }}" wire:click="removeFilter('destination')" />
             @endif
             @if($date_from)
-                <x-filter-chip label="Pickup from: {{ $date_from }}" wire:click="removeFilter('date_from')" />
+                <x-filter-chip label="From date: {{ $date_from }}" wire:click="removeFilter('date_from')" />
             @endif
             @if($date_to)
-                <x-filter-chip label="Deliver by: {{ $date_to }}" wire:click="removeFilter('date_to')" />
+                <x-filter-chip label="To date: {{ $date_to }}" wire:click="removeFilter('date_to')" />
             @endif
             @if($status)
                 @php $statusEnum = FreightStatus::tryFrom($status); @endphp
                 <x-filter-chip label="Status: {{ $statusEnum?->label() ?? $status }}" wire:click="removeFilter('status')" />
             @endif
-            @foreach($trailerFilters as $tv)
-                @php $te = TrailerType::tryFrom($tv); @endphp
-                <x-filter-chip label="Trailer: {{ $te?->label() ?? $tv }}"
-                    wire:click="removeFilter('trailerFilters', '{{ $tv }}')" />
-            @endforeach
         </div>
     @endif
 
     {{-- RESULTS GRID --}}
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         @forelse ($this->freights as $freight)
-            @php
-                $user        = auth()->user();
-                $isMyFreight = $user && ($freight->creator_id === $user->id || $freight->shipper_id === $user->id);
-                $isCreator   = $user && $freight->creator_id === $user->id;
-                $isOwner     = $user && $freight->shipper_id === $user->id;
-                $showContact = $user && $this->canSeeContact($freight, $user, $this->territoryUserIds);
-            @endphp
-
-            <div class="bg-white dark:bg-slate-900 rounded-3xl border
-                {{ $isMyFreight ? 'border-lime-400 ring-1 ring-lime-300' : 'border-zinc-200 dark:border-zinc-800' }}
-                overflow-hidden hover:border-lime-500 transition-all duration-300 group shadow-sm hover:shadow-xl flex flex-col">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden hover:border-lime-500 transition-all duration-300 group shadow-sm hover:shadow-xl flex flex-col">
 
                 <div class="p-6 flex-1 flex flex-col">
 
-                    {{-- "My Freight" banner --}}
-                    @if($isMyFreight)
-                        <div class="flex items-center gap-2 mb-3 px-3 py-1.5 bg-lime-50 dark:bg-lime-900/20 border border-lime-200 dark:border-lime-800 rounded-xl">
-                            <flux:icon name="star" variant="mini" class="size-3.5 text-lime-600" />
-                            <span class="text-[11px] font-black uppercase tracking-widest text-lime-700 dark:text-lime-400">
-                                @if($isCreator && $isOwner) My Shipment
-                                @elseif($isCreator) I Created This
-                                @else My Freight
-                                @endif
-                            </span>
-                        </div>
-                    @endif
-
-                    {{-- Header --}}
+                    {{-- Header: Status + Actions --}}
                     <div class="flex justify-between items-start mb-4">
                         <div class="flex flex-col gap-1">
                             <flux:badge :color="$freight->status->color()" size="sm" variant="pill">
@@ -479,7 +395,8 @@ new class extends Component {
                                         <flux:menu.item
                                             wire:click="deleteFreight('{{ $freight->id }}')"
                                             wire:confirm="Archive this shipment?"
-                                            icon="trash" variant="danger">
+                                            icon="trash"
+                                            variant="danger">
                                             Archive
                                         </flux:menu.item>
                                     </flux:menu>
@@ -488,31 +405,22 @@ new class extends Component {
                         @endauth
                     </div>
 
-                    {{-- Cargo name --}}
-                    <div class="mb-3">
+                    {{-- Cargo Name & Description --}}
+                    <div class="mb-4">
                         <h3 class="font-bold text-lg dark:text-white leading-tight">
                             {!! $this->highlight($freight->name ?? 'Cargo Shipment', $this->search) !!}
                         </h3>
                         @if($freight->is_hazardous)
-                            <flux:badge size="sm" color="red" variant="ghost" class="mt-1">⚠ Hazardous</flux:badge>
+                            <flux:badge size="sm" color="red" variant="ghost" class="mt-1">
+                                ⚠ Hazardous
+                            </flux:badge>
                         @endif
-                        @if($freight->description)
+                        @if ($freight->description)
                             <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 italic mt-1">
                                 "{{ $freight->description }}"
                             </p>
                         @endif
                     </div>
-
-                    {{-- Goods type tags --}}
-                    @if($freight->goods->count())
-                        <div class="flex flex-wrap gap-1 mb-3">
-                            @foreach($freight->goods as $good)
-                                <flux:badge size="sm" color="cyan" variant="ghost" class="text-[10px]">
-                                    {{ $good->name }}
-                                </flux:badge>
-                            @endforeach
-                        </div>
-                    @endif
 
                     {{-- Route --}}
                     <div class="bg-gray-50 dark:bg-slate-800/40 rounded-xl p-4 mb-4 space-y-3">
@@ -539,12 +447,12 @@ new class extends Component {
                         @if($freight->distance)
                             <div class="flex items-center gap-1 text-[10px] text-zinc-400">
                                 <flux:icon name="arrows-right-left" variant="mini" class="size-3" />
-                                {{ number_format((float) $freight->distance) }} km
+                                {{ number_format((float) ($freight->distance ?? 0)) }} km
                             </div>
                         @endif
                     </div>
 
-                    {{-- Key Details --}}
+                    {{-- Key Details Grid --}}
                     <div class="grid grid-cols-2 gap-3 text-xs mb-4">
                         <div>
                             <span class="text-gray-400 block uppercase text-[10px] font-bold">Timeline</span>
@@ -573,76 +481,38 @@ new class extends Component {
                         <div>
                             <span class="text-gray-400 block uppercase text-[10px] font-bold">Capacity</span>
                             <span class="text-lime-600 font-bold">
-                                {{ number_format((float) ($freight->weight ?? 0)) }}
+                               {{ number_format((float) ($freight->weight ?? 0)) }}
                                 {{ strtoupper($freight->capacity_unit?->value ?? '') }}
                             </span>
                         </div>
                     </div>
 
-                    {{-- Contact / Shipper identity --}}
-                    @if($showContact)
-                        <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800 space-y-1.5">
-
-                            {{-- Creator --}}
-                            <div class="flex items-center gap-2">
-                                <flux:icon name="pencil-square" variant="mini" class="size-3 text-zinc-400 shrink-0" />
+                    {{-- Shipper (staff only) --}}
+                    @auth
+                        @if(auth()->user()->hasAnyRole(['admin', 'superadmin', 'logistics operations executive', 'marketing logistics associate', 'operations logistics associate']))
+                            <div class="flex items-center gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                                <flux:icon name="user" variant="mini" class="size-3 text-zinc-400" />
                                 <span class="text-[10px] text-zinc-500">
-                                    Created by:
-                                    @if($isCreator)
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500 text-white text-[9px] font-black uppercase tracking-widest shadow-sm">
-                                            Me
-                                        </span>
-                                    @elseif($freight->creator)
-                                        <a href="{{ route('users.show', $freight->creator->slug ?? 'unknown') }}"
-                                            class="font-bold text-zinc-700 dark:text-zinc-300 hover:text-lime-600 underline decoration-zinc-200 underline-offset-2 transition-colors">
-                                            {!! $this->highlight(
-                                                $freight->creator->organisation ?? $freight->creator->contact_person,
-                                                $this->shipper_search
-                                            ) !!}
-                                        </a>
-                                    @else
-                                        <span class="text-zinc-400">System</span>
-                                    @endif
+                                    Shipper:
+                                    <span class="font-bold text-zinc-700 dark:text-zinc-300">
+                                        {!! $this->highlight(
+                                            $freight->shipper?->organisation ?? $freight->shipper?->contact_person ?? 'Unknown',
+                                            $this->shipper_search
+                                        ) !!}
+                                    </span>
                                 </span>
                             </div>
+                        @endif
+                    @endauth
 
-                            {{-- Shipper / Owner (only show if different from creator) --}}
-                            @if($freight->shipper_id !== $freight->creator_id)
-                                <div class="flex items-center gap-2">
-                                    <flux:icon name="user" variant="mini" class="size-3 text-zinc-400 shrink-0" />
-                                    <span class="text-[10px] text-zinc-500">
-                                        Shipper:
-                                        @if($isOwner)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-lime-500 text-white text-[9px] font-black uppercase tracking-widest shadow-sm">
-                                                Me
-                                            </span>
-                                        @elseif($freight->shipper)
-                                            <a href="{{ route('users.show', $freight->shipper->slug ?? 'unknown') }}"
-                                                class="font-bold text-zinc-700 dark:text-zinc-300 hover:text-lime-600 underline decoration-zinc-200 underline-offset-2 transition-colors">
-                                                {!! $this->highlight(
-                                                    $freight->shipper->organisation ?? $freight->shipper->contact_person,
-                                                    $this->shipper_search
-                                                ) !!}
-                                            </a>
-                                        @else
-                                            <span class="text-zinc-400">Unknown</span>
-                                        @endif
-                                    </span>
-                                </div>
-                            @endif
-
-                            {{-- Contact name --}}
-                            @if($freight->contact_name)
-                                <div class="flex items-center gap-2">
-                                    <flux:icon name="phone" variant="mini" class="size-3 text-zinc-400 shrink-0" />
-                                    <span class="text-[10px] text-zinc-500">
-                                        Contact: <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ $freight->contact_name }}</span>
-                                    </span>
-                                </div>
-                            @endif
-                        </div>
-                    @endif
-
+                    {{-- Goods Tags --}}
+                    <div class="flex flex-wrap gap-1 mt-auto pt-3">
+                        @foreach ($freight->goods as $good)
+                            <flux:badge size="sm" variant="ghost" class="text-[10px]">
+                                {{ $good->name }}
+                            </flux:badge>
+                        @endforeach
+                    </div>
                 </div>
 
                 {{-- Card Footer --}}
@@ -650,12 +520,14 @@ new class extends Component {
                     <div class="flex items-center gap-2">
                         <div class="size-2 rounded-full {{ $freight->status === FreightStatus::PUBLISHED ? 'bg-lime-500 animate-pulse' : 'bg-zinc-300' }}"></div>
                         <span class="text-xs font-bold text-zinc-500 dark:text-zinc-400">
-                            {{ $freight->datefrom?->format('d M Y') ?? '—' }}
+                            {{ $freight->creator?->contact_person ?? 'System' }}
                         </span>
                     </div>
                     <flux:button
                         href="{{ route('freights.show', $freight->uuid) }}"
-                        variant="filled" color="lime" size="sm"
+                        variant="filled"
+                        color="lime"
+                        size="sm"
                         icon-trailing="chevron-right"
                         wire:navigate>
                         View Details
@@ -677,7 +549,7 @@ new class extends Component {
         {{ $this->freights->links() }}
     </div>
 
-    {{-- RECENT ACTIVITY --}}
+    {{-- RECENT ACTIVITY SIDEBAR (staff only) --}}
     @can('viewAny', App\Models\Freight::class)
         @if($this->recentActivity->count())
             <div class="bg-zinc-50 dark:bg-slate-900/50 rounded-2xl p-6 border border-zinc-200 dark:border-zinc-800 mt-4">
@@ -700,10 +572,7 @@ new class extends Component {
                                     </span>
                                 </div>
                                 <p class="text-xs text-zinc-500 mt-1">
-                                    Modified by
-                                    <span class="font-medium text-zinc-700 dark:text-zinc-300">
-                                        {{ $activity->creator?->contact_person ?? 'System' }}
-                                    </span>
+                                    Modified by <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ $activity->creator?->contact_person ?? 'System' }}</span>
                                 </p>
                             </div>
                         </div>
