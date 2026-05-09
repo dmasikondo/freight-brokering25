@@ -181,12 +181,18 @@ new class extends Component {
         @if ($this->myStats)
             <div class="bg-white dark:bg-slate-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
                 <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Fleet Control Center</h2>
-                        <p class="text-sm text-zinc-500">Total Visible Capacity:
-                            <strong>{{ $this->myStats['total_capacity'] }}</strong>
-                        </p>
-                    </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Fleet Control Center</h2>
+                            <p class="text-sm text-zinc-500">Total Visible Capacity:
+                                <strong>{{ $this->myStats['total_capacity'] }}</strong>
+                            </p>
+                        </div>
+                            @can('create', App\Models\Lane::class)
+                                <flux:button href="{{ route('lanes.create') }}" variant="primary" color="lime" icon="plus">
+                                    Post Vehicles
+                                </flux:button>
+                            @endcan                            
+                        
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">

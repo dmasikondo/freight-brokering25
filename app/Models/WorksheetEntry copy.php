@@ -87,8 +87,35 @@ class WorksheetEntry extends Model
     }
 
     /**
-     * Human-readable reason why the time window is closed, or null if still open.
-     * Access control (who may edit) is handled by WorksheetHeaderPolicy::update().
+     * Can the given user edit this completed entry's data?
+     *
+     * Rule (all worksheet types):
+     *   Within 8h of entry completion  → anyone with worksheet access
+     *
+     * After 8h:
+     *   Scouting                       → only worksheet owner or admin/superadmin
+     *   Daily / Weekly / Monthly       → nobody (absolute lock)
+     */
+    public function canBeEditedBy(User $user): bool
+    {
+        if ($this->withinEntryEditWindow()) {
+            return true;
+        }
+
+        $header = $this->header;
+
+        // After window: daily/weekly/monthly are permanently locked
+        if ($header->worksheet_type->hasWorksheetLevelEditWindow()) {
+            return false;
+        }
+
+        // After window: scouting allows owner / admin
+        return $header->user_id === $user->id
+            || $user->hasAnyRole(['admin', 'superadmin']);
+    }
+
+    /**
+     * Human-readable reason why editing is blocked, or null if allowed.
      */
     public function editLockReason(): ?string
     {

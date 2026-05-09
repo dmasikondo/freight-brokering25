@@ -67,7 +67,7 @@
         @can('create', \App\Models\WorksheetHeader::class)
             <flux:navlist variant="outline">
                 <flux:navlist.item icon="calendar-days" :href="route('worksheets.index')"
-                    :current="request()->routeIs('worksheets.index') || request()->routeIs('worksheets.create')"
+                    :current="request()->routeIs('worksheets.index') || request()->routeIs('worksheets.create') | request()->routeIs('worksheets.show')"
                     wire:navigate>
                     {{ __('Worksheets') }}
                 </flux:navlist.item>

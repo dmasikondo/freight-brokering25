@@ -55,6 +55,7 @@ Route::middleware(['auth',])->group(function () {
 
     Volt::route('worksheets/create', 'worksheet.create')->name('worksheets.create');
     Volt::route('worksheets', 'worksheet.index')->name('worksheets.index');
+    Volt::route('/worksheets/{worksheet}', 'worksheet.show')->name('worksheets.show');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');

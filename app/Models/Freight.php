@@ -99,7 +99,16 @@ class Freight extends Model
     {
         return $this->morphMany(ActivityLog::class, 'auditable');
     }
+    public function tenderOffers(): MorphMany
+    {
+        return $this->morphMany(TenderOffer::class, 'tenderable');
+    }
 
+    public function awardedOffer(): MorphOne
+    {
+        return $this->morphOne(TenderOffer::class, 'tenderable')
+                    ->where('status', \App\Enums\TenderOfferStatus::AWARDED);
+    }
     protected static function boot()
     {
         parent::boot();
