@@ -424,7 +424,7 @@ new class extends Component {
             @endcan
         </div>
     </div>
-    {{-- <livewire:tender.offer-panel 
+    <livewire:tender.offer-panel 
     :tenderableId="$freight->id" 
-    tenderableType="App\Models\Freight" /> --}}
+    tenderableType="App\Models\Freight" /> 
 </div>

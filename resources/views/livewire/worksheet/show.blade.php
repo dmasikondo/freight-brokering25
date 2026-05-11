@@ -238,7 +238,7 @@ new class extends Component {
     }
 }; ?>
 
-<div class="min-h-screen bg-slate-50 dark:bg-slate-950">
+<div class="min-h-screen bg-lime-50/50 dark:bg-slate-950">
 
     <x-worksheet._toast />
 

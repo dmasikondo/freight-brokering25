@@ -17,7 +17,7 @@ class TenderOffer extends Model
         'uuid',
         'tenderable_type',
         'tenderable_id',
-        'carrier_id',
+        'bidder_id',
         'amount',
         'proposed_pickup_date',
         'proposed_delivery_date',
@@ -62,9 +62,9 @@ class TenderOffer extends Model
         return $this->morphTo();
     }
 
-    public function carrier(): BelongsTo
+    public function bidder(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'carrier_id');
+        return $this->belongsTo(User::class, 'bidder_id');
     }
 
     public function awardedBy(): BelongsTo

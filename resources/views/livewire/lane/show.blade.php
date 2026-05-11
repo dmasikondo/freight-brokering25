@@ -321,7 +321,8 @@ new class extends Component {
                     <div class="mt-10 pt-8 border-t border-white/10 dark:border-zinc-100 grid grid-cols-1 gap-6">
                         <div>
                             <flux:label class="text-[9px] uppercase text-zinc-400">Internal Reference</flux:label>
-                            <flux:text class="text-sm font-medium text-zinc-500">#{{$lane->carrier?->identification_number }}
+                            <flux:text class="text-sm font-medium text-zinc-500">
+                                #{{ $lane->carrier?->identification_number }}
                             </flux:text>
                         </div>
                     </div>
@@ -408,7 +409,7 @@ new class extends Component {
             @endcan
         </div>
     </div>
-     <livewire:tender.offer-panel 
+    <livewire:tender.offer-panel 
     :tenderableId="$lane->id" 
     tenderableType="App\Models\Lane" /> 
 </div>

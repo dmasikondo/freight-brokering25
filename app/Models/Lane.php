@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class Lane extends Model
 {
@@ -63,6 +64,17 @@ class Lane extends Model
     {
         return $this->belongsTo(User::class, 'carrier_id');
     }
+
+    public function tenderOffers(): MorphMany
+    {
+        return $this->morphMany(TenderOffer::class, 'tenderable');
+    }
+
+    public function awardedOffer(): MorphOne
+    {
+        return $this->morphOne(TenderOffer::class, 'tenderable')
+                    ->where('status', \App\Enums\TenderOfferStatus::AWARDED);
+    }    
 
     public function contacts(): MorphMany
     {

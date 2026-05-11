@@ -370,7 +370,7 @@ new class extends Component {
     }
 }; ?>
 
-<div class="min-h-screen bg-slate-50/50">
+<div class="min-h-screen bg-lime-50/50 dark:bg-slate-900 dark:border-slate-800">
 
     {{-- ══════════════════════════════════════════════════════════════
          EXECUTION VIEW — a specific worksheet is being worked
@@ -396,10 +396,10 @@ new class extends Component {
                     <span class="px-2 py-0.5 text-[9px] font-black uppercase rounded bg-slate-100 text-slate-500 border border-slate-200">
                         {{ $activeHeader->user_id == auth()->id() ? 'Yours' : 'Collaborative' }}
                     </span>
-                    <a href="{{ route('worksheets.show', $activeHeader->id) }}" wire:navigate
-                        class="flex items-center gap-1 px-3 py-1.5 text-[10px] font-black rounded-xl bg-white border border-slate-200 hover:border-emerald-400 text-slate-600 hover:text-emerald-700 transition-all">
-                        <flux:icon.eye variant="micro" /> Full View
-                    </a>
+                    <flux:button href="{{ route('worksheets.show', $activeHeader->id) }}" wire:navigate
+                        variant="ghost" size="sm" icon="eye">
+                        Full View
+                    </flux:button>
                 </div>
             </div>
 
@@ -470,7 +470,7 @@ new class extends Component {
                 <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
 
                     {{-- Current entry form — left 3 cols --}}
-                    <div class="xl:col-span-3 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="xl:col-span-3 bg-white dark:bg-slate-900 dark:border-slate-700 rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                         <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
                             <div class="h-8 w-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-emerald-200">
                                 {{ $completedCount + 1 }}
@@ -491,7 +491,7 @@ new class extends Component {
                             </div>
                         </div>
 
-                        <div class="p-6">
+                        <div class="p-6 ">
                             @if (!$currentEntry->started_at)
                                 <div class="py-16 border-2 border-dashed border-slate-200 rounded-2xl text-center
                                     group hover:border-emerald-300 hover:bg-emerald-50/30 transition-all cursor-pointer"
@@ -508,19 +508,19 @@ new class extends Component {
                                         <div class="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl">{{ $message }}</div>
                                     @enderror
 
-                                    <flux:textarea wire:model="activity" label="Action Taken" rows="3"
+                                    <flux:textarea wire:model="activity" label="Action Taken" rows="auto"
                                         placeholder="Described service offering, discussed rate requirements…" />
 
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <flux:textarea wire:model="feedback" label="Partner Feedback" rows="3" />
-                                        <flux:textarea wire:model="way_forward" label="Way Forward" rows="3" />
+                                        <flux:textarea wire:model="feedback" label="Partner Feedback" rows="auto" />
+                                        <flux:textarea wire:model="way_forward" label="Way Forward" rows="auto" />
                                     </div>
 
                                     <div class="p-4 bg-amber-50/60 rounded-2xl border border-amber-100 space-y-3">
                                         <p class="flex items-center gap-1.5 text-[10px] font-black text-amber-800 uppercase tracking-widest">
                                             <flux:icon.lock-closed variant="micro" /> Confidential & Scheduling
                                         </p>
-                                        <flux:textarea wire:model="private_notes" rows="2"
+                                        <flux:textarea wire:model="private_notes" rows="auto"
                                             placeholder="Internal intelligence (desperation levels, back-haul needs…)" />
                                         <flux:input type="datetime-local" wire:model="reminder_at" label="Follow-up Reminder" />
                                     </div>
@@ -534,53 +534,48 @@ new class extends Component {
                     </div>
 
                     {{-- Right panel — remaining queue + completed log —  2 cols --}}
-                    <div class="xl:col-span-2 space-y-5">
+                    <div class="xl:col-span-2 space-y-5 dark:bg-slate-900 dark:border-slate-700">
 
                         {{-- Switch worksheet panel --}}
-                        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-5">
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Switch Worksheet</p>
-                            <div class="space-y-2">
+                        <div class="bg-white dark:bg-slate-900 dark:border-slate-700 rounded-3xl border border-slate-200 shadow-sm p-5">
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ">Switch Worksheet</p>
+                            <div class="space-y-2 hover:grayscale-0">
                                 @foreach ($activeByType as $typeVal => $headers)
                                     @foreach ($headers as $h)
                                         @php $isCurrent = $h->id === $activeHeader->id; @endphp
-                                        <button wire:click="switchToWorksheet({{ $h->id }})" type="button"
-                                            class="w-full text-left px-3 py-2.5 rounded-xl border transition-all flex items-center gap-3
-                                                {{ $isCurrent
-                                                    ? 'border-emerald-400 bg-emerald-50 cursor-default'
-                                                    : 'border-slate-200 hover:border-emerald-300 hover:bg-slate-50' }}">
-                                            <div class="flex-grow min-w-0">
-                                                <p class="text-xs font-black text-slate-800 truncate">{{ $h->name }}</p>
+                                        <flux:button
+                                            wire:click="switchToWorksheet({{ $h->id }})"
+                                            variant="{{ $isCurrent ? 'filled' : 'ghost' }}"
+                                            size="sm"
+                                            class="w-full justify-start {{ $isCurrent ? 'cursor-default' : '' }}"
+                                            :disabled="$isCurrent">
+                                            <div class="flex-grow min-w-0 text-left">
+                                                <p class="text-xs font-black truncate">{{ $h->name }}</p>
                                                 <div class="flex items-center gap-2 mt-0.5">
                                                     <span class="text-[9px] font-black uppercase {{ WorksheetType::from($typeVal)->badgeClasses() }} px-1.5 py-0.5 rounded border">
                                                         {{ WorksheetType::from($typeVal)->label() }}
                                                     </span>
-                                                    <span class="text-[9px] text-slate-400">
+                                                    <span class="text-[9px] opacity-70">
                                                         {{ $h->completed_entries_count }}/{{ $h->entries_count }} done
                                                     </span>
                                                 </div>
                                             </div>
-                                            @php
-                                                $hPct = $h->entries_count > 0
-                                                    ? round(($h->completed_entries_count / $h->entries_count) * 100)
-                                                    : 0;
-                                            @endphp
-                                            <div class="flex-shrink-0 text-right">
-                                                <span class="text-sm font-black {{ $isCurrent ? 'text-emerald-600' : 'text-slate-400' }}">
-                                                    {{ $hPct }}%
-                                                </span>
-                                            </div>
-                                        </button>
+                                            @php $hPct = $h->entries_count > 0 ? round(($h->completed_entries_count / $h->entries_count) * 100) : 0; @endphp
+                                            <span class="flex-shrink-0 text-sm font-black {{ $isCurrent ? 'text-emerald-600' : 'opacity-60' }}">
+                                                {{ $hPct }}%
+                                            </span>
+                                        </flux:button>
                                     @endforeach
                                 @endforeach
-                                <button wire:click="exitExecution" type="button"
-                                    class="w-full text-center px-3 py-2 rounded-xl border border-dashed border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:border-emerald-300 hover:text-emerald-600 transition-all">
-                                    + Create New Worksheet
-                                </button>
+                                <flux:button wire:click="exitExecution" variant="primary" size="sm" color="lime"
+                                    icon="plus" class="w-full cursor-pointer my-4">
+                                    Create New Worksheet
+                                </flux:button>
                             </div>
                         </div>
 
                         {{-- Remaining queue --}}
-                        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-5">
+                        <div class="bg-white dark:bg-slate-900 dark:border-slate-700 rounded-3xl border border-slate-200 shadow-sm p-5">
                             <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Remaining Queue</p>
                             <div class="space-y-2">
                                 @php
@@ -613,14 +608,14 @@ new class extends Component {
                         </div>
 
                         {{-- Completed log --}}
-                        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-5">
+                        <div class="bg-white dark:bg-slate-900 dark:border-slate-700 rounded-3xl border border-slate-200 shadow-sm p-5">
                             <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Completed Log</p>
 
                             @error('edit_lock')
                                 <div class="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl">{{ $message }}</div>
                             @enderror
 
-                            <div class="space-y-2">
+                            <div class="space-y-2 dark:bg-slate-900 dark:border-slate-700">
                                 @php
                                     $done = \App\Models\WorksheetEntry::where('header_id', $activeHeader->id)
                                         ->whereNotNull('completed_at')
@@ -650,10 +645,8 @@ new class extends Component {
                                                 </div>
                                             </div>
                                             @if ($canEdit && !$isEditing)
-                                                <button wire:click="openEdit({{ $d->id }})" type="button"
-                                                    class="p-1.5 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors flex-shrink-0">
-                                                    <flux:icon.pencil-square variant="micro" />
-                                                </button>
+                                                <flux:button wire:click="openEdit({{ $d->id }})"
+                                                    variant="ghost" size="xs" icon="pencil-square" />
                                             @elseif (!$canEdit)
                                                 <span title="{{ $d->editLockReason() }}" class="p-1.5 text-slate-200 cursor-not-allowed flex-shrink-0">
                                                     <flux:icon.lock-closed variant="micro" />
@@ -663,12 +656,12 @@ new class extends Component {
 
                                         @if ($isEditing)
                                             <div class="px-3 pb-4 pt-1 border-t border-emerald-100 space-y-3">
-                                                <flux:textarea wire:model="edit_activity" label="Action Taken" rows="2" />
+                                                <flux:textarea wire:model="edit_activity" label="Action Taken" rows="auto" />
                                                 <div class="grid grid-cols-2 gap-3">
-                                                    <flux:textarea wire:model="edit_feedback" label="Feedback" rows="2" />
-                                                    <flux:textarea wire:model="edit_way_forward" label="Way Forward" rows="2" />
+                                                    <flux:textarea wire:model="edit_feedback" label="Feedback" rows="auto" />
+                                                    <flux:textarea wire:model="edit_way_forward" label="Way Forward" rows="auto" />
                                                 </div>
-                                                <flux:textarea wire:model="edit_private_notes" label="Private Notes" rows="2" />
+                                                <flux:textarea wire:model="edit_private_notes" label="Private Notes" rows="auto" />
                                                 <flux:input type="datetime-local" wire:model="edit_reminder_at" label="Follow-up" />
                                                 <div class="flex gap-2">
                                                     <flux:button wire:click="saveEdit({{ $d->id }})" variant="primary" size="sm" icon="check">Save</flux:button>
@@ -706,13 +699,13 @@ new class extends Component {
                     <h2 class="text-2xl font-black text-slate-900 mb-2">Worksheet Complete!</h2>
                     <p class="text-slate-500 mb-6">All {{ $totalCount }} partners have been attended to.</p>
                     <div class="flex gap-3 justify-center">
-                        <a href="{{ route('worksheets.show', $activeHeader->id) }}" wire:navigate
-                            class="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-700 transition-colors">
+                        <flux:button href="{{ route('worksheets.show', $activeHeader->id) }}" wire:navigate
+                            variant="primary" icon="eye">
                             View Full Report
-                        </a>
-                        <button wire:click="exitExecution" class="px-6 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition-colors">
+                        </flux:button>
+                        <flux:button wire:click="exitExecution" variant="ghost">
                             Back to Overview
-                        </button>
+                        </flux:button>
                     </div>
                 </div>
             @endif
@@ -739,7 +732,7 @@ new class extends Component {
             </div>
 
             {{-- Tab bar --}}
-            <div class="flex items-center gap-1 p-1 bg-white border border-slate-200 rounded-2xl shadow-sm w-fit flex-wrap">
+            <div class="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 dark:border-slate-700 border border-slate-200 rounded-2xl shadow-sm w-fit flex-wrap dark:bg-slate-900 dark:border-slate-700">
                 @foreach ([
                     ['tab' => 'new',      'label' => 'New Worksheet', 'icon' => 'plus'],
                     ['tab' => 'scouting', 'label' => 'Scouting',      'icon' => 'map'],
@@ -751,17 +744,16 @@ new class extends Component {
                         $hasActive = isset($activeByType[$t['tab']]) && $activeByType[$t['tab']]->isNotEmpty();
                         $isBlocked = in_array($t['tab'], $blockedTypes ?? []);
                     @endphp
-                    <button type="button" wire:click="setTab('{{ $t['tab'] }}')"
-                        class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all relative
-                            {{ $view_tab === $t['tab']
-                                ? 'bg-slate-900 text-white shadow'
-                                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50' }}">
-                        <flux:icon.{{ $t['icon'] }} variant="micro" />
+                    <flux:button type="button" wire:click="setTab('{{ $t['tab'] }}')"
+                        variant="{{ $view_tab === $t['tab'] ? 'primary' : 'ghost' }}"
+                        size="sm"
+                        icon="{{ $t['icon'] }}"
+                        class="relative cursor-pointer">
                         {{ $t['label'] }}
                         @if ($t['tab'] !== 'new' && $hasActive)
                             <span class="ml-1 h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                         @endif
-                    </button>
+                    </flux:button>
                 @endforeach
             </div>
 
@@ -770,7 +762,7 @@ new class extends Component {
                 {{-- ── New worksheet creation form ── --}}
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="lg:col-span-2">
-                        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 space-y-7">
+                        <div class="bg-white rounded-3xl dark:bg-slate-900 dark:border-slate-700  border border-slate-200 shadow-sm p-8 space-y-7">
                             <h2 class="text-xl font-black text-slate-800 tracking-tight">Plan New Worksheet</h2>
 
                             {{-- Step 1: Type --}}
@@ -778,14 +770,14 @@ new class extends Component {
                                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
                                     Step 1 — Choose Type
                                 </p>
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 dark:bg-slate-900 dark:border-slate-700">
                                     @foreach ($worksheetTypes as $wt)
                                         @php $blocked = in_array($wt->value, $blockedTypes); @endphp
                                         <button type="button"
                                             @if(!$blocked) wire:click="$set('worksheet_type', '{{ $wt->value }}')" @endif
-                                            class="relative p-4 rounded-2xl border-2 text-left transition-all
+                                            class="relative p-4 rounded-2xl border-2 text-left cursor-pointer transition-all
                                                 {{ $worksheet_type === $wt->value
-                                                    ? 'border-slate-900 bg-slate-900 text-white shadow-lg'
+                                                    ? 'border-slate-900 bg-lime-900 text-white shadow-lg'
                                                     : ($blocked
                                                         ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'
                                                         : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:shadow') }}">
@@ -828,7 +820,7 @@ new class extends Component {
                                         Step 3 — Build Partner Sequence
                                     </p>
 
-                                    <div class="p-5 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-4"
+                                    <div class="p-5 bg-slate-50 rounded-2xl dark:bg-slate-900 dark:border-slate-700 border border-dashed border-slate-200 space-y-4"
                                         wire:key="partner-form-{{ count($temp_partners) }}">
 
                                         {{-- Row 1: Search + Type + Planned Action --}}
@@ -837,14 +829,17 @@ new class extends Component {
                                             <div class="relative">
                                                 <flux:input wire:model.live="p_name" label="Partner" placeholder="Search contact person…" />
                                                 @if ($p_name && !$p_id && count($available_partners) > 0)
-                                                    <div class="absolute z-30 w-full bg-white border border-slate-200 shadow-2xl rounded-xl mt-1 overflow-hidden">
+                                                    <div class="absolute z-30 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-2xl rounded-xl mt-1 overflow-hidden">
                                                         @foreach ($available_partners as $u)
-                                                            <button type="button"
+                                                            <flux:button type="button"
                                                                 wire:click="selectPartner({{ $u->id }}, '{{ addslashes($u->contact_person) }}', '{{ addslashes($u->contact_phone ?? '') }}', '{{ addslashes($u->whatsapp ?? '') }}')"
-                                                                class="w-full text-left p-3 hover:bg-emerald-50 border-b last:border-0 transition-colors">
-                                                                <p class="text-sm font-bold text-slate-900">{{ $u->contact_person }}</p>
-                                                                <p class="text-[10px] text-slate-400">{{ $u->email }}</p>
-                                                            </button>
+                                                                variant="ghost"
+                                                                class="w-full justify-start rounded-none border-b last:border-0 border-slate-100 dark:border-slate-700">
+                                                                <div class="text-left">
+                                                                    <p class="text-sm font-bold text-slate-900 dark:text-white">{{ $u->contact_person }}</p>
+                                                                    <p class="text-[10px] text-slate-400 dark:text-slate-500">{{ $u->email }}</p>
+                                                                </div>
+                                                            </flux:button>
                                                         @endforeach
                                                     </div>
                                                 @endif
@@ -956,9 +951,11 @@ new class extends Component {
                                         : 0;
                                 @endphp
                                 <a href="{{ route('worksheets.show', $h->id) }}" wire:navigate
-                                    class="block p-4 bg-white border border-slate-200 rounded-2xl hover:border-emerald-400 hover:shadow-md transition-all group">
+                                    class="block p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700
+                                           rounded-2xl hover:border-emerald-400 dark:hover:border-emerald-600
+                                           hover:shadow-md transition-all group cursor-pointer">
                                     <div class="flex justify-between items-start gap-2">
-                                        <p class="font-bold text-slate-800 group-hover:text-emerald-600 transition-colors text-sm truncate">
+                                        <p class="font-bold text-slate-800 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors text-sm truncate">
                                             {{ $h->name }}
                                         </p>
                                         <span class="px-2 py-0.5 text-[9px] font-black uppercase rounded border {{ $h->worksheet_type->badgeClasses() }} flex-shrink-0">
@@ -967,14 +964,14 @@ new class extends Component {
                                     </div>
                                     <div class="mt-3">
                                         <div class="flex justify-between items-center mb-1">
-                                            <span class="text-[10px] text-slate-400 font-bold">{{ $h->completed_entries_count }}/{{ $h->entries_count }} partners</span>
-                                            <span class="text-[10px] font-black {{ $h->is_completed ? 'text-slate-400' : 'text-emerald-600' }}">{{ $hPct }}%</span>
+                                            <span class="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{{ $h->completed_entries_count }}/{{ $h->entries_count }} partners</span>
+                                            <span class="text-[10px] font-black {{ $h->is_completed ? 'text-slate-400 dark:text-slate-500' : 'text-emerald-600 dark:text-emerald-400' }}">{{ $hPct }}%</span>
                                         </div>
-                                        <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                            <div class="h-full rounded-full {{ $h->is_completed ? 'bg-slate-300' : 'bg-emerald-500' }}" style="width: {{ $hPct }}%"></div>
+                                        <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                                            <div class="h-full rounded-full {{ $h->is_completed ? 'bg-slate-300 dark:bg-slate-600' : 'bg-emerald-500 dark:bg-emerald-400' }}" style="width: {{ $hPct }}%"></div>
                                         </div>
                                     </div>
-                                    <p class="text-[10px] text-slate-400 mt-2">{{ $h->created_at->format('d M Y') }} · {{ $h->created_at->diffForHumans() }}</p>
+                                    <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-2">{{ $h->created_at->format('d M Y') }} · {{ $h->created_at->diffForHumans() }}</p>
                                 </a>
                             @empty
                                 <div class="p-8 border-2 border-dashed rounded-2xl text-center text-slate-300">
@@ -994,10 +991,10 @@ new class extends Component {
                             Active {{ $tabType->label() }} Worksheets
                         </h2>
                         @if (!in_array($view_tab, $blockedTypes))
-                            <button wire:click="setTab('new'); $set('worksheet_type', '{{ $view_tab }}')" type="button"
-                                class="flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-700 transition-colors">
-                                <flux:icon.plus variant="micro" /> New {{ $tabType->label() }}
-                            </button>
+                            <flux:button wire:click="setTab('new'); $set('worksheet_type', '{{ $view_tab }}')"
+                                variant="primary" size="sm" icon="plus" class=" cursor-pointer">
+                                New {{ $tabType->label() }}
+                            </flux:button>
                         @endif
                     </div>
 
@@ -1010,7 +1007,7 @@ new class extends Component {
                                         : 0;
                                     $hSeqLocked = $h->sequenceLocked();
                                 @endphp
-                                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+                                <div class="bg-white dark:bg-slate-900 dark:border-slate-700 rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
                                     <div class="flex items-start justify-between gap-3">
                                         <div class="min-w-0">
                                             <h3 class="font-black text-slate-900 text-base truncate">{{ $h->name }}</h3>
@@ -1045,24 +1042,24 @@ new class extends Component {
                                     @endif
 
                                     <div class="flex gap-2">
-                                        <flux:button wire:click="switchToWorksheet({{ $h->id }})" variant="primary" size="sm" icon="play" class="flex-1">
+                                        <flux:button wire:click="switchToWorksheet({{ $h->id }})" variant="primary" size="sm" icon="play" class="flex- cursor-pointer">
                                             Continue
                                         </flux:button>
-                                        <a href="{{ route('worksheets.show', $h->id) }}" wire:navigate
-                                            class="flex items-center gap-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 hover:border-emerald-400 hover:text-emerald-700 transition-all">
-                                            <flux:icon.eye variant="micro" /> View
-                                        </a>
+                                        <flux:button href="{{ route('worksheets.show', $h->id) }}" wire:navigate
+                                            variant="ghost" size="sm" icon="eye" class="coursor-pointer">
+                                            View
+                                        </flux:button>
                                     </div>
                                 </div>
                             @endforeach
                         </div>
                     @else
-                        <div class="py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200 text-center">
+                        <div class="py-20 bg-white rounded-3xl dark:bg-slate-900 dark:border-slate-700 border-2 border-dashed border-slate-200 text-center">
                             <p class="text-slate-400 font-bold">No active {{ $tabType->label() }} worksheets</p>
-                            <button wire:click="setTab('new'); $set('worksheet_type', '{{ $view_tab }}')" type="button"
-                                class="mt-3 px-5 py-2 bg-slate-900 text-white text-xs font-black uppercase rounded-xl hover:bg-slate-700 transition-colors">
+                            <flux:button wire:click="setTab('new'); $set('worksheet_type', '{{ $view_tab }}')"
+                                variant="primary" size="sm" icon="plus" class="mt-4 cursor-pointer">
                                 Create One
-                            </button>
+                            </flux:button>
                         </div>
                     @endif
                 </div>

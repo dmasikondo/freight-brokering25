@@ -26,7 +26,7 @@ class TenderOfferPolicy
 
         // User must not already have an active offer
         return !TenderOffer::forTenderable($tenderable)
-            ->where('carrier_id', $user->id)
+            ->where('bidder_id', $user->id)
             ->active()
             ->exists();
     }
@@ -36,7 +36,7 @@ class TenderOfferPolicy
      */
     public function update(User $user, TenderOffer $offer): bool
     {
-        if ($offer->carrier_id !== $user->id) return false;
+        if ($offer->bidder_id !== $user->id) return false;
         if (!$offer->isActive()) return false;
 
         // Tenderable must still be published
@@ -44,11 +44,19 @@ class TenderOfferPolicy
     }
 
     /**
+     * can the back end staff manage offer issues
+     */
+    public function manage(User $user)
+    {
+        return $user->hasAnyRole(['superadmin','admin','logistics operations executive']);
+    }
+    
+    /**
      * Can the user withdraw their own offer?
      */
     public function withdraw(User $user, TenderOffer $offer): bool
     {
-        return $offer->carrier_id === $user->id && $offer->isActive();
+        return $offer->bidder_id === $user->id && $offer->isActive();
     }
 
     /**
@@ -64,13 +72,13 @@ class TenderOfferPolicy
         }
 
         if ($tenderable instanceof Freight) {
-            return $tenderable->shipper_id === $user->id
+            return $tenderable->bidder_id === $user->id
                 || $tenderable->creator_id === $user->id
                 || $user->hasAnyRole(['marketing logistics associate', 'operations logistics associate']);
         }
 
         if ($tenderable instanceof Lane) {
-            return $tenderable->carrier_id === $user->id
+            return $tenderable->bidder_id === $user->id
                 || $tenderable->creator_id === $user->id;
         }
 
