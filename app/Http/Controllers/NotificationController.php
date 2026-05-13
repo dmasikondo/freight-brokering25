@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Http\RedirectResponse;
 
 class NotificationController extends Controller
 {
@@ -32,27 +34,53 @@ class NotificationController extends Controller
         return back()->with('status', 'All notifications marked as read.');
     }
 
-    public function readAndView($id)
-    {
-        $notification = auth()->user()->notifications()->findOrFail($id);
+    // public function readAndView($id)
+    // {
+    //     $notification = auth()->user()->notifications()->findOrFail($id);
 
-        // 1. Mark as read
-        $notification->markAsRead();
+    //     // 1. Mark as read
+    //     $notification->markAsRead();
 
-        $data = $notification->data;
+    //     $data = $notification->data;
 
-        // 2. Handle Worksheet Notifications (Priority)
-        if (isset($data['link'])) {
-            return redirect($data['link']);
-        }
+    //     // 2. Handle Worksheet Notifications (Priority)
+    //     if (isset($data['link'])) {
+    //         return redirect($data['link']);
+    //     }
 
-        // 3. Handle Registration Notifications
-        $clientId = $data['client_id'] ?? null;
+    //     // 3. Handle Registration Notifications
+    //     $clientId = $data['client_id'] ?? null;
 
-        if ($clientId) {
-            return redirect()->route('users.show', $clientId);
-        }
+    //     if ($clientId) {
+    //         return redirect()->route('users.show', $clientId);
+    //     }
 
-        return redirect()->route('notifications.index');
+    //     return redirect()->route('notifications.index');
+    // }
+
+public function readAndView(DatabaseNotification $notification): RedirectResponse
+{
+    $notification = auth()->user()->notifications()->findOrFail($notification->id);
+
+    $notification->markAsRead();
+
+    $data = $notification->data;
+
+    // Tender offer notifications — url already resolved to freights.show or lanes.show
+    if (isset($data['url'])) {
+        return redirect($data['url']);
     }
+
+    // Worksheet notifications
+    if (isset($data['link'])) {
+        return redirect($data['link']);
+    }
+
+    // Registration notifications
+    if (isset($data['client_id'])) {
+        return redirect()->route('users.show', $data['client_id']);
+    }
+
+    return redirect()->route('notifications.index');
+}   
 }

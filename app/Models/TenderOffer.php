@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\TenderOfferStatus;
+use App\Notifications\TenderOfferNotification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,7 +44,6 @@ class TenderOffer extends Model
             $offer->uuid = (string) Str::uuid();
         });
 
-        // Recalculate rankings after any offer is saved
         static::saved(function (TenderOffer $offer) {
             $offer->recalculateRankings();
         });
@@ -53,9 +53,9 @@ class TenderOffer extends Model
         });
     }
 
-    // -----------------------------------------------
+    // ---------------------------------------------------------------
     // Relationships
-    // -----------------------------------------------
+    // ---------------------------------------------------------------
 
     public function tenderable(): MorphTo
     {
@@ -72,15 +72,10 @@ class TenderOffer extends Model
         return $this->belongsTo(User::class, 'awarded_by');
     }
 
-    // -----------------------------------------------
+    // ---------------------------------------------------------------
     // Ranking
-    // -----------------------------------------------
+    // ---------------------------------------------------------------
 
-    /**
-     * Recalculate ranked_position for all active offers on this tender.
-     * Freight (full_budget / rate_of_carriage) → lowest amount wins (asc).
-     * Lane → highest amount wins (desc).
-     */
     public function recalculateRankings(): void
     {
         $tenderable = $this->tenderable;
@@ -104,9 +99,40 @@ class TenderOffer extends Model
         }
     }
 
-    // -----------------------------------------------
+    // ---------------------------------------------------------------
+    // Notification helpers
+    // ---------------------------------------------------------------
+
+    /**
+     * Notify staff (admin, superadmin, logistics operations executive)
+     * when a bidder acts on an offer.
+     *
+     * @param string $event  offer_submitted | offer_revised | offer_withdrawn
+     */
+    public function notifyStaff(string $event): void
+    {
+        $staffRoles = ['superadmin', 'admin', 'logistics operations executive'];
+
+        User::whereHas('roles', fn($q) => $q->whereIn('name', $staffRoles))
+            ->get()
+            ->each(fn(User $staff) =>
+                $staff->notify(new TenderOfferNotification($this, $event))
+            );
+    }
+
+    /**
+     * Notify the bidder when staff acts on their offer.
+     *
+     * @param string $event  offer_shortlisted | offer_rejected | offer_awarded
+     */
+    public function notifyBidder(string $event): void
+    {
+        $this->bidder?->notify(new TenderOfferNotification($this, $event));
+    }
+
+    // ---------------------------------------------------------------
     // Scopes
-    // -----------------------------------------------
+    // ---------------------------------------------------------------
 
     public function scopeActive($query)
     {
@@ -123,9 +149,9 @@ class TenderOffer extends Model
             ->where('tenderable_id', $tenderable->id);
     }
 
-    // -----------------------------------------------
+    // ---------------------------------------------------------------
     // Helpers
-    // -----------------------------------------------
+    // ---------------------------------------------------------------
 
     public function isAwarded(): bool
     {

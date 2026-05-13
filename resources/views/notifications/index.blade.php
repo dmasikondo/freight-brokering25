@@ -22,61 +22,117 @@
             @php
                 $isVerification = $notification->type === 'App\Notifications\AccountVerifiedNotification';
                 $isRegistration = $notification->type === 'App\Notifications\NewClientRegistered';
-                // NEW: Identify Worksheet Sharing
                 $isWorksheet = $notification->type === 'App\Notifications\WorksheetSharedNotification';
+                $isTenderOffer = $notification->type === 'App\Notifications\TenderOfferNotification';
                 $data = $notification->data;
+                $unread = $notification->unread();
+
+                // ── Tender offer event → visual identity ──────────────────
+                // Staff-facing events (bidder acted)
+                $tenderEvent = $data['event'] ?? null;
+                $isTenderStaff =
+                    $isTenderOffer && in_array($tenderEvent, ['offer_submitted', 'offer_revised', 'offer_withdrawn']);
+                $isTenderBidder =
+                    $isTenderOffer && in_array($tenderEvent, ['offer_shortlisted', 'offer_rejected', 'offer_awarded']);
+
+                [$tenderColor, $tenderIcon] = match ($tenderEvent) {
+                    'offer_submitted' => ['lime', 'banknotes'],
+                    'offer_revised' => ['lime', 'pencil-square'],
+                    'offer_withdrawn' => ['zinc', 'x-circle'],
+                    'offer_shortlisted' => ['blue', 'sparkles'],
+                    'offer_rejected' => ['red', 'x-circle'],
+                    'offer_awarded' => ['green', 'trophy'],
+                    'award_revoked' => ['red', 'arrow-uturn-left'],
+                    default => ['zinc', 'banknotes'],
+                };
             @endphp
 
             <div @class([
                 'relative flex items-center gap-4 p-4 rounded-xl border transition-all',
-                // Lime theme for Worksheet Sharing
+            
+                // ── Tender offer — staff events ──
                 'bg-lime-50/40 dark:bg-lime-900/10 border-lime-200 dark:border-lime-800 border-l-4 border-l-lime-500 shadow-sm' =>
-                    $notification->unread() && $isWorksheet,
+                    $unread && $isTenderStaff,
+            
+                // ── Tender offer — bidder events ──
                 'bg-blue-50/40 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 border-l-4 border-l-blue-500 shadow-sm' =>
-                    $notification->unread() && $isRegistration,
+                    $unread && $isTenderBidder && $tenderEvent === 'offer_shortlisted',
+                'bg-red-50/40 dark:bg-red-900/10 border-red-200 dark:border-red-800 border-l-4 border-l-red-500 shadow-sm' =>
+                    $unread && $isTenderBidder && $tenderEvent === 'offer_rejected',
+                'bg-green-50/40 dark:bg-green-900/10 border-green-200 dark:border-green-800 border-l-4 border-l-green-500 shadow-sm' =>
+                    $unread && $isTenderBidder && $tenderEvent === 'offer_awarded',
+                'bg-red-50/40 dark:bg-red-900/10 border-red-200 dark:border-red-800 border-l-4 border-l-red-500 shadow-sm' =>
+                    $unread && $isTenderOffer && $tenderEvent === 'award_revoked',
+            
+                // ── Existing types ──
+                'bg-lime-50/40 dark:bg-lime-900/10 border-lime-200 dark:border-lime-800 border-l-4 border-l-lime-500 shadow-sm' =>
+                    $unread && $isWorksheet,
+                'bg-blue-50/40 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 border-l-4 border-l-blue-500 shadow-sm' =>
+                    $unread && $isRegistration,
                 'bg-emerald-50/40 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 border-l-4 border-l-emerald-500 shadow-sm' =>
-                    $notification->unread() && $isVerification,
+                    $unread && $isVerification,
+            
                 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 opacity-80' => $notification->read(),
             ])>
 
-                {{-- Status Icon --}}
+                {{-- ── Status icon ────────────────────────────────────────── --}}
                 <div @class([
                     'flex items-center justify-center w-12 h-12 rounded-xl shrink-0',
-                    'bg-lime-100 text-lime-600' => $isWorksheet,
+                
+                    // Tender offer icon backgrounds
+                    'bg-lime-100 dark:bg-lime-900/40 text-lime-600' =>
+                        $isTenderOffer && $tenderColor === 'lime',
+                    'bg-blue-100 dark:bg-blue-900/40 text-blue-600' =>
+                        $isTenderOffer && $tenderColor === 'blue',
+                    'bg-red-100 dark:bg-red-900/40 text-red-600' =>
+                        $isTenderOffer && $tenderColor === 'red',
+                    'bg-green-100 dark:bg-green-900/40 text-green-600' =>
+                        $isTenderOffer && $tenderColor === 'green',
+                    'bg-zinc-100 dark:bg-zinc-800 text-zinc-500' =>
+                        $isTenderOffer && $tenderColor === 'zinc',
+                
+                    // Existing type icon backgrounds
+                    'bg-lime-100 text-lime-600' => $isWorksheet && !$isTenderOffer,
                     'bg-blue-100 text-blue-600' => $isRegistration,
                     'bg-emerald-100 text-emerald-600' => $isVerification,
-                    'bg-zinc-100 text-zinc-500' => $notification->read(),
+                    'bg-zinc-100 text-zinc-500' => $notification->read() && !$isTenderOffer,
                 ])>
-                    @if ($isVerification)
+                    @if ($isTenderOffer)
+                        <flux:icon :name="$tenderIcon" variant="mini" class="w-6 h-6" />
+                    @elseif ($isVerification)
                         <flux:icon.check-badge variant="mini" class="w-6 h-6" />
-                    @elseif($isWorksheet)
+                    @elseif ($isWorksheet)
                         <flux:icon.users variant="mini" class="w-6 h-6" />
                     @else
                         <flux:icon.user-plus variant="mini" class="w-6 h-6" />
                     @endif
                 </div>
 
-                {{-- Content --}}
+                {{-- ── Content ─────────────────────────────────────────────── --}}
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between mb-1">
                         <flux:text font="semibold" class="text-zinc-900 dark:text-white leading-none">
-                            @if ($isVerification)
+                            @if ($isTenderOffer)
+                                {{ $data['title'] }}
+                            @elseif ($isVerification)
                                 {{ $data['title'] ?? __('Account Verified') }}
-                            @elseif($isWorksheet)
+                            @elseif ($isWorksheet)
                                 {{ $data['action'] === 'granted' ? __('Worksheet Shared') : __('Access Withdrawn') }}
                             @else
                                 {{ __('New :role Registered', ['role' => ucfirst($data['client_role'] ?? 'Client')]) }}
                             @endif
                         </flux:text>
-                        <flux:text size="xs" class="text-zinc-400">
+                        <flux:text size="xs" class="text-zinc-400 shrink-0 ml-4">
                             {{ $notification->created_at->diffForHumans() }}
                         </flux:text>
                     </div>
 
                     <flux:text size="sm" class="text-zinc-600 dark:text-zinc-400">
-                        @if ($isVerification)
+                        @if ($isTenderOffer)
+                            {{ $data['body'] }}
+                        @elseif ($isVerification)
                             {{ $data['message'] }}
-                        @elseif($isWorksheet)
+                        @elseif ($isWorksheet)
                             {{ $data['message'] }}
                         @else
                             {{ __('Organization: :name has joined the network.', ['name' => $data['client_name'] ?? 'Unknown']) }}
@@ -84,9 +140,9 @@
                     </flux:text>
                 </div>
 
-                {{-- Actions --}}
-                <div class="flex items-center gap-2">
-                    @if ($notification->unread())
+                {{-- ── Actions ──────────────────────────────────────────────── --}}
+                <div class="flex items-center gap-2 shrink-0">
+                    @if ($unread)
                         <form action="{{ route('notifications.markAsRead', $notification->id) }}" method="POST">
                             @csrf
                             <flux:button size="xs" type="submit" variant="ghost" icon="check" />
@@ -94,23 +150,26 @@
                     @endif
 
                     @php
-                        // Determine the redirect URL
+                        $isWithdrawn = $isWorksheet && ($data['action'] ?? '') === 'withdrawn';
+
                         $viewUrl = match (true) {
-                            $isWorksheet || $isRegistration => route('notifications.readAndView', $notification->id),
+                            $isTenderOffer || $isWorksheet || $isRegistration => route(
+                                'notifications.readAndView',
+                                $notification->id,
+                            ),
                             default => $data['action_url'] ?? '#',
                         };
-
-                        $isWithdrawn = $isWorksheet && ($data['action'] ?? '') === 'withdrawn';
                     @endphp
 
-                    {{-- Only show 'Open' button if access wasn't withdrawn --}}
                     @if (!$isWithdrawn)
-                        <flux:button size="sm" variant="filled" :color="$isWorksheet ? 'lime' : 'blue'"
+                        <flux:button size="sm" variant="filled"
+                            :color="$isTenderOffer ? $tenderColor : ($isWorksheet ? 'lime' : 'blue')"
                             :href="$viewUrl" wire:navigate>
                             {{ __('Open') }}
                         </flux:button>
                     @endif
                 </div>
+
             </div>
         @empty
             <div
