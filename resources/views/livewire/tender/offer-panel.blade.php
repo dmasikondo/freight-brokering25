@@ -9,10 +9,12 @@ use App\Enums\TenderOfferStatus;
 use App\Enums\PricingType;
 use App\ValueObjects\TenderConfig;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 new class extends Component {
     public int $tenderableId;
     public string $tenderableType;
+    public string|int|null $freightId = null;
 
     // Form fields
     public string $amount = '';
@@ -34,15 +36,11 @@ new class extends Component {
         $this->tenderableId = $tenderableId;
         $this->tenderableType = $tenderableType;
 
-$this->amount = match ($tenderableType) {
-    Freight::class => (string) ((float) (
-        DB::table('freights')->where('id', $tenderableId)->value('carriage_rate') ?? 0
-    )),
-    Lane::class => (string) ((float) (
-        DB::table('lanes')->where('id', $tenderableId)->value('rate') ?? 0
-    )),
-    default => '0',
-};
+        $this->amount = match ($tenderableType) {
+            Freight::class => (string) ((float) (DB::table('freights')->where('id', $tenderableId)->value('carriage_rate') ?? 0)),
+            Lane::class => (string) ((float) (DB::table('lanes')->where('id', $tenderableId)->value('rate') ?? 0)),
+            default => '0',
+        };
     }
 
     // ---------------------------------------------------------------
@@ -92,15 +90,11 @@ $this->amount = match ($tenderableType) {
         return $this->getTenderConfig();
     }
 
-#[Computed(persist: false)]
-public function referenceAmount(): float
-{
-    return (float) (
-        DB::table($this->tenderableTable())
-            ->where('id', $this->tenderableId)
-            ->value($this->rateColumn()) ?? 0
-    );
-}  
+    #[Computed(persist: false)]
+    public function referenceAmount(): float
+    {
+        return (float) (DB::table($this->tenderableTable())->where('id', $this->tenderableId)->value($this->rateColumn()) ?? 0);
+    }
 
     #[Computed(persist: false)]
     public function floorAmount(): float
@@ -128,6 +122,22 @@ public function referenceAmount(): float
     public function isOpen(): bool
     {
         return DB::table($this->tenderableTable())->where('id', $this->tenderableId)->value('status') === 'published';
+    }
+
+    #[Computed(persist: false)]
+    public function myPublishedFreights()
+    {
+        if (!auth()->check() || $this->tenderableType !== Lane::class) {
+            return collect();
+        }
+
+        return Freight::query()
+            ->where(function ($q) {
+                $q->where('shipper_id', auth()->id())->orWhere('creator_id', auth()->id());
+            })
+            ->where('status', 'published')
+            ->orderBy('created_at', 'desc')
+            ->get(['id', 'uuid', 'name', 'cityfrom', 'cityto', 'countryfrom', 'countryto']);
     }
 
     /** Delegates to TenderOfferPolicy::create */
@@ -160,7 +170,7 @@ public function referenceAmount(): float
     public function activeOffers()
     {
         return TenderOffer::query()
-            ->with('bidder')
+            ->with('bidder', 'freight')
             ->where('tenderable_type', $this->tenderableType)
             ->where('tenderable_id', $this->tenderableId)
             ->whereIn('status', [TenderOfferStatus::PENDING, TenderOfferStatus::SHORTLISTED])
@@ -196,6 +206,7 @@ public function referenceAmount(): float
         }
 
         return TenderOffer::query()
+            ->with('freight')
             ->where('tenderable_type', $this->tenderableType)
             ->where('tenderable_id', $this->tenderableId)
             ->where('bidder_id', auth()->id())
@@ -231,18 +242,33 @@ public function referenceAmount(): float
         $this->authorize('create', [TenderOffer::class, $this->tenderable]);
 
         $config = $this->getTenderConfig();
-        $floor = $this->floorAmount;
+        $floor = $this->referenceAmount;
         $unit = $this->amountUnit;
+        if ($this->tenderableType === Lane::class) {
+            $this->freightId = (int) $this->freightId;
+        }
 
         $rules = [
-           // 'amount' => ['required', 'numeric', 'min:' . $floor],
-    'amount' => match ($this->tenderableType) {
-        Freight::class => ['required', 'numeric', 'min:0.01', 'max:' . $this->referenceAmount],
-        Lane::class    => ['required', 'numeric', 'min:' . $this->referenceAmount],
-        default        => ['required', 'numeric', 'min:0.01'],
-    },           
+            'amount' => match ($this->tenderableType) {
+                Freight::class => ['required', 'numeric', 'min:0.01', 'max:' . $floor],
+                Lane::class => ['required', 'numeric', 'min:' . $floor],
+                default => ['required', 'numeric', 'min:0.01'],
+            },
             'notes' => ['nullable', 'string', 'max:500'],
         ];
+
+        // Lane bids must reference one of the shipper's own published freights
+        if ($this->tenderableType === Lane::class) {
+            $rules['freightId'] = [
+                'required',
+                'integer',
+                Rule::exists('freights', 'id')->where(function ($query) {
+                    $query->where('status', 'published')->where(function ($q) {
+                        $q->where('shipper_id', auth()->id())->orWhere('creator_id', auth()->id());
+                    });
+                }),
+            ];
+        }
 
         if ($config->requiresPickupDate) {
             $rules['proposedPickup'] = ['required', 'date', 'after_or_equal:today'];
@@ -250,15 +276,17 @@ public function referenceAmount(): float
         }
 
         $this->validate($rules, [
-          //  'amount.min' => "Your offer must be at least {$unit}" . number_format($floor, 2) . '.',
-          'amount.max' => "Your offer must not exceed {$unit}" . number_format($this->referenceAmount, 2) . '.',
-    'amount.min' => "Your offer must be at least {$unit}" . number_format($this->referenceAmount, 2) . '.',
+            'amount.max' => "Your offer must not exceed {$unit}" . number_format($floor, 2) . '.',
+            'amount.min' => "Your offer must be at least {$unit}" . number_format($floor, 2) . '.',
+            'freightId.required' => 'Please select which of your freights this bid is for.',
+            'freightId.exists' => 'The selected freight is not valid or is no longer published.',
         ]);
 
         $offer = TenderOffer::create([
             'tenderable_type' => $this->tenderableType,
             'tenderable_id' => $this->tenderableId,
             'bidder_id' => auth()->id(),
+            'freight_id' => $this->tenderableType === Lane::class ? $this->freightId : null,
             'amount' => $this->amount,
             'proposed_pickup_date' => $this->proposedPickup ?: null,
             'proposed_delivery_date' => $this->proposedDelivery ?: null,
@@ -268,8 +296,8 @@ public function referenceAmount(): float
 
         $offer->notifyStaff('offer_submitted');
 
-        $this->reset(['proposedPickup', 'proposedDelivery', 'notes']);
-        $this->amount = (string) $this->floorAmount;
+        $this->reset(['proposedPickup', 'proposedDelivery', 'notes', 'freightId']);
+        $this->amount = (string) $this->referenceAmount;
         session()->flash('offer_success', 'Your offer has been submitted successfully.');
     }
 
@@ -293,22 +321,20 @@ public function referenceAmount(): float
 
         $this->authorize('update', $offer);
 
-$this->validate([
-    'amount' => [
-        'required', 'numeric', 'min:0.01',
-        match ($this->tenderableType) {
-            // Freight: revised offer must be LOWER than current
-            Freight::class => fn($attr, $val, $fail) => (float) $val >= $currentAmount
-                ? $fail("Revisions must be lower than your current offer of {$unit}" . number_format($currentAmount, 2) . '.')
-                : null,
-            // Lane: revised offer must be HIGHER than current
-            Lane::class => fn($attr, $val, $fail) => (float) $val <= $currentAmount
-                ? $fail("Revisions must be higher than your current offer of {$unit}" . number_format($currentAmount, 2) . '.')
-                : null,
-            default => fn() => null,
-        },
-    ],
-]);
+        $this->validate([
+            'amount' => [
+                'required',
+                'numeric',
+                'min:0.01',
+                match ($this->tenderableType) {
+                    // Freight: revised offer must be LOWER than current
+                    Freight::class => fn($attr, $val, $fail) => (float) $val >= $currentAmount ? $fail("Revisions must be lower than your current offer of {$unit}" . number_format($currentAmount, 2) . '.') : null,
+                    // Lane: revised offer must be HIGHER than current
+                    Lane::class => fn($attr, $val, $fail) => (float) $val <= $currentAmount ? $fail("Revisions must be higher than your current offer of {$unit}" . number_format($currentAmount, 2) . '.') : null,
+                    default => fn() => null,
+                },
+            ],
+        ]);
 
         $offer->update([
             'amount' => $this->amount,
@@ -468,34 +494,53 @@ $this->validate([
                     Minimum offer: <strong>{{ $this->amountUnit }} {{ number_format($this->floorAmount, 2) }}</strong>
                 </flux:text> --}}
                 <flux:text size="sm" class="mb-6 text-zinc-500">
-    @if($this->tenderableType === \App\Models\Freight::class)
-        Maximum offer: <strong>{{ $this->amountUnit }}{{ number_format($this->floorAmount, 2) }}</strong>
-        <span class="block text-xs mt-0.5 text-zinc-400">Submit the lowest rate you can offer — the shipper favours the lowest bid.</span>
-    @else
-        Minimum offer: <strong>{{ $this->amountUnit }}{{ number_format($this->floorAmount, 2) }}</strong>
-        <span class="block text-xs mt-0.5 text-zinc-400">Submit the highest rate you can offer — the carrier favours the highest bid.</span>
-    @endif
-</flux:text>
+                    @if ($this->tenderableType === \App\Models\Freight::class)
+                        Maximum offer: <strong>{{ $this->amountUnit }}{{ number_format($this->floorAmount, 2) }}</strong>
+                        <span class="block text-xs mt-0.5 text-zinc-400">Submit the lowest rate you can offer — the shipper
+                            favours the lowest bid.</span>
+                    @else
+                        Minimum offer: <strong>{{ $this->amountUnit }}{{ number_format($this->floorAmount, 2) }}</strong>
+                        <span class="block text-xs mt-0.5 text-zinc-400">Submit the highest rate you can offer — the carrier
+                            favours the highest bid.</span>
+                    @endif
+                </flux:text>
 
                 <div class="space-y-4">
+                    @if ($this->tenderableType === \App\Models\Lane::class)
+                        <div>
+                            @if ($this->myPublishedFreights->isEmpty())
+                                <div
+                                    class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-sm text-amber-800 dark:text-amber-300">
+                                    <flux:icon name="exclamation-triangle" variant="mini" class="size-4 inline mr-1" />
+                                    You have no published freights to bid with. Please publish a freight listing first.
+                                </div>
+                            @else
+                                <flux:select label="Which of your freights is this bid for?" wire:model="freightId"
+                                    placeholder="Select a freight...">
+                                    @foreach ($this->myPublishedFreights as $freight)
+                                        <flux:select.option value="">— Select a freight —</flux:select.option>
+                                        <flux:select.option :value="$freight->id">
+                                            {{ $freight->name }}
+                                            — {{ $freight->cityfrom }}, {{ $freight->countryfrom }}
+                                            → {{ $freight->cityto }}, {{ $freight->countryto }}
+                                        </flux:select.option>
+                                    @endforeach
+                                </flux:select>
+                            @endif
+                        </div>
+                    @endif
                     <div>
-                        {{-- <flux:input type="number" step="0.01" label="Your Offer ({{ $this->amountUnit }} )"
-                            wire:model="amount" :min="$this->floorAmount" />
-                        <flux:error name="amount" /> --}}
-                        <flux:input
-    type="number" step="0.01"
-    label="Your Offer ({{ $this->amountUnit }})"
-    wire:model="amount"
-    :min="$this->tenderableType === \App\Models\Lane::class ? $this->floorAmount : 0.01"
-    :max="$this->tenderableType === \App\Models\Freight::class ? $this->floorAmount : null" />
-    
+                        <flux:input type="number" step="0.01" label="Your Offer ({{ $this->amountUnit }})"
+                            wire:model="amount"
+                            :min="$this->tenderableType === \App\Models\Lane::class ? $this->floorAmount : 0.01"
+                            :max="$this->tenderableType === \App\Models\Freight::class ? $this->floorAmount : null" />
+
                     </div>
 
                     @if ($this->config->requiresPickupDate)
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <flux:input type="date" label="Proposed Pickup Date" wire:model="proposedPickup" />
-                                <flux:error name="proposedPickup" />
                             </div>
                             <flux:input type="date" label="Proposed Delivery Date (optional)"
                                 wire:model="proposedDelivery" />
@@ -530,10 +575,11 @@ $this->validate([
                         <div>
                             <flux:input type="number" step="0.01"
                                 label="{{ $this->tenderableType === \App\Models\Freight::class
-    ? 'Revised Amount — must be lower than ' . $this->amountUnit . number_format((float) $mine->amount, 2)
-    : 'Revised Amount — must be higher than ' . $this->amountUnit . number_format((float) $mine->amount, 2) }}"
-                                wire:model="amount"  :max="$this->tenderableType === \App\Models\Freight::class ? $mine->amount : null"
-    :min="$this->tenderableType === \App\Models\Lane::class ? $mine->amount : 0.01" /> />
+                                    ? 'Revised Amount — must be lower than ' . $this->amountUnit . number_format((float) $mine->amount, 2)
+                                    : 'Revised Amount — must be higher than ' . $this->amountUnit . number_format((float) $mine->amount, 2) }}"
+                                wire:model="amount"
+                                :max="$this->tenderableType === \App\Models\Freight::class ? $mine->amount : null"
+                                :min="$this->tenderableType === \App\Models\Lane::class ? $mine->amount : 0.01" />
                             <flux:error name="amount" />
                         </div>
 
@@ -562,6 +608,21 @@ $this->validate([
                                 {{ $this->amountUnit }} {{ number_format((float) $mine->amount, 2) }}
                             </span>
                         </div>
+                        @if ($mine->freight_id && $this->tenderableType === \App\Models\Lane::class)
+                            <div class="col-span-2 md:col-span-4">
+                                <span class="text-[10px] uppercase font-bold text-zinc-400 block">Freight</span>
+                                <a href="{{ route('freights.show', $mine->freight->uuid) }}"
+                                    class="font-medium text-sm text-zinc-900 dark:text-white hover:text-lime-600 transition-colors">
+                                    {{ $mine->freight->name ?? $mine->freight->uuid }}
+                                    @if ($mine->freight->name)
+                                        <span class="text-zinc-400 font-normal">
+                                            — {{ $mine->freight->cityfrom }}, {{ $mine->freight->countryfrom }}
+                                            → {{ $mine->freight->cityto }}, {{ $mine->freight->countryto }}
+                                        </span>
+                                    @endif
+                                </a>
+                            </div>
+                        @endif
                         @if ($mine->proposed_pickup_date)
                             <div>
                                 <span class="text-[10px] uppercase font-bold text-zinc-400 block">Pickup</span>
@@ -754,6 +815,16 @@ $this->validate([
                             @if ($offer->notes)
                                 <p class="text-[11px] italic text-zinc-400 mt-0.5 truncate">"{{ $offer->notes }}"</p>
                             @endif
+
+                            @if ($offer->freight_id)
+                                <div class="mt-1 text-[11px] text-zinc-400">
+                                    Freight:
+                                    <a href="{{ route('freights.show', $offer->freight->uuid) }}"
+                                        class="underline hover:text-zinc-600 transition-colors">
+                                        {{ $offer->freight->name ?? $offer->freight->uuid }}
+                                    </a>
+                                </div>
+                            @endif
                         </div>
 
                         {{-- Amount --}}
@@ -821,7 +892,14 @@ $this->validate([
                         </p>
                         <p class="text-xs text-green-600 dark:text-green-500 mt-0.5">
                             Awarded {{ $awarded->awarded_at?->diffForHumans() }}
-                            by {{ $awarded->awardedBy?->contact_person ?? 'System' }}
+                            by @if ($awarded->awardedBy)
+                                <a href="{{ route('users.show', $awarded->awardedBy->slug) }}"
+                                    class="hover:text-green-700 dark:hover:text-green-300 underline transition-colors">
+                                    {{ $awarded->awardedBy->contact_person }}
+                                </a>
+                            @else
+                                System
+                            @endif
                         </p>
                     </div>
                 </div>
@@ -864,7 +942,11 @@ $this->validate([
                                 </flux:badge>
                                 @if ($offer->isAwarded() && $offer->awardedBy)
                                     <span class="text-[10px] text-zinc-400">
-                                        by {{ $offer->awardedBy->contact_person }}
+                                        by
+                                        <a href="{{ route('users.show', $offer->awardedBy->slug) }}"
+                                            class="hover:text-zinc-600 dark:hover:text-zinc-300 underline transition-colors">
+                                            {{ $offer->awardedBy->contact_person }}
+                                        </a>
                                         · {{ $offer->awarded_at?->format('d M Y') }}
                                     </span>
                                 @endif

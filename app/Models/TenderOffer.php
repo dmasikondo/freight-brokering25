@@ -19,6 +19,7 @@ class TenderOffer extends Model
         'tenderable_type',
         'tenderable_id',
         'bidder_id',
+        'freight_id',
         'amount',
         'proposed_pickup_date',
         'proposed_delivery_date',
@@ -72,6 +73,11 @@ class TenderOffer extends Model
         return $this->belongsTo(User::class, 'awarded_by');
     }
 
+    public function freight(): BelongsTo
+    {
+        return $this->belongsTo(Freight::class);
+    }
+
     // ---------------------------------------------------------------
     // Ranking
     // ---------------------------------------------------------------
@@ -93,7 +99,8 @@ class TenderOffer extends Model
             ->get();
 
         foreach ($offers as $index => $offer) {
-            self::withoutEvents(fn() =>
+            self::withoutEvents(
+                fn() =>
                 $offer->updateQuietly(['ranked_position' => $index + 1])
             );
         }
@@ -115,7 +122,8 @@ class TenderOffer extends Model
 
         User::whereHas('roles', fn($q) => $q->whereIn('name', $staffRoles))
             ->get()
-            ->each(fn(User $staff) =>
+            ->each(
+                fn(User $staff) =>
                 $staff->notify(new TenderOfferNotification($this, $event))
             );
     }

@@ -6,6 +6,7 @@ use App\Enums\LaneStatus;
 use App\Enums\VehiclePositionStatus;
 use App\Models\Lane;
 use App\Models\User;
+use App\Models\TenderOffer;
 use App\Services\LaneService;
 use Illuminate\Auth\Access\Response;
 
@@ -24,13 +25,21 @@ class LanePolicy
      */
     public function view(User $user, Lane $lane): bool
     {
-        // 1. If the lane is Published, any authenticated user can view it
+        // 1. Published — any authenticated user can view
         if ($lane->status === LaneStatus::PUBLISHED) {
             return true;
         }
 
-        // 2. Otherwise, only those who have "Update" permissions can view it
-        // This includes Staff in that territory OR the Carrier who owns the pending lane
+        // 2. User has an offer on this lane (any status) — they retain view access
+        if (TenderOffer::where('tenderable_type', Lane::class)
+            ->where('tenderable_id', $lane->id)
+            ->where('bidder_id', $user->id)
+            ->exists()
+        ) {
+            return true;
+        }
+
+        // 3. Otherwise only those with update permission can view
         return $this->update($user, $lane);
     }
 
@@ -107,8 +116,8 @@ class LanePolicy
             'superadmin',
             'logistics operations executive',
             'operations logistics associate',
-            'procurement logistics associate',         
-            
+            'procurement logistics associate',
+
         ];
 
         if (!$user->hasAnyRole($managementRoles)) {

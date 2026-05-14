@@ -66,10 +66,20 @@ class TenderOfferPolicy
 
         if ($tenderable->status->value !== 'published') return false;
 
-        // Prevent the listing owner from bidding on their own listing
         if ($this->isTenderableOwner($user, $tenderable)) return false;
 
-        // Prevent duplicate active bids
+        // For lane bids, shipper must have at least one published freight
+        if ($tenderable instanceof Lane) {
+            if (!Freight::where(function ($q) use ($user) {
+                $q->where('shipper_id', $user->id)
+                    ->orWhere('creator_id', $user->id);
+            })
+                ->where('status', 'published')
+                ->exists()) {
+                return false;
+            }
+        }
+
         return !TenderOffer::forTenderable($tenderable)
             ->where('bidder_id', $user->id)
             ->active()
