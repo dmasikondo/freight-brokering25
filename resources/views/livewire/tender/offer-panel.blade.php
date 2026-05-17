@@ -27,6 +27,13 @@ new class extends Component {
     public ?int $rejectingOfferId = null;
     public ?int $revising = null;
 
+
+    public bool   $showNominationForm    = false;
+public ?int   $nomineeId             = null;
+public string $nominationAmount      = '';
+public string $nominationNotes       = '';
+public ?int   $nominationFreightId   = null;
+
     // ---------------------------------------------------------------
     // Mount — raw DB only; no Eloquent (enum casts break snapshots)
     // ---------------------------------------------------------------
@@ -73,6 +80,25 @@ new class extends Component {
             default => throw new \InvalidArgumentException('Unsupported tenderable type: ' . $this->tenderableType),
         };
     }
+
+    private function validateNomination(): void
+{
+    $rules = [
+        'nomineeId'       => ['required', 'integer', 'exists:users,id'],
+        'nominationAmount' => ['required', 'numeric', 'min:0.01'],
+        'nominationNotes'  => ['nullable', 'string', 'max:500'],
+    ];
+
+    if ($this->tenderableType === Lane::class) {
+        $rules['nominationFreightId'] = ['required', 'integer', 'exists:freights,id'];
+    }
+
+    $this->validate($rules, [
+        'nomineeId.required'          => 'Please select a user to nominate.',
+        'nominationAmount.required'   => 'Please enter an offer amount.',
+        'nominationFreightId.required'=> 'Please select a freight for this nomination.',
+    ]);
+}
 
     // ---------------------------------------------------------------
     // Computed
@@ -139,6 +165,31 @@ new class extends Component {
             ->orderBy('created_at', 'desc')
             ->get(['id', 'uuid', 'name', 'cityfrom', 'cityto', 'countryfrom', 'countryto']);
     }
+
+public string $nomineeSearch = '';
+
+#[Computed(persist: false)]
+public function eligibleUsers()
+{
+    if (!$this->canViewLeaderboard || strlen($this->nomineeSearch) < 2) {
+        return collect();
+    }
+
+    $requiredRole = $this->tenderableType === Freight::class ? 'carrier' : 'shipper';
+
+    return \App\Models\User::whereHas('roles', fn($q) => $q->where('name', $requiredRole))
+        ->where(function ($q) {
+            $q->where('contact_person', 'like', '%' . $this->nomineeSearch . '%')
+              ->orWhere('organisation', 'like', '%' . $this->nomineeSearch . '%');
+        })
+        ->whereDoesntHave('tenderOffers', function ($q) {
+            $q->where('tenderable_type', $this->tenderableType)
+              ->where('tenderable_id',   $this->tenderableId)
+              ->whereIn('status', [TenderOfferStatus::PENDING->value, TenderOfferStatus::SHORTLISTED->value]);
+        })
+        ->limit(10)
+        ->get(['id', 'contact_person', 'organisation', 'slug']);
+}    
 
     /** Delegates to TenderOfferPolicy::create */
     #[Computed(persist: false)]
@@ -301,6 +352,33 @@ new class extends Component {
         session()->flash('offer_success', 'Your offer has been submitted successfully.');
     }
 
+public function nominateUser(): void
+{
+    $this->authorize('manage', new TenderOffer([
+        'tenderable_type' => $this->tenderableType,
+        'tenderable_id'   => $this->tenderableId,
+    ]));
+
+    $this->validateNomination();
+
+    $offer = TenderOffer::create([
+        'tenderable_type' => $this->tenderableType,
+        'tenderable_id'   => $this->tenderableId,
+        'bidder_id'       => $this->nomineeId,
+        'amount'          => $this->nominationAmount,
+        'notes'           => $this->nominationNotes ?: null,
+        'status'          => TenderOfferStatus::PENDING,
+        'freight_id'      => $this->tenderableType === Lane::class
+                                ? $this->nominationFreightId
+                                : null,
+    ]);
+
+    $offer->notifyBidder('offer_nominated');
+
+    $this->reset(['nomineeId', 'nominationAmount', 'nominationNotes', 'nominationFreightId', 'showNominationForm']);
+    session()->flash('offer_success', 'User nominated and offer created on their behalf.');
+}
+
     public function startRevision(int $offerId): void
     {
         $offer = TenderOffer::findOrFail($offerId);
@@ -374,6 +452,8 @@ new class extends Component {
             $offer->notifyBidder('offer_shortlisted');
         }
     }
+
+    
 
     public function confirmReject(int $offerId): void
     {
@@ -469,7 +549,7 @@ new class extends Component {
     {{-- ── Header ──────────────────────────────────────────────────────── --}}
     <div class="flex items-center gap-3">
         <flux:icon name="banknotes" class="size-5 text-zinc-400" />
-        <flux:heading size="lg">Tender Offers</flux:heading>
+        <flux:heading size="lg">Bid Offers</flux:heading>
         @if ($this->canViewLeaderboard)
             <flux:badge size="sm" color="zinc">{{ $this->activeOffers->count() }} active</flux:badge>
         @endif
@@ -742,6 +822,100 @@ new class extends Component {
                 </div>
             </div>
         @endif
+
+        @if($this->canViewLeaderboard && $this->isOpen)
+<div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+            <flux:icon name="user-plus" class="size-4 text-zinc-400" />
+            <flux:heading size="md">Nominate a {{ $this->config->bidderRole === 'carrier' ? 'Carrier' : 'Shipper' }}</flux:heading>
+        </div>
+        @if(!$showNominationForm)
+        <flux:button wire:click="$set('showNominationForm', true)" size="sm" variant="ghost" icon="plus">
+            Nominate
+        </flux:button>
+        @endif
+    </div>
+
+    @if($showNominationForm)
+    <div class="space-y-4">
+        {{-- User search --}}
+        <div>
+            <flux:input
+                wire:model.live="nomineeSearch"
+                label="Search by name or organisation"
+                placeholder="Start typing..."
+                icon="magnifying-glass" />
+
+            @if($this->eligibleUsers->count())
+            <div class="mt-2 border border-zinc-200 dark:border-zinc-700 rounded-xl overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
+                @foreach($this->eligibleUsers as $eligible)
+                <button
+                    wire:click="$set('nomineeId', {{ $eligible->id }})"
+                    type="button"
+                    @class([
+                        'w-full text-left px-4 py-3 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between',
+                        'bg-lime-50 dark:bg-lime-900/20' => $nomineeId === $eligible->id,
+                    ])>
+                    <span class="font-medium text-zinc-900 dark:text-white">
+                        {{ $eligible->organisation ?? $eligible->contact_person }}
+                    </span>
+                    @if($nomineeId === $eligible->id)
+                    <flux:icon name="check" variant="mini" class="size-4 text-lime-600" />
+                    @endif
+                </button>
+                @endforeach
+            </div>
+            @elseif(strlen($nomineeSearch) >= 2)
+            <p class="mt-2 text-xs text-zinc-400">No eligible users found.</p>
+            @endif
+            <flux:error name="nomineeId" />
+        </div>
+
+        <div>
+            <flux:input
+                type="number" step="0.01"
+                label="Offer Amount ({{ $this->amountUnit }})"
+                wire:model="nominationAmount" />
+            <flux:error name="nominationAmount" />
+        </div>
+
+        @if($this->tenderableType === \App\Models\Lane::class)
+        <div>
+            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Freight this nomination is for
+            </label>
+            <select wire:model="nominationFreightId"
+                class="w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lime-500">
+                <option value="">— Select a freight —</option>
+                @foreach(\App\Models\Freight::where('status', 'published')->latest()->get(['id', 'name', 'cityfrom', 'cityto']) as $freight)
+                <option value="{{ $freight->id }}">
+                    {{ $freight->name }} — {{ $freight->cityfrom }} → {{ $freight->cityto }}
+                </option>
+                @endforeach
+            </select>
+            <flux:error name="nominationFreightId" />
+        </div>
+        @endif
+
+        <flux:textarea
+            label="Notes (optional)"
+            wire:model="nominationNotes"
+            rows="2"
+            placeholder="Reason for nomination or any relevant details..." />
+
+        <div class="flex gap-2">
+            <flux:button wire:click="nominateUser" variant="primary" color="lime" icon="user-plus">
+                Create Nomination
+            </flux:button>
+            <flux:button wire:click="$set('showNominationForm', false)" variant="ghost">
+                Cancel
+            </flux:button>
+        </div>
+    </div>
+    @endif
+</div>
+@endif
 
     @endauth
 

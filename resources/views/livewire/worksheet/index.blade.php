@@ -465,7 +465,8 @@ new class extends Component {
                                           hover:border-emerald-500 hover:text-emerald-700 dark:hover:border-emerald-500
                                           dark:hover:text-emerald-400 bg-white dark:bg-slate-800 transition-all">
                                     <flux:icon.eye variant="micro" />
-                                    {{ $ws->is_completed ? 'Archive' : 'View' }}
+                                    {{-- {{ $ws->is_completed ? 'Archive' : 'View' }} --}}
+                                    View
                                 </a>
                             </div>
                         </div>

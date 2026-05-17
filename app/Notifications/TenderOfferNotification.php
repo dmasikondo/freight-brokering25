@@ -79,10 +79,16 @@ class TenderOfferNotification extends Notification implements ShouldQueue
                 "Your offer of {$amount} on tender {$tenderableLabel} has been awarded. Please await further instructions.",
                 $this->tenderableUrl($tenderable),
             ],
-            
+
             'award_revoked' => [
                 'Award Revoked',
                 "The award previously granted to you for tender {$tenderableLabel} ({$amount}) has been revoked. The tender has been re-opened.",
+                $this->tenderableUrl($tenderable),
+            ],
+
+            'offer_nominated' => [
+                'You Have Been Nominated for a Tender',
+                "You have been nominated by our team for tender {$tenderableLabel}. An offer of {$amount} has been created on your behalf.",
                 $this->tenderableUrl($tenderable),
             ],
 

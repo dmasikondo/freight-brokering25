@@ -8,8 +8,10 @@ use App\Enums\PartnerType;
 use App\Enums\PlannedAction;
 use Livewire\Volt\Component;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\SearchesPartners;
 
 new class extends Component {
+    use SearchesPartners;
 
     public WorksheetHeader $worksheet;
 
@@ -50,9 +52,7 @@ new class extends Component {
             ...compact('entries', 'totalCount', 'completedCount', 'progress'),
             'partnerTypes'     => PartnerType::cases(),
             'plannedActions'   => PlannedAction::cases(),
-            'available_partners' => $this->p_name
-                ? User::where('contact_person', 'like', "%{$this->p_name}%")->limit(5)->get()
-                : collect(),
+            'available_partners' => $this->searchPartners($this->p_name),
             'available_staff'  => User::where('id', '!=', Auth::id())
                 ->whereHas('roles', fn($q) => $q->whereIn('name', [
                     'superadmin', 'admin',

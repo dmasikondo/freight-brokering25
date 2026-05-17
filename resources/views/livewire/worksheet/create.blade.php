@@ -8,8 +8,10 @@ use App\Enums\WorksheetType;
 use App\Enums\PlannedAction;
 use Livewire\Volt\Component;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\SearchesPartners;
 
 new class extends Component {
+    use SearchesPartners;
 
     // ── Active worksheet selector ─────────────────────────────────
     // null = show planning view; set to a header id to execute that worksheet
@@ -115,9 +117,7 @@ new class extends Component {
             'worksheetTypes'     => WorksheetType::cases(),
             'blockedTypes'       => $blockedTypes,
             'activeByType'       => $activeByType,
-            'available_partners' => $this->p_name
-                ? User::where('contact_person', 'like', "%{$this->p_name}%")->limit(5)->get()
-                : collect(),
+            'available_partners' => $this->searchPartners($this->p_name),
             'history' => WorksheetHeader::withCount([
                     'entries',
                     'entries as completed_entries_count' => fn($q) => $q->whereNotNull('completed_at'),
@@ -805,7 +805,7 @@ new class extends Component {
                                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
                                         Step 2 — Name Your Worksheet
                                     </p>
-                                    <flux:input wire:model="worksheet_name"
+                                    <flux:input wire:model="worksheet_name" label="Worksheet Name"
                                         placeholder="{{ match($worksheet_type) {
                                             'daily'   => 'Daily Partner Calls — ' . now()->format('d M'),
                                             'weekly'  => 'Weekly Lane Review — Week ' . now()->weekOfYear,

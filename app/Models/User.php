@@ -265,6 +265,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Fleet::class);
     }
 
+    public function tenderOffers(): HasMany
+    {
+        return $this->hasMany(TenderOffer::class, 'bidder_id');
+    }
+
 
     public function profileDocuments()
     {

@@ -45,7 +45,6 @@ Route::middleware(['auth',])->group(function () {
     Volt::route('territories/{territory}/edit', 'territory.create')->name('territories.edit');
 
     Volt::route('freights/create', 'freight.create')->name('freights.create');
-    Volt::route('freights/create2', 'freight.create2')->name('freights.create');
     Volt::route('freights/{freight:uuid}', 'freight.show')->name('freights.show');
     Volt::route('freights/{freight:uuid}/edit', 'freight.create')->name('freights.edit');
 
