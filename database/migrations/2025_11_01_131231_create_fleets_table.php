@@ -21,11 +21,11 @@ return new class extends Migration
         });  
         
         Schema::create('fleet_trailer', function (Blueprint $table) {
-            $table->id();
+            $table->id(); // This acts as the single primary key
             $table->foreignId('fleet_id')->constrained()->onDelete('cascade');
             $table->foreignId('trailer_id')->constrained()->onDelete('cascade');
-            $table->primary(['fleet_id', 'trailer_id']);    
             $table->timestamps();
+            $table->unique(['fleet_id', 'trailer_id']); 
         });	        
             
     }
